@@ -24,8 +24,13 @@ const formato = z.object({
 });
 
 const esquemaEnv = formato.refine(
-  (env) => env.IA_MODO === "mock" || env.ANTHROPIC_API_KEY !== undefined,
-  { path: ["ANTHROPIC_API_KEY"], error: 'obrigatória quando IA_MODO="real"' },
+  (env) => env.IA_MODO !== "real" || env.ANTHROPIC_API_KEY !== undefined,
+  {
+    path: ["ANTHROPIC_API_KEY"],
+    error: 'obrigatória quando IA_MODO="real"',
+    // Roda mesmo se outros campos falharem, para listar todos os problemas de uma vez.
+    when: () => true,
+  },
 );
 
 export type Env = z.infer<typeof esquemaEnv>;
