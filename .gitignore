@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# exceção: modelo de variáveis sem segredos
+!.env.example
+
+# configurações locais do Claude Code
+.claude/settings.local.json
