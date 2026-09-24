@@ -59,6 +59,13 @@ test.describe("página inicial", () => {
   });
 });
 
+test("páginas cujo caminho começa com 'api' também recebem a CSP", async ({ request }) => {
+  const resposta = await request.get("/apiario");
+
+  expect(resposta.status()).toBe(404);
+  expect(resposta.headers()["content-security-policy"]).toContain("'nonce-");
+});
+
 test.describe("API", () => {
   test("GET /api/saude responde ok sem cache", async ({ request }) => {
     const resposta = await request.get("/api/saude");
