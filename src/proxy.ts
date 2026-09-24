@@ -21,7 +21,17 @@ export function montarCsp(nonce: string, { desenvolvimento, https }: OpcoesDeCsp
   const diretivas = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${desenvolvimento ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' ${desenvolvimento ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
+    ...(desenvolvimento
+      ? ["style-src 'self' 'unsafe-inline'"]
+      : [
+          `style-src 'self' 'nonce-${nonce}'`,
+          // Tags <style> e <link> só com o nonce.
+          `style-src-elem 'self' 'nonce-${nonce}'`,
+          // Atributos style="..." (usados pelo next/image e por bibliotecas de gráfico)
+          // não executam código; vazar dados por CSS exigiria carregar recursos
+          // externos, o que img-src, font-src e connect-src 'self' já bloqueiam.
+          "style-src-attr 'unsafe-inline'",
+        ]),
     "img-src 'self' blob: data:",
     "font-src 'self'",
     "connect-src 'self'",

@@ -6,11 +6,17 @@ import { montarCsp, proxy } from "@/proxy";
 describe("montarCsp", () => {
   const producao = montarCsp("abc", { desenvolvimento: false, https: true });
 
-  it("em produção só permite scripts e estilos com o nonce", () => {
+  it("em produção só permite scripts e tags de estilo com o nonce", () => {
     expect(producao).toContain("script-src 'self' 'nonce-abc' 'strict-dynamic'");
     expect(producao).toContain("style-src 'self' 'nonce-abc'");
+    expect(producao).toContain("style-src-elem 'self' 'nonce-abc';");
     expect(producao).not.toContain("unsafe-eval");
-    expect(producao).not.toContain("unsafe-inline");
+  });
+
+  it("libera 'unsafe-inline' apenas para atributos style", () => {
+    const comUnsafeInline = producao.split("; ").filter((d) => d.includes("unsafe-inline"));
+
+    expect(comUnsafeInline).toEqual(["style-src-attr 'unsafe-inline'"]);
   });
 
   it("bloqueia iframes, plugins e troca da URL base", () => {
