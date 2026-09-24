@@ -17,9 +17,7 @@ const formato = z.object({
   DATABASE_URL: z.url({
     protocol: /^postgres(ql)?$/,
     error: (issue) =>
-      issue.input === undefined
-        ? "obrigatória"
-        : "deve ser uma URL do Postgres (postgresql://...)",
+      issue.input === undefined ? "obrigatória" : "deve ser uma URL do Postgres (postgresql://...)",
   }),
   IA_MODO: z.enum(["mock", "real"], { error: 'deve ser "mock" ou "real"' }).default("mock"),
   ANTHROPIC_API_KEY: z.string().optional(),
