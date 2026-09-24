@@ -41,9 +41,10 @@ type ErroTraduzido = {
 /** Converte qualquer erro no formato público e registra no log. */
 export function traduzirErro(erro: unknown, requestId: string): ErroTraduzido {
   if (erro instanceof ErroApp) {
-    const contexto = { requestId, codigo: erro.codigo, erro };
+    // Erros 4xx são esperados: basta o código. A pilha só interessa nos 5xx.
+    const contexto = { requestId, codigo: erro.codigo };
     if (erro.status >= 500) {
-      logger.error(erro.message, contexto);
+      logger.error(erro.message, { ...contexto, erro });
     } else if (["NAO_AUTENTICADO", "PROIBIDO", "LIMITE_EXCEDIDO"].includes(erro.codigo)) {
       // Falhas de acesso e excesso de tentativas interessam ao monitoramento de segurança.
       logger.warn(erro.message, contexto);
