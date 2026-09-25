@@ -44,7 +44,7 @@ const eslintConfig = defineConfig([
   },
   {
     // O logger e os scripts de configuração escrevem no console; os testes o espionam.
-    files: ["src/lib/logger.ts", "*.config.{ts,mts,mjs}", "tests/**"],
+    files: ["src/lib/logger.ts", "*.config.{ts,mts,mjs}", "tests/**", "scripts/**"],
     rules: { "no-console": "off" },
   },
   // Desliga regras de estilo que conflitam com o Prettier (sempre por último).
