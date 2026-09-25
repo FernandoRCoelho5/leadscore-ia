@@ -1,26 +1,336 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Identidade visual Brasa: tokens de design.
+ * Documentação completa, contrastes e regras de uso: docs/identidade-visual.md
+ *
+ * Camadas:
+ * 1. Escalas (50 a 950): cores brutas da marca. Não use direto nos componentes.
+ * 2. Tokens semânticos (fundo, texto, primaria, erro, quente...): o que os
+ *    componentes usam. Mudam de valor entre os temas claro e escuro.
+ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* `dark:` vale para o tema escuro escolhido e para "sistema" quando o SO está escuro. */
+@custom-variant dark {
+  &:where([data-tema="escuro"], [data-tema="escuro"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-tema="sistema"], [data-tema="sistema"] *) {
+      @slot;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme {
+  /* Paleta fechada: remove as cores padrão do Tailwind para que só as da marca existam. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Brasa (primária). 500 = cor da marca; 600 = botão com texto branco (4,70:1). */
+  --color-brasa-50: #fff5f0;
+  --color-brasa-100: #ffe9dd;
+  --color-brasa-200: #ffd3bf;
+  --color-brasa-300: #ffb699;
+  --color-brasa-400: #ff8d66;
+  --color-brasa-500: #ff5a1f;
+  --color-brasa-600: #d63a00;
+  --color-brasa-700: #b62b00;
+  --color-brasa-800: #972306;
+  --color-brasa-900: #79200c;
+  --color-brasa-950: #470e04;
+
+  /* Âmbar (secundária). 400 = cor da marca; nunca como texto sobre fundo claro. */
+  --color-ambar-50: #fffaee;
+  --color-ambar-100: #fff0d1;
+  --color-ambar-200: #ffe3ab;
+  --color-ambar-300: #ffcf7d;
+  --color-ambar-400: #ffb020;
+  --color-ambar-500: #ee9000;
+  --color-ambar-600: #d27000;
+  --color-ambar-700: #ae5200;
+  --color-ambar-800: #8d400b;
+  --color-ambar-900: #733511;
+  --color-ambar-950: #441c06;
+
+  /* Carvão (neutra quente). 50 = Creme; 950 = Carvão. */
+  --color-carvao-50: #fff7f0;
+  --color-carvao-100: #f7eee9;
+  --color-carvao-200: #e8ddd8;
+  --color-carvao-300: #d4c8c2;
+  --color-carvao-400: #aea29b;
+  --color-carvao-500: #897d77;
+  --color-carvao-600: #6d625d;
+  --color-carvao-700: #564c47;
+  --color-carvao-800: #403732;
+  --color-carvao-900: #2e2622;
+  --color-carvao-950: #1c1412;
+
+  /* Gelo: azul acinzentado dos leads frios. */
+  --color-gelo-50: #f3f7fc;
+  --color-gelo-100: #e7eef5;
+  --color-gelo-200: #d2deea;
+  --color-gelo-300: #b7cadc;
+  --color-gelo-400: #8ea8c2;
+  --color-gelo-500: #5b7a99;
+  --color-gelo-600: #496685;
+  --color-gelo-700: #3a5370;
+  --color-gelo-800: #2e425c;
+  --color-gelo-900: #24354b;
+  --color-gelo-950: #111e2e;
+
+  /* Erro: carmim, distinto do laranja da marca (também para daltônicos). */
+  --color-erro-50: #fff2f0;
+  --color-erro-100: #ffe2df;
+  --color-erro-200: #ffcac7;
+  --color-erro-300: #ffa5a2;
+  --color-erro-400: #fe6a6f;
+  --color-erro-500: #ec4053;
+  --color-erro-600: #d4193c;
+  --color-erro-700: #af0a31;
+  --color-erro-800: #8e0e27;
+  --color-erro-900: #751623;
+  --color-erro-950: #440811;
+
+  /* Sucesso. */
+  --color-sucesso-50: #effaf2;
+  --color-sucesso-100: #dcf4e3;
+  --color-sucesso-200: #bfebcd;
+  --color-sucesso-300: #96dcb0;
+  --color-sucesso-400: #66c58f;
+  --color-sucesso-500: #3aac72;
+  --color-sucesso-600: #15935b;
+  --color-sucesso-700: #007548;
+  --color-sucesso-800: #00603b;
+  --color-sucesso-900: #064e31;
+  --color-sucesso-950: #002c1a;
+
+  /* Tipografia: Sora (carregada com next/font no layout). */
+  --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+
+  /* Raio de borda. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Sombras em tom carvão (no tema escuro, a profundidade vem das superfícies). */
+  --shadow-sm: 0 1px 2px rgb(28 20 18 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(28 20 18 / 0.1);
+  --shadow-lg: 0 12px 32px -8px rgb(28 20 18 / 0.18);
+
+  /* Altura de botões e campos: 40px; 44px em telas de toque (ver abaixo). */
+  --spacing-controle: 2.5rem;
+}
+
+/* Tokens semânticos: os componentes usam estes (ex.: bg-superficie, text-texto-suave). */
+@theme inline {
+  --color-fundo: var(--fundo);
+  --color-superficie: var(--superficie);
+  --color-superficie-2: var(--superficie-2);
+  --color-texto: var(--texto);
+  --color-texto-suave: var(--texto-suave);
+  --color-borda: var(--borda);
+  --color-borda-campo: var(--borda-campo);
+  --color-primaria: var(--primaria);
+  --color-primaria-hover: var(--primaria-hover);
+  --color-texto-primaria: var(--texto-primaria);
+  --color-marca-texto: var(--marca-texto);
+  --color-destaque: var(--destaque);
+  --color-secundaria: var(--secundaria);
+  --color-texto-secundaria: var(--texto-secundaria);
+  --color-foco: var(--foco);
+  --color-erro: var(--erro);
+  --color-erro-fundo: var(--erro-fundo);
+  --color-erro-alerta: var(--erro-alerta);
+  --color-destrutivo: var(--destrutivo);
+  --color-texto-destrutivo: var(--texto-destrutivo);
+  --color-sucesso: var(--sucesso);
+  --color-sucesso-fundo: var(--sucesso-fundo);
+  --color-quente-fundo: var(--quente-fundo);
+  --color-quente-texto: var(--quente-texto);
+  --color-quente-icone: var(--quente-icone);
+  --color-quente-grafico: var(--quente-grafico);
+  --color-morno-fundo: var(--morno-fundo);
+  --color-morno-texto: var(--morno-texto);
+  --color-morno-icone: var(--morno-icone);
+  --color-morno-grafico: var(--morno-grafico);
+  --color-morno-grafico-contorno: var(--morno-grafico-contorno);
+  --color-frio-fundo: var(--frio-fundo);
+  --color-frio-texto: var(--frio-texto);
+  --color-frio-icone: var(--frio-icone);
+  --color-frio-grafico: var(--frio-grafico);
+}
+
+/*
+ * Todos os tokens de tema ficam na mesma camada (base), claro antes do escuro:
+ * CSS fora de camada sempre venceria o de dentro, e o tema escuro não aplicaria.
+ */
+@layer base {
+  /* Tema claro (padrão). Contrastes conferidos em docs/identidade-visual.md. */
+  :root {
+    color-scheme: light;
+    --fundo: var(--color-carvao-50);
+    --superficie: var(--color-white);
+    --superficie-2: var(--color-carvao-100);
+    --texto: var(--color-carvao-950);
+    --texto-suave: var(--color-carvao-600);
+    --borda: var(--color-carvao-200);
+    --borda-campo: var(--color-carvao-500);
+    --primaria: var(--color-brasa-600);
+    --primaria-hover: var(--color-brasa-700);
+    --texto-primaria: var(--color-white);
+    --marca-texto: var(--color-brasa-700);
+    /* #FF5A1F: só ícones e destaques sobre a superfície branca (no creme, use primaria). */
+    --destaque: var(--color-brasa-500);
+    --secundaria: var(--color-ambar-400);
+    --texto-secundaria: var(--color-carvao-950);
+    --foco: var(--color-brasa-600);
+    --erro: var(--color-erro-700);
+    --erro-fundo: var(--color-erro-50);
+    --erro-alerta: var(--color-erro-700);
+    --destrutivo: var(--color-erro-700);
+    --texto-destrutivo: var(--color-white);
+    --sucesso: var(--color-sucesso-700);
+    --sucesso-fundo: var(--color-sucesso-50);
+    --quente-fundo: var(--color-brasa-100);
+    --quente-texto: var(--color-brasa-800);
+    --quente-icone: var(--color-brasa-600);
+    --quente-grafico: var(--color-brasa-600);
+    --morno-fundo: var(--color-ambar-100);
+    --morno-texto: var(--color-ambar-800);
+    --morno-icone: var(--color-ambar-700);
+    --morno-grafico: var(--color-ambar-400);
+    --morno-grafico-contorno: var(--color-ambar-700);
+    --frio-fundo: var(--color-gelo-100);
+    --frio-texto: var(--color-gelo-800);
+    --frio-icone: var(--color-gelo-600);
+    --frio-grafico: var(--color-gelo-600);
+  }
+
+  /* Tema escuro: tons ajustados (não cores invertidas). */
+  [data-tema="escuro"] {
+    color-scheme: dark;
+    --fundo: var(--color-carvao-950);
+    --superficie: var(--color-carvao-900);
+    --superficie-2: var(--color-carvao-800);
+    --texto: var(--color-carvao-50);
+    --texto-suave: var(--color-carvao-400);
+    --borda: var(--color-carvao-800);
+    --borda-campo: var(--color-carvao-500);
+    --primaria: var(--color-brasa-600);
+    --primaria-hover: var(--color-brasa-700);
+    --texto-primaria: var(--color-white);
+    --marca-texto: var(--color-brasa-400);
+    --destaque: var(--color-brasa-500);
+    --secundaria: var(--color-ambar-400);
+    --texto-secundaria: var(--color-carvao-950);
+    --foco: var(--color-brasa-400);
+    --erro: var(--color-erro-300);
+    --erro-fundo: var(--color-erro-950);
+    --erro-alerta: var(--color-erro-200);
+    --destrutivo: var(--color-erro-700);
+    --texto-destrutivo: var(--color-white);
+    --sucesso: var(--color-sucesso-300);
+    --sucesso-fundo: var(--color-sucesso-950);
+    --quente-fundo: var(--color-brasa-950);
+    --quente-texto: var(--color-brasa-200);
+    --quente-icone: var(--color-brasa-400);
+    --quente-grafico: var(--color-brasa-500);
+    --morno-fundo: var(--color-ambar-950);
+    --morno-texto: var(--color-ambar-200);
+    --morno-icone: var(--color-ambar-400);
+    --morno-grafico: var(--color-ambar-400);
+    --morno-grafico-contorno: var(--color-ambar-400);
+    --frio-fundo: var(--color-gelo-950);
+    --frio-texto: var(--color-gelo-200);
+    --frio-icone: var(--color-gelo-300);
+    --frio-grafico: var(--color-gelo-400);
+  }
+
+  /* "sistema": mesmo tema escuro quando o sistema operacional está no modo escuro. */
+  @media (prefers-color-scheme: dark) {
+    [data-tema="sistema"] {
+      color-scheme: dark;
+      --fundo: var(--color-carvao-950);
+      --superficie: var(--color-carvao-900);
+      --superficie-2: var(--color-carvao-800);
+      --texto: var(--color-carvao-50);
+      --texto-suave: var(--color-carvao-400);
+      --borda: var(--color-carvao-800);
+      --borda-campo: var(--color-carvao-500);
+      --primaria: var(--color-brasa-600);
+      --primaria-hover: var(--color-brasa-700);
+      --texto-primaria: var(--color-white);
+      --marca-texto: var(--color-brasa-400);
+      --destaque: var(--color-brasa-500);
+      --secundaria: var(--color-ambar-400);
+      --texto-secundaria: var(--color-carvao-950);
+      --foco: var(--color-brasa-400);
+      --erro: var(--color-erro-300);
+      --erro-fundo: var(--color-erro-950);
+      --erro-alerta: var(--color-erro-200);
+      --destrutivo: var(--color-erro-700);
+      --texto-destrutivo: var(--color-white);
+      --sucesso: var(--color-sucesso-300);
+      --sucesso-fundo: var(--color-sucesso-950);
+      --quente-fundo: var(--color-brasa-950);
+      --quente-texto: var(--color-brasa-200);
+      --quente-icone: var(--color-brasa-400);
+      --quente-grafico: var(--color-brasa-500);
+      --morno-fundo: var(--color-ambar-950);
+      --morno-texto: var(--color-ambar-200);
+      --morno-icone: var(--color-ambar-400);
+      --morno-grafico: var(--color-ambar-400);
+      --morno-grafico-contorno: var(--color-ambar-400);
+      --frio-fundo: var(--color-gelo-950);
+      --frio-texto: var(--color-gelo-200);
+      --frio-icone: var(--color-gelo-300);
+      --frio-grafico: var(--color-gelo-400);
+    }
+  }
+
+  /* Telas de toque: alvos de pelo menos 44px. */
+  @media (pointer: coarse) {
+    :root {
+      --spacing-controle: 2.75rem;
+    }
+  }
+
+  body {
+    background-color: var(--fundo);
+    color: var(--texto);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+
+  /* Foco sempre visível para quem navega pelo teclado (contraste ≥ 3:1). */
+  :focus-visible {
+    outline: 2px solid var(--foco);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-brasa-200);
+    color: var(--color-carvao-950);
+  }
+
+  /* Respeita quem pediu menos movimento no sistema operacional. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
