@@ -17,6 +17,33 @@ async function coresDaPagina(pagina: Page) {
   }));
 }
 
+test("a página inicial apresenta a marca de forma acessível", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByRole("img", { name: "Brasa" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Seus leads mais quentes, primeiro." }),
+  ).toBeVisible();
+  const classificacoes = page.getByRole("list", { name: "Como a Brasa classifica os leads" });
+  await expect(classificacoes.getByRole("listitem")).toHaveText(["Quente", "Morno", "Frio"]);
+});
+
+test("serve os ícones da marca", async ({ request, page }) => {
+  for (const [caminho, tipo] of [
+    ["/icon.svg", "image/svg+xml"],
+    ["/apple-icon.png", "image/png"],
+    ["/favicon.ico", "image/x-icon"],
+  ] as const) {
+    const resposta = await request.get(caminho);
+    expect(resposta.status(), caminho).toBe(200);
+    expect(resposta.headers()["content-type"], caminho).toContain(tipo);
+  }
+
+  await page.goto("/");
+  await expect(page.locator('link[rel="icon"][href*="icon.svg"]')).toHaveCount(1);
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+});
+
 test("carrega a fonte Sora", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
