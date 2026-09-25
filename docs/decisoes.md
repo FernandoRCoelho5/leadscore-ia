@@ -394,6 +394,57 @@ movida para código malicioso.
 **Consequências.** Atualizar uma action exige atualizar o SHA (o Dependabot faz
 isso automaticamente).
 
+## D-019 · Driver do banco e repositórios com a conexão por parâmetro
+
+**Contexto.** Algumas operações precisam ser atômicas (gravar a análise e
+atualizar a cópia no lead; criar a empresa e o vínculo do usuário), e os
+repositórios precisam ser testados sem tocar no banco real.
+
+**Decisão.** Em produção, o `Pool` do `@neondatabase/serverless` (WebSocket),
+que suporta transações (`db.transaction`). O Node 24 já tem `WebSocket` nativo,
+sem dependência extra. Os repositórios recebem a conexão como primeiro
+parâmetro, com o tipo comum `BancoDeDados`; nos testes, recebem um PGlite com as
+mesmas migrations. Em desenvolvimento, o pool fica no `globalThis` para não
+abrir um novo a cada recarga do Next.js. IDs malformados respondem "não
+encontrado" em vez de erro do banco.
+
+**Alternativas.** Driver HTTP do Neon (`neon()`): um pouco mais rápido por
+consulta, mas sem transações interativas (só lotes). Repositórios importando a
+conexão global: mais simples, porém impossíveis de testar sem banco real.
+
+**Consequências.** Toda função de repositório tem a forma
+`funcao(db, empresaId, ...)`, o que também deixa explícito o escopo da empresa.
+
+## D-020 · Regras de dados verificadas pelo ESLint
+
+**Contexto.** As regras "não apagar registros" e "não montar SQL com texto
+concatenado" dependiam só de disciplina.
+
+**Decisão.** O ESLint acusa erro em `db.delete`, `tx.delete` (exclusão física)
+e `sql.raw` (SQL sem escape) em `src/` e `scripts/`. Consultas usam o query
+builder do Drizzle ou o template `sql` (valores sempre parametrizados). Buscas
+com `ILIKE` escapam os curingas `%` e `_` digitados pelo usuário.
+
+**Alternativas.** Revisão manual de código: sujeita a esquecimento.
+
+**Consequências.** O CI reprova um PR que tente excluir fisicamente ou usar
+`sql.raw`. Se algum dia for indispensável, a exceção precisa ser explícita e
+justificada no código.
+
+## D-021 · Vulnerabilidade moderada aceita no drizzle-kit
+
+**Contexto.** O `npm audit` aponta uma vulnerabilidade moderada no `esbuild`
+0.18, usado internamente pelo `drizzle-kit` (GHSA-67mh-4wv8-2f99). A falha
+afeta apenas o servidor de desenvolvimento do esbuild (`esbuild serve`).
+
+**Decisão.** Aceitar o risco: o `drizzle-kit` usa o esbuild só para ler
+arquivos TypeScript, nunca como servidor; é dependência de desenvolvimento e
+não vai para produção. A correção sugerida pelo npm rebaixaria o `drizzle-kit`
+para uma versão muito antiga. O CI continua falhando em vulnerabilidades altas
+ou críticas.
+
+**Consequências.** Reavaliar quando o `drizzle-kit` 1.0 estável sair.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
