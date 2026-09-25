@@ -15,10 +15,11 @@ const sora = Sora({
   display: "swap",
 });
 
-// Nome provisório até a Etapa D da identidade visual.
 export const metadata: Metadata = {
-  title: { default: "LeadScore IA", template: "%s · LeadScore IA" },
-  description: "Qualificação de leads com inteligência artificial.",
+  applicationName: "Brasa",
+  title: { default: "Brasa", template: "%s · Brasa" },
+  description:
+    "Seus leads mais quentes, primeiro. A Brasa qualifica leads com inteligência artificial.",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
