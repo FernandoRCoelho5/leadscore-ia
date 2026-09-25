@@ -1,7 +1,7 @@
-import { sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { Empresa } from "@/db/schema";
+import { leads, type Empresa } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
 import {
   atualizarStatusDaAnalise,
@@ -91,10 +91,12 @@ describe("exclusão lógica", () => {
     expect((await listarLeads(db, empresa.id)).total).toBe(0);
     expect(await excluirLead(db, empresa.id, lead.id)).toBe(false);
 
-    const noBanco = await db.execute<{ deleted_at: string | null }>(
-      sql`SELECT deleted_at FROM leads WHERE id = ${lead.id}`,
-    );
-    expect(noBanco.rows[0]?.deleted_at).not.toBeNull();
+    // Consulta direta, sem o filtro dos repositórios: a linha ainda existe, só marcada.
+    const [noBanco] = await db
+      .select({ deletedAt: leads.deletedAt })
+      .from(leads)
+      .where(eq(leads.id, lead.id));
+    expect(noBanco?.deletedAt).toBeInstanceOf(Date);
   });
 });
 

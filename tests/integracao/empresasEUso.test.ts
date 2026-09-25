@@ -1,6 +1,7 @@
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { auditoria } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
 import { registrarAuditoria } from "@/server/repositories/auditoria";
 import { obterEmpresa, obterEmpresaAtivaPorSlug } from "@/server/repositories/empresas";
@@ -115,9 +116,10 @@ describe("auditoria", () => {
       detalhes: { quantidade: 10 },
     });
 
-    const eventos = await db.execute<{ acao: string }>(
-      sql`SELECT acao FROM auditoria WHERE empresa_id = ${empresa.id}`,
-    );
-    expect(eventos.rows).toEqual([{ acao: "lead.exportado" }]);
+    const eventos = await db
+      .select({ acao: auditoria.acao })
+      .from(auditoria)
+      .where(eq(auditoria.empresaId, empresa.id));
+    expect(eventos).toEqual([{ acao: "lead.exportado" }]);
   });
 });
