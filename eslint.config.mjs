@@ -18,6 +18,31 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // Regras de dados do projeto verificadas automaticamente em todo o código.
+    files: ["src/**/*.{ts,tsx}", "scripts/**/*.ts"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "db",
+          property: "delete",
+          message: "Exclusão física é proibida (regra do projeto): marque deleted_at.",
+        },
+        {
+          object: "tx",
+          property: "delete",
+          message: "Exclusão física é proibida (regra do projeto): marque deleted_at.",
+        },
+        {
+          object: "sql",
+          property: "raw",
+          message:
+            "sql.raw() não escapa valores (risco de SQL injection): use o template sql`...`.",
+        },
+      ],
+    },
+  },
+  {
     // O logger e os scripts de configuração escrevem no console; os testes o espionam.
     files: ["src/lib/logger.ts", "*.config.{ts,mts,mjs}", "tests/**"],
     rules: { "no-console": "off" },
