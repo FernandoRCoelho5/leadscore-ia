@@ -1,4 +1,6 @@
-# Arquitetura do LeadScore IA
+# Arquitetura da Brasa
+
+> Produto antes chamado LeadScore IA; o repositório continua `leadscore-ia`.
 
 Documento de referência da arquitetura aprovada na Etapa 1 (24/09/2026).
 As justificativas de cada escolha estão em [decisoes.md](decisoes.md).

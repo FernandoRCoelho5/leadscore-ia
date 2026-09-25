@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Decisões de produto e de arquitetura do LeadScore IA, com contexto, decisão,
+Decisões de produto e de arquitetura da Brasa (antes LeadScore IA), com contexto, decisão,
 alternativas consideradas e consequências. A descrição técnica completa está em
 [arquitetura.md](arquitetura.md).
 
@@ -444,6 +444,39 @@ para uma versão muito antiga. O CI continua falhando em vulnerabilidades altas
 ou críticas.
 
 **Consequências.** Reavaliar quando o `drizzle-kit` 1.0 estável sair.
+
+## D-022 · Identidade visual Brasa no código
+
+**Contexto.** O produto passou a se chamar Brasa (antes LeadScore IA), com
+paleta, tipografia e logotipo próprios (`docs/identidade-visual.md`). A
+identidade precisa ser aplicada de forma consistente, acessível e fácil de
+manter, nos temas claro e escuro.
+
+**Decisão.**
+
+- **Tokens em duas camadas no Tailwind v4:** escalas da marca no `@theme` e
+  tokens semânticos (`fundo`, `texto`, `primaria`, `quente-fundo`...) no
+  `@theme inline`, que mudam de valor por tema. A paleta padrão do Tailwind foi
+  removida: só as cores da marca existem.
+- **Tema por cookie, aplicado no servidor** (`data-tema` no `<html>`): claro
+  (padrão), escuro ou sistema. Sem "piscada" e sem script inline, que a CSP
+  bloquearia.
+- **Contraste verificado por teste automatizado:** 28 pares nos dois temas; o
+  CI reprova mudanças de cor que quebrem a WCAG AA.
+- **Logotipo em SVG** com o nome em curvas; componente `Logo` embutido.
+  Ícones do app gerados pelo script `npm run marca:icones`.
+- **Ícones de interface:** `lucide-react` (MIT), uma só família.
+- **Nomes técnicos preservados:** o repositório, o pacote e os identificadores
+  do código continuam `leadscore-ia`.
+
+**Alternativas.** Tema pela preferência do sistema, só com CSS: não permite
+escolha manual. Tema escolhido com JavaScript no navegador: causa "piscada" na
+carga e exige script inline. Manter a paleta padrão do Tailwind: facilita usar
+cores fora da marca por engano.
+
+**Consequências.** Componentes usam só tokens semânticos; trocar uma cor da
+marca é uma alteração num lugar só, validada pelo teste de contraste. Nenhuma
+página é estática (já era assim por causa da CSP com nonce, D-016).
 
 ---
 

@@ -188,9 +188,37 @@ desligadas para quem ativou "reduzir movimento" no sistema.
 
 ## 9. Logotipo
 
-A definir na Etapa C da identidade: símbolo da chama em SVG, versão
-horizontal (símbolo + nome), versões para fundo claro e escuro, favicon e
-ícones do app.
+![Prévia do logotipo](marca/previa-logotipo.png)
+
+**Símbolo:** chama geométrica de duas pontas com a **brasa** (círculo) ao
+centro. As duas pontas e o círculo diferenciam o desenho de outras marcas com
+chama e ligam o símbolo ao nome. **Nome:** "Brasa" em Sora Bold, convertido em
+curvas (o arquivo não depende da fonte instalada; a licença OFL da Sora
+permite esse uso).
+
+| Arquivo (`public/marca/`) | Quando usar |
+|---|---|
+| `brasa-horizontal.svg` | Versão principal, sobre fundo claro (nome em carvão) |
+| `brasa-horizontal-negativo.svg` | Sobre fundo escuro (nome em creme) |
+| `brasa-simbolo.svg` | Espaços pequenos ou quadrados (avatar, redes sociais) |
+| `brasa-simbolo-branco.svg` | Sobre o laranja da marca ou sobre fotos |
+| `brasa-app.svg` | Ícone de app (quadrado arredondado laranja com a chama branca) |
+| `brasa-favicon.svg` | Favicon: a chama ocupa 90% para ficar legível em 16px |
+
+No app, use o componente `Logo` (`src/components/marca/Logo.tsx`): o nome
+troca sozinho de cor entre os temas. Os ícones do Next.js (`src/app/icon.svg`,
+`apple-icon.png`, `favicon.ico`) são gerados por `npm run marca:icones`.
+
+| Regra | Valor |
+|---|---|
+| Área de proteção | Espaço livre em volta igual a metade da altura da chama |
+| Tamanho mínimo, horizontal | 20px de altura na tela |
+| Tamanho mínimo, símbolo | 16px |
+
+Não faça: distorcer ou girar o logotipo; trocar a cor da chama (a única
+alternativa é a versão branca); aplicar sombra, contorno ou degradê;
+colocar a chama laranja sobre fundo laranja ou âmbar (use a versão branca);
+reescrever o nome com outra fonte.
 
 ## 10. Faça e não faça
 
@@ -205,7 +233,32 @@ horizontal (símbolo + nome), versões para fundo claro e escuro, favicon e
 | Use `tabular-nums` em números de tabelas e KPIs | Deixar colunas de números desalinhadas |
 | Mantenha o tom direto: verbo e números concretos | Jargão e anglicismos desnecessários |
 
-## 11. Como a acessibilidade é garantida
+## 11. Componentes e telas
+
+| Componente | Uso |
+|---|---|
+| `Logo` | Logotipo em SVG embutido. `variante="simbolo"` para só a chama; `decorativo` quando o nome "Brasa" já estiver escrito ao lado |
+| `BadgeClassificacao` | Quente, morno, frio ou "Sem análise", sempre com ícone, palavra e cor |
+| Ícones | Biblioteca `lucide-react`, uma só família em todo o produto. Ícone ao lado de texto: `aria-hidden="true"`. Botão só com ícone: nome acessível (`aria-label`) |
+
+### Regras para as telas que ainda serão criadas
+
+Estas telas ainda não existem e devem seguir a identidade ao serem criadas:
+
+- **Área logada (Etapa 4):** menu lateral esquerdo e menu superior na
+  `superficie` (branco no claro, carvão-900 no escuro), com o `Logo` no topo
+  do menu lateral; item ativo com `marca-texto` e um indicador além da cor
+  (barra lateral ou peso da fonte); link "Pular para o conteúdo" como primeiro
+  elemento focável; avatar com submenu acessível por teclado.
+- **Formulário público `/f/[slug]` (Etapa 6):** fundo `fundo`, cartão em
+  `superficie`, rótulos visíveis acima dos campos (nunca só placeholder),
+  `borda-campo` nos campos, erro ao lado do campo com ícone, botão `primaria`
+  com altura `h-controle`, e o `Logo` discreto no rodapé ("feito com Brasa").
+- **Painel (Etapa 7):** badges com `BadgeClassificacao`, números com
+  `tabular-nums`, gráficos com as cores `*-grafico` e legenda ou rótulo
+  sempre visível.
+
+## 12. Como a acessibilidade é garantida
 
 - `tests/unit/identidade.test.ts` lê o `globals.css`, resolve os tokens nos
   dois temas e confere 28 pares de contraste. O CI reprova qualquer mudança
