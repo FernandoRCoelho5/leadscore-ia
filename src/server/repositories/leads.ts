@@ -102,7 +102,8 @@ export async function listarLeads(
   }
 
   const filtro = and(...condicoes);
-  const coluna = COLUNAS_DE_ORDENACAO[filtros.ordenarPor ?? "criadoEm"];
+  // Só colunas da lista; um valor inesperado cai na ordenação padrão.
+  const coluna = COLUNAS_DE_ORDENACAO[filtros.ordenarPor ?? "criadoEm"] ?? leads.createdAt;
   // NULLS LAST: leads ainda sem score ficam no fim; o id desempata e deixa a paginação estável.
   const ordem =
     filtros.direcao === "asc" ? sql`${coluna} ASC NULLS LAST` : sql`${coluna} DESC NULLS LAST`;
@@ -137,6 +138,11 @@ export async function obterLead(
   return lead;
 }
 
+/**
+ * Os campos são copiados um a um (lista de permitidos), e não com `...dados`:
+ * mesmo que chegue um objeto com campos extras (id, deletedAt, scoreAtual...),
+ * nada além do previsto vai para o banco (proteção contra "mass assignment").
+ */
 export async function criarLead(
   db: BancoDeDados,
   empresaId: string,
@@ -144,7 +150,21 @@ export async function criarLead(
 ): Promise<Lead> {
   const [lead] = await db
     .insert(leads)
-    .values({ ...dados, empresaId })
+    .values({
+      empresaId,
+      nome: dados.nome,
+      email: dados.email,
+      telefone: dados.telefone,
+      empresaNome: dados.empresaNome,
+      segmento: dados.segmento,
+      mensagem: dados.mensagem,
+      origem: dados.origem,
+      status: dados.status,
+      consentimentoLgpd: dados.consentimentoLgpd,
+      consentimentoEm: dados.consentimentoEm,
+      consentimentoVersaoTexto: dados.consentimentoVersaoTexto,
+      ipHash: dados.ipHash,
+    })
     .returning();
   if (!lead) {
     throw new Error("O banco não devolveu o lead inserido.");

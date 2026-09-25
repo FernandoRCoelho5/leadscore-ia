@@ -11,6 +11,7 @@ import {
   listarLeads,
   obterLead,
   type DadosDeNovoLead,
+  type FiltrosDeLeads,
 } from "@/server/repositories/leads";
 
 import { criarBancoDeTeste, criarEmpresaDeTeste } from "./banco";
@@ -66,12 +67,34 @@ describe("isolamento entre empresas", () => {
     expect(intacto).toMatchObject({ status: "novo", statusAnalise: "pendente", deletedAt: null });
   });
 
-  it("o empresaId dos dados não consegue trocar a empresa do lead", async () => {
-    const tentativa = { ...dadosDeLead(), empresaId: empresaB.id } as DadosDeNovoLead;
+  it("campos extras nos dados não chegam ao banco (mass assignment)", async () => {
+    const idForjado = "00000000-0000-4000-8000-000000000000";
+    const tentativa = {
+      ...dadosDeLead(),
+      id: idForjado,
+      empresaId: empresaB.id,
+      scoreAtual: 100,
+      classificacaoAtual: "quente",
+      statusAnalise: "concluida",
+      deletedAt: new Date(),
+    } as DadosDeNovoLead;
 
     const lead = await criarLead(db, empresaA.id, tentativa);
 
-    expect(lead.empresaId).toBe(empresaA.id);
+    expect(lead).toMatchObject({
+      empresaId: empresaA.id,
+      scoreAtual: null,
+      classificacaoAtual: null,
+      statusAnalise: "pendente",
+      deletedAt: null,
+    });
+    expect(lead.id).not.toBe(idForjado);
+  });
+
+  it("ordenação desconhecida cai no padrão em vez de quebrar a consulta", async () => {
+    const filtros = { ordenarPor: "senha" } as unknown as FiltrosDeLeads;
+
+    await expect(listarLeads(db, empresaA.id, filtros)).resolves.toMatchObject({ pagina: 1 });
   });
 
   it("id malformado responde 'não encontrado' em vez de erro do banco", async () => {
