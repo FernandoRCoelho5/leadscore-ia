@@ -96,8 +96,8 @@ erDiagram
   EMPRESAS ||--o{ LEADS : capta
   LEADS ||--o{ ANALISES : "histórico"
   EMPRESAS ||--o{ USO_MENSAL : consome
-  USUARIOS ||--o{ SESSOES : "abre (Etapa 4)"
-  USUARIOS ||--o{ CONTAS : "autentica (Etapa 4)"
+  USUARIOS ||--o{ SESSOES : abre
+  USUARIOS ||--o{ CONTAS : autentica
   USUARIOS ||--o{ AUDITORIA : executa
   EMPRESAS ||--o{ AUDITORIA : registra
 
@@ -196,7 +196,8 @@ erDiagram
 | `usuarios` | Pessoas que acessam o painel. `nome`, `email` (único), `email_verificado`, `imagem_url`, `papel_plataforma` (`admin`, `suporte` ou nulo), `bloqueado_em`. |
 | `membros_empresa` | Vínculo **N:N** entre usuários e empresas. `papel` (hoje só `cliente`; o enum permite `gestor`/`vendedor` no futuro). |
 | `convites` | Convite por link para entrar numa empresa. Guarda só o **hash** do token, `expira_em`, `aceito_em`, `criado_por`. |
-| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. **Criadas na Etapa 4**, com as colunas exatas que o Better Auth exige. |
+| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. Criadas na Etapa 4 (migration `0002`), com as colunas que o Better Auth exige. |
+| `limites_taxa_auth` | Contadores do limite de tentativas das rotas de login (Better Auth). `chave`, `contador`, `ultimo_pedido`. |
 | `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`) e `anonimizado_em`. A análise atual completa é a mais recente de `analises`, obtida pelo índice `(lead_id, created_at DESC)`. |
 | `analises` | Histórico de análises; **nunca é atualizada** (reanálise = nova linha). `score` (CHECK 0 a 100), `classificacao`, `justificativa`, `resposta_sugerida`, `modelo`, `prompt_version`, `perfil_versao`, `tokens_entrada`, `tokens_saida`, `tempo_resposta_ms`, `tentativas`, `mock`, `solicitada_por` (nulo = automática). |
 | `uso_mensal` | Consumo de análises por empresa e mês (`competencia`). Um único `UPDATE ... WHERE analises < limite` confere e consome o limite de forma atômica. |

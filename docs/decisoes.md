@@ -478,6 +478,62 @@ cores fora da marca por engano.
 marca é uma alteração num lugar só, validada pelo teste de contraste. Nenhuma
 página é estática (já era assim por causa da CSP com nonce, D-016).
 
+## D-023 · Autenticação, sessão e RBAC na prática
+
+**Contexto.** A Etapa 4 implementou o que D-004, D-005 e D-006 definiram, e
+algumas escolhas de implementação precisam ficar registradas para a revisão e
+a arguição.
+
+**Decisão.**
+
+- **Onde cada coisa acontece.** Cadastro, login e senha usam o cliente do
+  Better Auth, que chama as rotas `/api/auth/*`. Elas têm o limite de
+  tentativas da biblioteca, guardado no banco: 5 logins por minuto por IP e
+  5 cadastros a cada 10 minutos. O limite vale para várias instâncias
+  serverless. As demais ações (perfil, empresa, tema, sair) são Server
+  Actions.
+- **Sessão validada a cada requisição.** O cookie é assinado com o
+  `BETTER_AUTH_SECRET`, é `httpOnly`, `SameSite=Lax` e `Secure` em produção,
+  e vale 7 dias, renovado a cada dia de uso. Além disso, o usuário é relido do
+  banco a cada requisição: um bloqueio ou uma exclusão derruba a sessão na
+  hora. O `proxy.ts` só faz uma checagem rápida do cookie; a proteção real
+  está no servidor (`exigirSessao`, `exigirPermissao` e `autorizar`).
+- **RBAC.** Página sem permissão responde 404, e empresa fora do escopo
+  também responde 404; nos dois casos não se revela que o recurso existe. As
+  ações usam a empresa ativa lida da sessão, nunca um ID vindo do navegador
+  (proteção contra IDOR). A empresa ativa fica num cookie `httpOnly` e é
+  sempre conferida contra os vínculos do usuário.
+- **Dados de autenticação.**
+  - Senha com scrypt.
+  - Tokens OAuth cifrados com AES-256-GCM (hoje não usados).
+  - Tokens de verificação guardados só como hash.
+  - O token de sessão no banco não basta para forjar o cookie, porque o
+    cookie é assinado.
+  - IP e navegador ficam na tabela de sessões. A base legal é o legítimo
+    interesse (segurança e limite de tentativas), com retenção de no máximo
+    7 dias, porque a sessão é apagada no logout ou ao expirar. Isso entra na
+    política de privacidade (Etapa 9).
+- **Rotas da biblioteca desligadas:** atualizar usuário, excluir usuário e
+  trocar e-mail. Essas operações passam pelos nossos serviços.
+- **Menus sem JavaScript próprio.** O menu do celular e o menu da conta usam o
+  atributo `popover` do HTML, e as ações (tema, sair) são formulários com
+  Server Actions.
+- **Risco aceito: enumeração de e-mail no cadastro.** A mensagem "já existe
+  uma conta com este e-mail" é o comportamento esperado por quem se cadastra.
+  O "esqueci a senha" não revela se o e-mail existe, e o limite de cadastros
+  por IP dificulta a varredura.
+
+**Alternativas.** Login por Server Action: chamadas internas não passam pelo
+limite de tentativas da biblioteca. Sessão sem reler o usuário: um bloqueio
+só valeria quando a sessão expirasse. Bibliotecas de componentes para os
+menus: mais uma dependência para algo que o HTML já faz.
+
+**Consequências.** Cada requisição autenticada faz uma consulta a mais
+(usuário e vínculos), feita uma única vez por requisição graças ao `cache` do
+React. Os testes E2E variam o IP fictício (`x-forwarded-for`) para não esbarrar
+no limite de tentativas; um teste específico confirma que a sexta tentativa
+seguida é recusada com 429.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
