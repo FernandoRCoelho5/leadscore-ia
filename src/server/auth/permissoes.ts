@@ -78,6 +78,25 @@ export function pode(ator: Ator, acao: Acao, empresaId?: string): boolean {
 }
 
 /**
+ * Quem pode ver o perfil (nome e foto) de outra pessoa: ela mesma; a equipe
+ * do SaaS (admin e suporte, que listam usuários); e o cliente que é membro de
+ * uma empresa em comum com ela.
+ */
+export function podeVerPerfil(
+  ator: Ator,
+  atorId: string,
+  alvo: { id: string; empresaIds: readonly string[] },
+): boolean {
+  if (alvo.id === atorId) {
+    return true;
+  }
+  if (pode(ator, "usuarios:listar")) {
+    return true;
+  }
+  return alvo.empresaIds.some((empresaId) => pode(ator, "membros:ver", empresaId));
+}
+
+/**
  * Como `pode`, mas lança o erro adequado. Empresa fora do escopo responde
  * "não encontrado" (404), para não revelar que ela existe.
  */

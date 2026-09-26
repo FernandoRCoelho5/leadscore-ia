@@ -38,6 +38,29 @@ export async function atualizarNomeDoUsuario(
   return atualizados.length > 0;
 }
 
+/**
+ * Troca a foto (caminho do arquivo no armazenamento; nulo para remover) e
+ * devolve a anterior, cujo arquivo será apagado. A linha fica travada
+ * (FOR UPDATE) até o fim da transação: duas trocas ao mesmo tempo não perdem a
+ * referência de um arquivo. Deve ser chamada dentro de uma transação.
+ */
+export async function trocarFotoDoUsuario(
+  db: BancoDeDados,
+  usuarioId: string,
+  caminho: string | null,
+): Promise<{ anterior: string | null } | undefined> {
+  const [atual] = await db
+    .select({ imagemUrl: usuarios.imagemUrl })
+    .from(usuarios)
+    .where(and(eq(usuarios.id, usuarioId), isNull(usuarios.deletedAt)))
+    .for("update");
+  if (!atual) {
+    return undefined;
+  }
+  await db.update(usuarios).set({ imagemUrl: caminho }).where(eq(usuarios.id, usuarioId));
+  return { anterior: atual.imagemUrl };
+}
+
 export type VinculoDeEmpresa = {
   empresaId: string;
   nome: string;
