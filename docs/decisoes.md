@@ -231,6 +231,7 @@ e-mails; a foto do perfil exige armazenamento de arquivos.
 backup. SendGrid ou Postmark: equivalentes, sem vantagem no volume atual.
 
 **Consequências.** Duas contas e dois segredos novos, adotados nas Etapas 4 e 9.
+O Blob foi adotado na Etapa 4 como store **privado**; detalhes em D-024.
 
 ## D-012 · LGPD por anonimização
 
@@ -309,7 +310,8 @@ no futuro.
 **Contexto.** Deploy na Vercel e banco no Neon, com usuários no Brasil.
 
 **Decisão.** Vercel na região `gru1` e Neon na `sa-east-1`, ambas em São Paulo.
-Branches do Neon: `main` (produção), desenvolvimento e `e2e`.
+Branches do Neon: `production` (a principal, exclusiva da Vercel),
+desenvolvimento e `e2e` (D-025).
 
 **Consequências.** O plano Hobby da Vercel não permite uso comercial: serve para
 a entrega acadêmica, mas a venda exige o plano Pro (US$ 20 por mês por membro).
@@ -534,6 +536,103 @@ React. Os testes E2E variam o IP fictício (`x-forwarded-for`) para não esbarra
 no limite de tentativas; um teste específico confirma que a sexta tentativa
 seguida é recusada com 429.
 
+## D-024 · Foto de perfil no Vercel Blob privado
+
+**Contexto.** O "Alterar perfil" inclui a foto (D-011). A foto é um dado
+pessoal (LGPD): num store público, qualquer pessoa com o endereço a veria, sem
+como revogar. Um arquivo enviado também pode ser perigoso: HTML ou SVG com a
+extensão `.png`, ou uma foto com a localização (GPS) da câmera nos metadados.
+
+**Decisão.**
+
+- **Store privado** (`brasa`, região `gru1`): nenhuma foto tem endereço
+  público. A rota `GET /api/usuarios/[id]/foto` confere a sessão e a
+  permissão ao lado da leitura do arquivo, como recomenda a documentação da
+  Vercel. Sem sessão, responde 401. Sem permissão, sem foto ou com usuário
+  inexistente, responde 404 nos três casos, para não revelar quem existe.
+- **Quem vê a foto:** a própria pessoa, admin e suporte, e colegas de uma
+  empresa em comum (`podeVerPerfil`).
+- **Validação no servidor:** até 2 MB e só JPEG, PNG ou WebP, identificados
+  pelos primeiros bytes do arquivo (a assinatura), nunca pela extensão nem
+  pelo tipo que o navegador informa. O navegador faz a mesma conferência para
+  responder na hora.
+- **No navegador:** a foto é reduzida para até 512 px e regravada em WebP (ou
+  JPEG). A regravação descarta os metadados, como a localização, e o envio
+  fica com poucos KB.
+- **Resposta da rota:** o tipo é o que o próprio app gravou (pela extensão do
+  caminho), com `nosniff`, `Content-Security-Policy: default-src 'none';
+  sandbox` e sem cache (`no-store`, como toda a `/api`).
+- **Caminho:** `{ambiente}/usuarios/{usuarioId}/{uuid}.{ext}`, em que o
+  ambiente é o `VERCEL_ENV` (`production`, `preview`) ou `local`. O banco
+  guarda o caminho em `usuarios.imagem_url`. Só um caminho nesse formato, na
+  pasta do próprio usuário e do ambiente atual, é lido ou apagado. Assim, a
+  branch de desenvolvimento (cópia da produção) nunca lê nem apaga fotos de
+  produção, e um valor estranho no banco (URL externa, `../`) é ignorado.
+- **Troca:** grava o arquivo novo, aponta o banco para ele numa transação
+  (linha travada com `FOR UPDATE`, com auditoria) e só então apaga o antigo.
+  Se o banco falhar, o arquivo novo é apagado. Remover a foto apaga o arquivo
+  (minimização, LGPD). O arquivo não é um registro do banco, então a regra de
+  exclusão lógica não se aplica a ele.
+- **Limite:** 10 trocas por hora por usuário, contadas na auditoria, contra
+  abuso e custo.
+- **Envio por Server Action:** o limite de corpo das actions passou de 1 MB
+  para 2,5 MB (foto de até 2 MB mais os bytes do multipart).
+- **Credencial do Blob:** localmente, `BLOB_READ_WRITE_TOKEN`; na Vercel, o
+  SDK usa OIDC com o `BLOB_STORE_ID` (token de curta duração, renovado
+  sozinho). Sem nenhum dos dois, o envio responde "indisponível" (503) e o
+  avatar mostra as iniciais.
+
+**Alternativas.** Store público com nome aleatório: mais barato de servir, mas
+a foto ficaria acessível a quem tivesse o link, sem como revogar. Envio direto
+do navegador para o Blob (client upload): economiza tráfego da função, mas
+exige uma rota de token e um webhook; com fotos de poucos KB, não compensa.
+Redimensionar no servidor com `sharp`: dependência nativa a mais, que
+precisaria de aprovação; o ajuste no navegador resolve o caso comum.
+
+**Consequências.** Cada exibição da foto passa por uma função (leitura do Blob
+mais transferência); com fotos de poucos KB, o custo é baixo. O servidor não
+decodifica a imagem: um arquivo com assinatura válida e conteúdo inválido é
+guardado, mas nunca é executado (tipo fixo, `nosniff` e `sandbox`). Quem enviar
+direto para a action, sem passar pela tela, pode mandar uma imagem com
+metadados; ela só é vista por quem já tem permissão.
+
+## D-025 · Branch `e2e` do Neon e preparação das migrations
+
+**Contexto.** A branch principal do Neon se chama `production` e é exclusiva
+da Vercel. Os testes E2E do CI usam a branch `e2e`, criada como "schema only"
+a partir de `production`. Ela tem as tabelas, mas não os dados, nem os
+registros de `drizzle.__drizzle_migrations`. O `drizzle-kit migrate` acharia
+que nada foi aplicado e falharia com "já existe" logo na primeira migration.
+Apagar e recriar as tabelas é proibido pelas regras do projeto.
+
+**Decisão.** O script `npm run db:preparar-e2e` roda no CI antes dos E2E (e só
+com `E2E_COM_BANCO=1`):
+
+- se a tabela de controle está vazia, confere no catálogo do Postgres os
+  objetos que cada migration cria (tabelas, índices, tipos, extensões,
+  restrições e colunas) e registra as migrations já presentes (a "linha de
+  base"), com o mesmo hash e a mesma data que o Drizzle gravaria;
+- aplica as migrations mais novas, do mesmo jeito que o migrator do Drizzle;
+- faz tudo numa transação com trava (`pg_advisory_xact_lock`), então duas
+  execuções do CI ao mesmo tempo esperam a vez;
+- para sem alterar nada se o banco estiver inconsistente (migration pela
+  metade, fora de ordem ou impossível de conferir).
+
+A branch `e2e` não tem exclusão automática. Os testes só inserem dados, com
+e-mails únicos do domínio reservado `.example`.
+
+**Alternativas.** Recriar a branch a cada execução pela API do Neon: exigiria
+no CI uma chave com poder de apagar branches. Branch `e2e` com dados: levaria
+dados de produção (LGPD) para o ambiente de testes. `drizzle-kit push`:
+proibido (D-010).
+
+**Consequências.** Depois da primeira execução, a tabela de controle fica
+preenchida e o CI só aplica as migrations novas de cada PR. O
+`drizzle-kit migrate` continua funcionando na branch. Uma migration futura que
+só altere dados (sem criar objetos) não pode ser conferida por esse método;
+isso só importa numa nova cópia "schema only", e o script avisa em vez de
+adivinhar.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
@@ -544,3 +643,4 @@ seguida é recusada com 429.
 - [Preços do Upstash Redis](https://upstash.com/docs/redis/overall/pricing)
 - [Preços do Vercel Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 - [Preços do Resend](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
+- [Vercel Blob: armazenamento privado](https://vercel.com/docs/vercel-blob/private-storage) (consultada em 26/09/2026, D-024)
