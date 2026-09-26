@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, ilike, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 
 import {
   leads,
@@ -205,6 +205,40 @@ export async function atualizarStatusDaAnalise(
     .where(and(eq(leads.id, leadId), ...escopoDaEmpresa(empresaId)))
     .returning({ id: leads.id });
   return atualizados.length > 0;
+}
+
+/** Depois disso, uma análise "processando" é considerada interrompida e pode ser retomada. */
+export const ANALISE_TRAVADA_APOS_MS = 5 * 60 * 1000;
+
+/**
+ * Reserva o lead para uma análise, marcando `processando` numa única instrução:
+ * dois pedidos ao mesmo tempo (ex.: dois cliques em "Reanalisar") nunca
+ * analisam o mesmo lead duas vezes. Uma análise interrompida (a função foi
+ * encerrada no meio) libera o lead depois de 5 minutos. Devolve `undefined`
+ * se o lead não existir ou já estiver em análise.
+ */
+export async function reservarLeadParaAnalise(
+  db: BancoDeDados,
+  empresaId: string,
+  leadId: string,
+  agora: Date = new Date(),
+): Promise<Lead | undefined> {
+  if (!ehUuid(leadId)) {
+    return undefined;
+  }
+  const travadaAntesDe = new Date(agora.getTime() - ANALISE_TRAVADA_APOS_MS);
+  const [lead] = await db
+    .update(leads)
+    .set({ statusAnalise: "processando", updatedAt: agora })
+    .where(
+      and(
+        eq(leads.id, leadId),
+        ...escopoDaEmpresa(empresaId),
+        or(ne(leads.statusAnalise, "processando"), lt(leads.updatedAt, travadaAntesDe)),
+      ),
+    )
+    .returning();
+  return lead;
 }
 
 /** Exclusão lógica: marca `deleted_at`; o registro continua no banco. */
