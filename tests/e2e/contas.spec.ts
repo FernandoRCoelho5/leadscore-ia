@@ -57,6 +57,16 @@ async function cadastrar(page: Page, nome: string, email: string) {
   await page.waitForURL("**/onboarding");
 }
 
+async function concluirOnboarding(page: Page, nomeDaEmpresa: string) {
+  await page.getByLabel("Nome da empresa").fill(nomeDaEmpresa);
+  await page.getByLabel("O que a sua empresa faz").fill("Fabricamos peças metálicas sob medida.");
+  await page
+    .getByLabel("Cliente ideal")
+    .fill("Indústrias de médio porte que compram peças sob encomenda.");
+  await page.getByRole("button", { name: "Criar empresa e ir para o painel" }).click();
+  await page.waitForURL("**/painel");
+}
+
 async function entrar(page: Page, email: string, senha = SENHA) {
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
@@ -160,4 +170,29 @@ test("conta bloqueada perde a sessão na hora e não consegue entrar", async ({ 
 
   await entrar(page, email);
   await expect(page.getByText("Esta conta está bloqueada. Fale com o suporte.")).toBeVisible();
+});
+
+test("foto de perfil: arquivo disfarçado é recusado e a rota não revela outros usuários", async ({
+  page,
+}) => {
+  await cadastrar(page, "Fabi Foto", emailUnico("foto-tela"));
+  await concluirOnboarding(page, `Foto E2E ${Date.now()}`);
+  await page.goto("/perfil");
+
+  // HTML com extensão .png: recusado pelos bytes, antes de sair do navegador.
+  await page.getByLabel("Escolher foto").setInputFiles({
+    name: "foto.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("<html><script>alert(1)</script></html>"),
+  });
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Use uma imagem JPEG, PNG ou WebP.",
+  );
+  await expect(page.getByLabel("Escolher foto")).toHaveAttribute("aria-invalid", "true");
+
+  // Com sessão, usuário inexistente (ou sem permissão) recebe 404, sem distinção.
+  const resposta = await page.request.get(
+    "/api/usuarios/0199a000-0000-7000-8000-000000000001/foto",
+  );
+  expect(resposta.status()).toBe(404);
 });

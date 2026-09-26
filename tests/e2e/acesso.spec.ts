@@ -64,3 +64,10 @@ test("o destino do login não aceita sites externos (open redirect)", async ({ p
   // A página não quebra e o formulário continua disponível; o destino inválido é descartado no servidor.
   await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
 });
+
+test("a foto de perfil (Blob privado) exige login: 401 sem sessão", async ({ request }) => {
+  const resposta = await request.get("/api/usuarios/0199a000-0000-7000-8000-000000000001/foto");
+
+  expect(resposta.status()).toBe(401);
+  expect(await resposta.json()).toMatchObject({ erro: { codigo: "NAO_AUTENTICADO" } });
+});

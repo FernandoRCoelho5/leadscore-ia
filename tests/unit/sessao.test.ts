@@ -128,6 +128,23 @@ describe("obterSessao", () => {
     expect(sessao?.ator.empresaIds).toEqual([EMPRESA_A.empresaId]);
   });
 
+  it("expõe o endereço da rota da foto, nunca o caminho no armazenamento", async () => {
+    const id = "0199a000-0000-7000-8000-000000000001";
+    const versao = "0199a000-0000-7000-8000-00000000abcd";
+    logado({ imagemUrl: `local/usuarios/${id}/${versao}.webp` });
+
+    const sessao = await obterSessao();
+
+    expect(sessao?.usuario.fotoUrl).toBe(`/api/usuarios/${id}/foto?v=${versao}`);
+    expect(JSON.stringify(sessao)).not.toContain("local/usuarios");
+  });
+
+  it("sem foto (ou com valor fora do formato), fotoUrl é nula", async () => {
+    logado({ imagemUrl: "https://site-falso.example/foto.png" });
+
+    expect((await obterSessao())?.usuario.fotoUrl).toBeNull();
+  });
+
   it("admin sem vínculo fica sem empresa ativa", async () => {
     logado({ papelPlataforma: "admin" }, []);
 
