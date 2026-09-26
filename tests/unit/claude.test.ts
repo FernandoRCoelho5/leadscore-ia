@@ -58,8 +58,9 @@ function mensagemDaApi(
 function erroDaApi(status: number, tipo: string, mensagem: string): RespostaFalsa {
   return {
     status,
-    // Sem espera entre as novas tentativas do SDK (o teste fica rápido).
-    cabecalhos: { "retry-after-ms": "0" },
+    // Espera mínima entre as novas tentativas do SDK (o teste fica rápido). Com
+    // "0" o SDK ignora o cabeçalho e usa a espera padrão (0,5 s e depois 1 s).
+    cabecalhos: { "retry-after-ms": "1" },
     corpo: { type: "error", error: { type: tipo, message: mensagem } },
   };
 }

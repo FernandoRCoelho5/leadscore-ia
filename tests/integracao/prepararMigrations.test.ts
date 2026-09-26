@@ -56,7 +56,9 @@ const esperados = (quantidade: number) =>
     criadaEm: migration.folderMillis,
   }));
 
-describe("prepararMigrations", () => {
+// Cada teste sobe o próprio PGlite e roda as migrations dentro do teste (não num
+// hook): com cobertura e os arquivos em paralelo, passa dos 5 s padrão do Vitest.
+describe("prepararMigrations", { timeout: 30_000 }, () => {
   it("banco vazio: aplica todas as migrations", async () => {
     const { banco, conexao } = novoBanco();
 
