@@ -596,6 +596,11 @@ guardado, mas nunca é executado (tipo fixo, `nosniff` e `sandbox`). Quem enviar
 direto para a action, sem passar pela tela, pode mandar uma imagem com
 metadados; ela só é vista por quem já tem permissão.
 
+**Aprovação (26/09/2026).** Aprovados pelo usuário: apagar do Blob os arquivos
+de foto trocados ou removidos (minimização, LGPD); o limite de 2,5 MB nas
+Server Actions; e não usar o `BLOB_WEBHOOK_PUBLIC_KEY` criado pela integração
+da Vercel (o app não recebe webhooks do Blob).
+
 ## D-025 · Branch `e2e` do Neon e preparação das migrations
 
 **Contexto.** A branch principal do Neon se chama `production` e é exclusiva
@@ -633,6 +638,45 @@ só altere dados (sem criar objetos) não pode ser conferida por esse método;
 isso só importa numa nova cópia "schema only", e o script avisa em vez de
 adivinhar.
 
+## D-026 · Um banco por ambiente e o endereço do app nos previews
+
+**Contexto.** Com o projeto conectado à Vercel, cada PR gera um deploy de
+preview. Dados reais não podem ir parar em testes (LGPD), e a URL do preview
+muda a cada deploy, então ela não cabe num `BETTER_AUTH_URL` fixo.
+
+**Decisão.**
+
+| Ambiente | Onde roda | Branch do Neon | Dados |
+|---|---|---|---|
+| Desenvolvimento | Máquina local (`.env.local`) | desenvolvimento, cópia de `production` | Cópia com dados; o que um teste manual cria recebe `deleted_at` ao final |
+| E2E | CI (GitHub Actions, segredo `DATABASE_URL_E2E`) | `e2e`, cópia só do schema | Só o que os testes criam (D-025) |
+| Preview | Deploys de preview da Vercel | `preview`, cópia só do schema | Só o que for criado no próprio preview |
+| Produção | Vercel (Production) | `production` | Reais |
+
+- **Segredos separados por ambiente:** `BETTER_AUTH_SECRET` diferente em
+  Production e Preview (uma sessão de um não vale no outro) e chave da
+  Anthropic da Vercel separada da chave local.
+- **Endereço do app:** `BETTER_AUTH_URL` obrigatório em produção e localmente.
+  No preview, sem ele, o app usa `https://` + `VERCEL_URL` (o endereço do
+  próprio deploy), e as origens confiáveis do Better Auth são só os hosts
+  exatos do deploy e da branch (`VERCEL_URL` e `VERCEL_BRANCH_URL`). Os dois
+  valores são conferidos como nomes de host.
+- **Previews protegidos** pelo login da Vercel (Deployment Protection).
+- **Fotos:** uma pasta por ambiente no mesmo store (D-024).
+
+**Alternativas.** Previews no banco de produção: um PR em teste mexeria em
+dados reais. `baseURL` dinâmico com `allowedHosts: ["*.vercel.app"]`, como
+sugere a documentação do Better Auth: aceitaria como origem qualquer
+subdomínio `vercel.app`, inclusive de outros projetos. Um `BETTER_AUTH_URL`
+fixo no Preview: quebraria a cada novo deploy.
+
+**Consequências.** Migrations novas também precisam chegar à branch
+`preview`, que é "schema only" como a `e2e`. A preparação de D-025 vale para
+ela e entra no checklist de deploy da Etapa 9. Os dados do teste manual da foto
+(usuário `foto-teste-0926` e empresa `teste-foto-0926`, na branch de
+desenvolvimento) receberam `deleted_at` em 26/09/2026, com registro na
+auditoria, sem apagar nada.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
@@ -644,3 +688,4 @@ adivinhar.
 - [Preços do Vercel Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 - [Preços do Resend](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
 - [Vercel Blob: armazenamento privado](https://vercel.com/docs/vercel-blob/private-storage) (consultada em 26/09/2026, D-024)
+- [Better Auth: opções `baseURL` e `trustedOrigins`](https://www.better-auth.com/docs/reference/options) (consultada em 26/09/2026, D-026)

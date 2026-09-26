@@ -8,8 +8,9 @@ continuam `leadscore-ia`.
 ## Contexto
 App Next.js (App Router, TypeScript) que capta leads, analisa com Claude API
 e salva no Neon Postgres via Drizzle ORM.
-Branches do Neon: `production` (a principal, exclusiva da Vercel), uma de
-desenvolvimento (a do `.env.local`) e `e2e` (cópia só do schema, usada pelo CI).
+Branches do Neon (D-026): `production` (a principal, exclusiva da Vercel), uma de
+desenvolvimento (a do `.env.local`), `e2e` (só schema, usada pelo CI) e `preview`
+(só schema, usada pelos deploys de preview da Vercel).
 Fotos de perfil no Vercel Blob privado (store `brasa`), entregues por rota autenticada.
 
 ## Regras

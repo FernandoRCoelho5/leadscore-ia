@@ -302,7 +302,10 @@ sequenceDiagram
   branch de desenvolvimento (cópia de `production` com dados, usada no
   `.env.local`) e a branch `e2e` (cópia só do schema, sem exclusão
   automática), usada pelo CI e preparada pelo `npm run db:preparar-e2e`
-  (D-025).
+  (D-025), e a branch `preview` (cópia só do schema) para os deploys de
+  preview da Vercel (D-026).
+- Deploys de preview: sem `BETTER_AUTH_URL`, o app usa o endereço do próprio
+  deploy (`VERCEL_URL`) e confia só nos hosts exatos do deploy e da branch.
 - **Vercel Blob** privado (store `brasa`, região `gru1`) para as fotos de
   perfil, sem endereço público: a entrega passa por uma rota autenticada
   (D-024).
