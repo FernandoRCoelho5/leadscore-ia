@@ -1,6 +1,7 @@
 import "./carregarEnv";
 
 import { env } from "../src/env";
+import { custoEstimadoEmDolares } from "../src/lib/custoDaIa";
 import { obterMotor } from "../src/server/ia";
 import { ErroDaIA } from "../src/server/ia/motor";
 import type { EntradaDaAnalise } from "../src/server/ia/prompt";
@@ -16,10 +17,6 @@ import { classificacaoDaNota } from "../src/server/ia/schema";
  *   IA_MODO=real npm run ia:avaliar -- --confirmar      (Claude API: gasta créditos,
  *                                                        cerca de US$ 0,05 no total)
  */
-
-// Preços do Claude Haiku 4.5 por milhão de tokens (consultados em 26/09/2026).
-const PRECO_ENTRADA_POR_MILHAO = 1;
-const PRECO_SAIDA_POR_MILHAO = 5;
 
 const PERFIL: EntradaDaAnalise["perfil"] = {
   nomeEmpresa: "Agência Vale Digital",
@@ -175,8 +172,7 @@ async function principal(): Promise<void> {
     }
   }
 
-  const custo =
-    (tokens.entrada * PRECO_ENTRADA_POR_MILHAO + tokens.saida * PRECO_SAIDA_POR_MILHAO) / 1_000_000;
+  const custo = custoEstimadoEmDolares(tokens.entrada, tokens.saida);
   console.log(
     `\nAcertos: ${acertos} de ${CASOS.length}. Tokens: ${tokens.entrada} de entrada e ${tokens.saida} de saída. Custo estimado: US$ ${custo.toFixed(4)}.`,
   );
