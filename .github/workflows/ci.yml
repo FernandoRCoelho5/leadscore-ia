@@ -19,6 +19,8 @@ env:
   # mas não acessa o banco nem a Claude API.
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
   IA_MODO: mock
+  BETTER_AUTH_SECRET: segredo-ficticio-do-ci-com-pelo-menos-32-caracteres
+  BETTER_AUTH_URL: http://localhost:3100
   NEXT_TELEMETRY_DISABLED: "1"
 
 # As actions são fixadas pelo SHA do commit (e não pela tag, que pode ser movida)

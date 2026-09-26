@@ -21,6 +21,14 @@ const formato = z.object({
   }),
   IA_MODO: z.enum(["mock", "real"], { error: 'deve ser "mock" ou "real"' }).default("mock"),
   ANTHROPIC_API_KEY: z.string().optional(),
+  // Autenticação: segredo que assina os cookies de sessão e endereço público do app.
+  BETTER_AUTH_SECRET: z
+    .string({ error: "obrigatória (gere com: openssl rand -base64 32)" })
+    .min(32, "deve ter pelo menos 32 caracteres"),
+  BETTER_AUTH_URL: z.url({ error: "deve ser a URL pública do app (ex.: http://localhost:3000)" }),
+  // E-mail (opcional): sem a chave, os e-mails são mostrados no terminal (só em desenvolvimento).
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_REMETENTE: z.string().default("Brasa <onboarding@resend.dev>"),
 });
 
 const esquemaEnv = formato.refine(
