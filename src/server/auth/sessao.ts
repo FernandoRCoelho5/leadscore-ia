@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { db } from "@/db";
+import { enderecoDaFoto } from "@/server/armazenamento/fotos";
 import {
   listarEmpresasDoUsuario,
   obterUsuarioAtivo,
@@ -22,7 +23,13 @@ import { pode, type Acao, type Ator, type Papel } from "./permissoes";
  * bloqueado perde o acesso na hora, sem esperar a sessão expirar).
  */
 export type Sessao = {
-  usuario: { id: string; nome: string; email: string; imagemUrl: string | null };
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    /** Endereço da rota autenticada que entrega a foto; nulo sem foto. */
+    fotoUrl: string | null;
+  };
   papel: Papel;
   vinculos: VinculoDeEmpresa[];
   /** Empresa em que o usuário está trabalhando (cliente); nula para admin/suporte sem vínculo. */
@@ -54,7 +61,7 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
-      imagemUrl: usuario.imagemUrl,
+      fotoUrl: enderecoDaFoto(usuario.id, usuario.imagemUrl),
     },
     papel,
     vinculos,
