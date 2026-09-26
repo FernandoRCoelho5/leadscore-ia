@@ -116,7 +116,8 @@ export function AreaDeTexto({
 
 type PropsDaSelecao = PropsComuns &
   Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> & {
-    opcoes: readonly string[];
+    /** Texto (valor = rótulo) ou par valor/rótulo (ex.: "em_contato" / "Em contato"). */
+    opcoes: readonly (string | { valor: string; rotulo: string })[];
     /** Texto da primeira opção, que fica vazia (campo opcional ou "escolha"). */
     textoVazio: string;
   };
@@ -146,11 +147,15 @@ export function Selecao({
         {...resto}
       >
         <option value="">{textoVazio}</option>
-        {opcoes.map((opcao) => (
-          <option key={opcao} value={opcao}>
-            {opcao}
-          </option>
-        ))}
+        {opcoes.map((opcao) => {
+          const { valor, rotulo } =
+            typeof opcao === "string" ? { valor: opcao, rotulo: opcao } : opcao;
+          return (
+            <option key={valor} value={valor}>
+              {rotulo}
+            </option>
+          );
+        })}
       </select>
       <AjudaEErro id={id} ajuda={ajuda} erro={erro} />
     </div>

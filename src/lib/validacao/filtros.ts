@@ -48,15 +48,24 @@ export const esquemaFiltrosDeLeads = z
     status: opcional(z.enum(STATUS_DO_LEAD)),
     de: dia,
     ate: dia,
-    ordenar: opcional(z.enum(["criadoEm", "score", "nome"])),
-    direcao: opcional(z.enum(["asc", "desc"])),
+    ordem: opcional(z.enum(["recentes", "antigos", "maior-nota", "menor-nota", "nome"])),
   })
   .extend(esquemaPaginacaoDaUrl.shape);
 
 export type FiltrosDaUrlDeLeads = z.output<typeof esquemaFiltrosDeLeads>;
 
+/** Opções de ordem da lista, na ordem em que aparecem na tela. */
+export const ORDENS_DE_LEADS = {
+  recentes: { rotulo: "Mais recentes", ordenarPor: "criadoEm", direcao: "desc" },
+  antigos: { rotulo: "Mais antigos", ordenarPor: "criadoEm", direcao: "asc" },
+  "maior-nota": { rotulo: "Maior nota", ordenarPor: "score", direcao: "desc" },
+  "menor-nota": { rotulo: "Menor nota", ordenarPor: "score", direcao: "asc" },
+  nome: { rotulo: "Nome (A a Z)", ordenarPor: "nome", direcao: "asc" },
+} as const;
+
 /** Converte os filtros da URL nos filtros do repositório (datas no fuso de São Paulo). */
 export function filtrosDoRepositorio(filtros: FiltrosDaUrlDeLeads) {
+  const ordem = ORDENS_DE_LEADS[filtros.ordem ?? "recentes"];
   return {
     busca: filtros.busca,
     classificacao: filtros.classificacao,
@@ -64,8 +73,8 @@ export function filtrosDoRepositorio(filtros: FiltrosDaUrlDeLeads) {
     criadoDe: filtros.de ? inicioDoDia(filtros.de) : undefined,
     // "Até" inclui o dia inteiro: o limite é a meia-noite do dia seguinte.
     criadoAte: filtros.ate ? fimDoDia(filtros.ate) : undefined,
-    ordenarPor: filtros.ordenar,
-    direcao: filtros.direcao,
+    ordenarPor: ordem.ordenarPor,
+    direcao: ordem.direcao,
   };
 }
 
