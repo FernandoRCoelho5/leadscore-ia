@@ -6,6 +6,7 @@ import {
   PAPEIS,
   autorizar,
   pode,
+  podeVerPerfil,
   type Acao,
   type Ator,
   type Papel,
@@ -90,5 +91,32 @@ describe("autorizar", () => {
 
   it("não lança quando permitido", () => {
     expect(() => autorizar(ator("cliente"), "empresa:editar", EMPRESA_DO_CLIENTE)).not.toThrow();
+  });
+});
+
+describe("podeVerPerfil (nome e foto de outra pessoa)", () => {
+  const EU = "0199a000-0000-7000-8000-000000000001";
+  const COLEGA = { id: "0199a000-0000-7000-8000-000000000002", empresaIds: ["empresa-a"] };
+  const ESTRANHO = { id: "0199a000-0000-7000-8000-000000000003", empresaIds: ["empresa-b"] };
+  const cliente: Ator = { papel: "cliente", empresaIds: ["empresa-a"] };
+
+  it("todos veem o próprio perfil", () => {
+    for (const papel of PAPEIS) {
+      expect(podeVerPerfil({ papel, empresaIds: [] }, EU, { id: EU, empresaIds: [] })).toBe(true);
+    }
+  });
+
+  it("cliente vê quem é membro de uma empresa em comum", () => {
+    expect(podeVerPerfil(cliente, EU, COLEGA)).toBe(true);
+  });
+
+  it("cliente não vê usuários de outras empresas", () => {
+    expect(podeVerPerfil(cliente, EU, ESTRANHO)).toBe(false);
+    expect(podeVerPerfil(cliente, EU, { id: ESTRANHO.id, empresaIds: [] })).toBe(false);
+  });
+
+  it("admin e suporte (equipe do SaaS) veem qualquer usuário", () => {
+    expect(podeVerPerfil({ papel: "admin", empresaIds: [] }, EU, ESTRANHO)).toBe(true);
+    expect(podeVerPerfil({ papel: "suporte", empresaIds: [] }, EU, ESTRANHO)).toBe(true);
   });
 });
