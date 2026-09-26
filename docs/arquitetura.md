@@ -21,10 +21,11 @@ classificação (quente, morno, frio), justificativa e uma resposta sugerida.
  │ app/ (UI)           → páginas, server actions, route handlers (finos) │
  │ server/services     → regras de negócio + RBAC + auditoria            │
  │ server/repositories → Drizzle; toda função exige empresaId            │
- │ lib/ia, lib/email, lib/rate-limit, lib/armazenamento → adaptadores    │
+ │ server/email, server/armazenamento, lib/ia → adaptadores externos     │
  └──────────────┬──────────────────────────────────┬─────────────────────┘
                 ▼                                  ▼
        Neon Postgres (sa-east-1)          Claude API (Haiku 4.5) | mock
+                                          Vercel Blob privado (fotos)
 ```
 
 ### Camadas e responsabilidades
@@ -34,7 +35,7 @@ classificação (quente, morno, frio), justificativa e uma resposta sugerida.
 | Interface | `src/app`, `src/components` | Validar entrada com Zod, chamar serviços, renderizar | Acessar o banco, conter regra de negócio |
 | Serviços (casos de uso) | `src/server/services` | Verificar permissão (RBAC), aplicar regras, registrar auditoria | Conhecer detalhes de HTTP ou de interface |
 | Repositórios | `src/server/repositories` | Consultar o banco via Drizzle, sempre filtrando `empresa_id` e `deleted_at` | Decidir permissões |
-| Adaptadores | `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
+| Adaptadores | `src/server/email`, `src/server/armazenamento`, `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
 
 Todo código de servidor importa `server-only`: se alguém o importar num
 componente de cliente, o build falha.
@@ -58,12 +59,13 @@ src/
     (painel)/         layout: menu lateral por perfil + topo com avatar
       painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
-    api/              auth/[...all], publico/[slug]/leads, analisar/[leadId], leads/exportar
+    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads, analisar/[leadId], leads/exportar
   server/
     services/         casos de uso (criarLead, analisarLead, anonimizarLead...)
     repositories/     consultas Drizzle (empresaId obrigatório, sem deletados, paginadas)
     auth/             sessão, permissoes.ts (matriz RBAC), autorizar()
-    auditoria/
+    email/            envio de e-mail (Resend; terminal em desenvolvimento)
+    armazenamento/    fotos no Vercel Blob privado (D-024)
   lib/
     ia/               analisarLead.ts, prompt.ts, schema.ts, mock.ts
     validacao/        schemas Zod compartilhados entre cliente e servidor
@@ -96,8 +98,8 @@ erDiagram
   EMPRESAS ||--o{ LEADS : capta
   LEADS ||--o{ ANALISES : "histórico"
   EMPRESAS ||--o{ USO_MENSAL : consome
-  USUARIOS ||--o{ SESSOES : "abre (Etapa 4)"
-  USUARIOS ||--o{ CONTAS : "autentica (Etapa 4)"
+  USUARIOS ||--o{ SESSOES : abre
+  USUARIOS ||--o{ CONTAS : autentica
   USUARIOS ||--o{ AUDITORIA : executa
   EMPRESAS ||--o{ AUDITORIA : registra
 
@@ -196,7 +198,8 @@ erDiagram
 | `usuarios` | Pessoas que acessam o painel. `nome`, `email` (único), `email_verificado`, `imagem_url`, `papel_plataforma` (`admin`, `suporte` ou nulo), `bloqueado_em`. |
 | `membros_empresa` | Vínculo **N:N** entre usuários e empresas. `papel` (hoje só `cliente`; o enum permite `gestor`/`vendedor` no futuro). |
 | `convites` | Convite por link para entrar numa empresa. Guarda só o **hash** do token, `expira_em`, `aceito_em`, `criado_por`. |
-| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. **Criadas na Etapa 4**, com as colunas exatas que o Better Auth exige. |
+| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. Criadas na Etapa 4 (migration `0002`), com as colunas que o Better Auth exige. |
+| `limites_taxa_auth` | Contadores do limite de tentativas das rotas de login (Better Auth). `chave`, `contador`, `ultimo_pedido`. |
 | `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`) e `anonimizado_em`. A análise atual completa é a mais recente de `analises`, obtida pelo índice `(lead_id, created_at DESC)`. |
 | `analises` | Histórico de análises; **nunca é atualizada** (reanálise = nova linha). `score` (CHECK 0 a 100), `classificacao`, `justificativa`, `resposta_sugerida`, `modelo`, `prompt_version`, `perfil_versao`, `tokens_entrada`, `tokens_saida`, `tempo_resposta_ms`, `tentativas`, `mock`, `solicitada_por` (nulo = automática). |
 | `uso_mensal` | Consumo de análises por empresa e mês (`competencia`). Um único `UPDATE ... WHERE analises < limite` confere e consome o limite de forma atômica. |
@@ -238,6 +241,7 @@ perfil não pode usar.
 | Usuários da plataforma · criar, alterar papel, bloquear | ✅ | ❌ | ❌ |
 | Auditoria · consultar + CSV | ✅ | ✅ leitura | ❌ (futuro: da própria empresa) |
 | Próprio perfil (nome, foto, senha) | ✅ | ✅ | ✅ |
+| Foto e nome de outro usuário · ver | ✅ | ✅ | colegas de uma empresa em comum |
 
 Regras complementares:
 
@@ -294,7 +298,16 @@ sequenceDiagram
 
 - **Vercel**, região `gru1` (São Paulo).
 - **Neon Postgres**, região `sa-east-1` (São Paulo), conexão com pooling e SSL.
-- Branches do Neon: `main` (produção), uma branch de desenvolvimento e uma
-  branch `e2e` para os testes de ponta a ponta.
+- Branches do Neon: `production` (a principal, exclusiva da Vercel), uma
+  branch de desenvolvimento (cópia de `production` com dados, usada no
+  `.env.local`) e a branch `e2e` (cópia só do schema, sem exclusão
+  automática), usada pelo CI e preparada pelo `npm run db:preparar-e2e`
+  (D-025), e a branch `preview` (cópia só do schema) para os deploys de
+  preview da Vercel (D-026).
+- Deploys de preview: sem `BETTER_AUTH_URL`, o app usa o endereço do próprio
+  deploy (`VERCEL_URL`) e confia só nos hosts exatos do deploy e da branch.
+- **Vercel Blob** privado (store `brasa`, região `gru1`) para as fotos de
+  perfil, sem endereço público: a entrega passa por uma rota autenticada
+  (D-024).
 - Claude API com o modelo `claude-haiku-4-5-20251001`; modo mock por variável
   de ambiente.

@@ -21,6 +21,8 @@ export default defineConfig({
     env: {
       DATABASE_URL: "postgresql://teste:teste@localhost:5432/teste",
       IA_MODO: "mock",
+      BETTER_AUTH_SECRET: "segredo-de-teste-com-pelo-menos-32-caracteres",
+      BETTER_AUTH_URL: "http://localhost:3000",
     },
     coverage: {
       provider: "v8",

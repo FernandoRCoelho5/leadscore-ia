@@ -63,6 +63,8 @@ const PARES: [string, string, number][] = [
   ["texto-primaria", "primaria-hover", TEXTO],
   ["marca-texto", "fundo", TEXTO],
   ["marca-texto", "superficie", TEXTO],
+  // Item ativo do menu lateral.
+  ["marca-texto", "superficie-2", TEXTO],
   ["texto-secundaria", "secundaria", TEXTO],
   ["erro", "superficie", TEXTO],
   ["erro-alerta", "erro-fundo", TEXTO],

@@ -16,6 +16,7 @@ export const STATUS_POR_CODIGO = {
   CONFLITO: 409,
   LIMITE_EXCEDIDO: 429,
   INTERNO: 500,
+  INDISPONIVEL: 503,
 } as const;
 
 export type CodigoErro = keyof typeof STATUS_POR_CODIGO;
@@ -88,6 +89,13 @@ export class ErroNaoEncontrado extends ErroApp {
 export class ErroConflito extends ErroApp {
   constructor(mensagem: string) {
     super("CONFLITO", mensagem);
+  }
+}
+
+/** Recurso que depende de um serviço externo não configurado (ex.: armazenamento de fotos). */
+export class ErroIndisponivel extends ErroApp {
+  constructor(mensagem: string) {
+    super("INDISPONIVEL", mensagem);
   }
 }
 
