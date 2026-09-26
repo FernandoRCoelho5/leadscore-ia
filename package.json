@@ -26,6 +26,7 @@
     "marca:icones": "node scripts/marca/gerarIcones.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@neondatabase/serverless": "^1.1.0",
     "@vercel/blob": "^2.8.0",
     "better-auth": "^1.7.6",
