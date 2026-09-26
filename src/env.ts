@@ -29,6 +29,13 @@ const formato = z.object({
   // E-mail (opcional): sem a chave, os e-mails são mostrados no terminal (só em desenvolvimento).
   RESEND_API_KEY: z.string().optional(),
   EMAIL_REMETENTE: z.string().default("Brasa <onboarding@resend.dev>"),
+  // Fotos de perfil no Vercel Blob privado (D-024). Localmente, o token; na
+  // Vercel, o SDK usa OIDC com o BLOB_STORE_ID. Sem nenhum dos dois, o envio de
+  // foto fica indisponível (o resto do app funciona).
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+  BLOB_STORE_ID: z.string().optional(),
+  // Definida pela Vercel. Separa as fotos de produção, preview e desenvolvimento no mesmo store.
+  VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
 });
 
 const esquemaEnv = formato.refine(
