@@ -70,6 +70,50 @@ describe("validarEnv", () => {
     );
   });
 
+  it("exige o BETTER_AUTH_URL fora dos previews da Vercel (local e produção)", () => {
+    const semUrl = { DATABASE_URL: URL_VALIDA, BETTER_AUTH_SECRET: AUTH.BETTER_AUTH_SECRET };
+    const mensagem = "BETTER_AUTH_URL: obrigatória";
+
+    expect(() => validarEnv(semUrl)).toThrow(mensagem);
+    // Em produção, a VERCEL_URL não substitui o endereço oficial.
+    expect(() =>
+      validarEnv({ ...semUrl, VERCEL_ENV: "production", VERCEL_URL: "brasa-abc.vercel.app" }),
+    ).toThrow(mensagem);
+    // Preview sem a VERCEL_URL (variáveis de sistema desligadas) também falha.
+    expect(() => validarEnv({ ...semUrl, VERCEL_ENV: "preview" })).toThrow(mensagem);
+  });
+
+  it("no preview sem BETTER_AUTH_URL, usa o endereço do deploy e confia só nos hosts dele", () => {
+    const env = validarEnv({
+      DATABASE_URL: URL_VALIDA,
+      BETTER_AUTH_SECRET: AUTH.BETTER_AUTH_SECRET,
+      VERCEL_ENV: "preview",
+      VERCEL_URL: "brasa-abc123-fdev2.vercel.app",
+      VERCEL_BRANCH_URL: "brasa-git-feat-auth-fdev2.vercel.app",
+    });
+
+    expect(env.URL_DO_APP).toBe("https://brasa-abc123-fdev2.vercel.app");
+    expect(env.ORIGENS_CONFIAVEIS).toEqual([
+      "https://brasa-abc123-fdev2.vercel.app",
+      "https://brasa-git-feat-auth-fdev2.vercel.app",
+    ]);
+  });
+
+  it("com BETTER_AUTH_URL, ela é o endereço do app e a origem confiável", () => {
+    const env = validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, VERCEL_ENV: "production" });
+
+    expect(env.URL_DO_APP).toBe("http://localhost:3000");
+    expect(env.ORIGENS_CONFIAVEIS).toEqual(["http://localhost:3000"]);
+  });
+
+  it("recusa VERCEL_URL que não seja só um nome de host", () => {
+    for (const valor of ["https://brasa.vercel.app", "brasa.vercel.app/caminho", "localhost"]) {
+      expect(() => validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, VERCEL_URL: valor })).toThrow(
+        "VERCEL_URL: deve ser só o nome do host",
+      );
+    }
+  });
+
   it("nunca inclui o valor das variáveis na mensagem de erro", () => {
     const segredo = "valor-super-secreto-123";
     try {
