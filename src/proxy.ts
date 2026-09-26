@@ -20,9 +20,24 @@ type OpcoesDeCsp = {
   desenvolvimento: boolean;
   /** `upgrade-insecure-requests` só faz sentido em HTTPS (quebraria o localhost). */
   https: boolean;
+  /** Página que outros sites podem exibir em iframe (só o formulário público, D-028). */
+  incorporavel?: boolean;
 };
 
-export function montarCsp(nonce: string, { desenvolvimento, https }: OpcoesDeCsp): string {
+/**
+ * Quem pode exibir a página em iframe. O formulário público vai no site do
+ * cliente, que pode estar em qualquer domínio com HTTPS; o resto do app nunca
+ * aparece em iframe (proteção contra clickjacking).
+ */
+export function quemPodeIncorporar({ desenvolvimento, incorporavel }: OpcoesDeCsp): string {
+  if (!incorporavel) {
+    return "'none'";
+  }
+  return desenvolvimento ? "'self' https: http://localhost:*" : "'self' https:";
+}
+
+export function montarCsp(nonce: string, opcoes: OpcoesDeCsp): string {
+  const { desenvolvimento, https } = opcoes;
   const diretivas = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${desenvolvimento ? " 'unsafe-eval'" : ""}`,
@@ -43,8 +58,7 @@ export function montarCsp(nonce: string, { desenvolvimento, https }: OpcoesDeCsp
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    // Nenhum site pode exibir o app em iframe (a Etapa 6 libera só /f/[slug]).
-    "frame-ancestors 'none'",
+    `frame-ancestors ${quemPodeIncorporar(opcoes)}`,
     ...(https ? ["upgrade-insecure-requests"] : []),
   ];
   return diretivas.join("; ");
@@ -55,6 +69,11 @@ const AREAS_LOGADAS = ["/painel", "/leads", "/configuracoes", "/perfil", "/admin
 
 export function exigeLogin(caminho: string): boolean {
   return AREAS_LOGADAS.some((area) => caminho === area || caminho.startsWith(`${area}/`));
+}
+
+/** Formulário público de captação (/f/[slug]): a única página incorporável. */
+export function ehFormularioPublico(caminho: string): boolean {
+  return caminho.startsWith("/f/");
 }
 
 export function proxy(request: NextRequest) {
@@ -70,6 +89,7 @@ export function proxy(request: NextRequest) {
     desenvolvimento: process.env.NODE_ENV === "development",
     https:
       request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https",
+    incorporavel: ehFormularioPublico(pathname),
   });
 
   // O Next.js lê a CSP da requisição para descobrir o nonce e aplicá-lo nos scripts.

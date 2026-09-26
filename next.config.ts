@@ -20,8 +20,6 @@ const cabecalhosDeSeguranca = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
   },
-  // Proteção contra clickjacking para navegadores antigos (a CSP cobre os atuais).
-  { key: "X-Frame-Options", value: "DENY" },
   // Isola a janela do app de páginas abertas por ele.
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
@@ -39,6 +37,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: cabecalhosDeSeguranca },
+      // Proteção contra clickjacking para navegadores antigos (a CSP cobre os atuais).
+      // Fica de fora só o formulário público (/f/...), que pode ir em iframe no
+      // site do cliente (D-028); ali vale o frame-ancestors da CSP.
+      {
+        source: "/:caminho((?!f/).*)",
+        headers: [{ key: "X-Frame-Options", value: "DENY" }],
+      },
       // Respostas da API podem conter dados pessoais: nunca guardar em cache.
       { source: "/api/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
     ];
