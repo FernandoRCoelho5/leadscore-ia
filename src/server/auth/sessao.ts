@@ -6,6 +6,7 @@ import { cache } from "react";
 
 import { db } from "@/db";
 import { enderecoDaFoto } from "@/server/armazenamento/fotos";
+import { obterEmpresa } from "@/server/repositories/empresas";
 import {
   listarEmpresasDoUsuario,
   obterUsuarioAtivo,
@@ -32,8 +33,13 @@ export type Sessao = {
   };
   papel: Papel;
   vinculos: VinculoDeEmpresa[];
-  /** Empresa em que o usuário está trabalhando (cliente); nula para admin/suporte sem vínculo. */
+  /**
+   * Empresa em que o usuário está trabalhando: para o cliente, uma das dele;
+   * para admin e suporte, a que abriram pela lista de empresas (D-029), ou nula.
+   */
   empresaAtiva: VinculoDeEmpresa | null;
+  /** A empresa ativa foi aberta pela equipe Brasa (não é um vínculo de membro). */
+  acessoDaEquipe: boolean;
   ator: Ator;
 };
 
@@ -53,8 +59,19 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
 
   const vinculos = await listarEmpresasDoUsuario(db, usuario.id);
   const preferida = (await cookies()).get(COOKIE_EMPRESA_ATIVA)?.value;
-  const empresaAtiva = vinculos.find((v) => v.empresaId === preferida) ?? vinculos[0] ?? null;
   const papel: Papel = usuario.papelPlataforma ?? "cliente";
+  let empresaAtiva = vinculos.find((v) => v.empresaId === preferida) ?? vinculos[0] ?? null;
+  let acessoDaEquipe = false;
+
+  // A equipe (admin e suporte) pode abrir qualquer empresa não excluída; o
+  // cliente, só as dele (acima). O papel vem do banco, nunca do cookie.
+  if (papel !== "cliente" && preferida && !vinculos.some((v) => v.empresaId === preferida)) {
+    const empresa = await obterEmpresa(db, preferida);
+    if (empresa) {
+      empresaAtiva = { empresaId: empresa.id, nome: empresa.nome, slug: empresa.slug };
+      acessoDaEquipe = true;
+    }
+  }
 
   return {
     usuario: {
@@ -66,6 +83,7 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
     papel,
     vinculos,
     empresaAtiva,
+    acessoDaEquipe,
     ator: { papel, empresaIds: vinculos.map((v) => v.empresaId) },
   };
 });
