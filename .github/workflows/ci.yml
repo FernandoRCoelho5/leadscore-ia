@@ -63,6 +63,11 @@ jobs:
     name: Testes E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # Com o segredo DATABASE_URL_E2E (branch "e2e" do Neon), roda também os
+      # testes que usam banco (cadastro, login, bloqueio). Sem ele, são pulados.
+      DATABASE_URL: ${{ secrets.DATABASE_URL_E2E || 'postgresql://ci:ci@localhost:5432/ci' }}
+      E2E_COM_BANCO: ${{ secrets.DATABASE_URL_E2E != '' && '1' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
