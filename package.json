@@ -22,6 +22,7 @@
     "db:gerar": "drizzle-kit generate",
     "db:migrar": "drizzle-kit migrate",
     "db:preparar-e2e": "tsx scripts/prepararBancoE2E.ts",
+    "ia:avaliar": "node --conditions=react-server --import tsx scripts/avaliarIA.ts",
     "seed": "node --conditions=react-server --import tsx scripts/seed.ts",
     "marca:icones": "node scripts/marca/gerarIcones.mjs"
   },
