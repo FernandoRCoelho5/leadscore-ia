@@ -1,4 +1,5 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
+import Image from "next/image";
 import type { ReactNode, Ref } from "react";
 
 /** Alerta de sucesso ou erro, sempre com ícone e texto (nunca só a cor). */
@@ -89,16 +90,37 @@ export function iniciaisDe(nome: string): string {
   return `${primeira}${ultima}`.toUpperCase();
 }
 
-/** Avatar com as iniciais (a foto chega com o upload, na Etapa 9). Decorativo: o nome aparece ao lado. */
-export function Avatar({ nome, tamanho = "md" }: { nome: string; tamanho?: "md" | "lg" }) {
+type PropsDoAvatar = {
+  nome: string;
+  /** Rota autenticada da foto (ou prévia local "blob:"); sem ela, mostra as iniciais. */
+  fotoUrl?: string | null;
+  tamanho?: "md" | "lg";
+};
+
+/** Avatar com a foto ou as iniciais. Decorativo: o nome sempre aparece ao lado. */
+export function Avatar({ nome, fotoUrl = null, tamanho = "md" }: PropsDoAvatar) {
+  const lado = tamanho === "lg" ? 64 : 36;
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-secundaria font-semibold text-texto-secundaria ${
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-secundaria font-semibold text-texto-secundaria ${
         tamanho === "lg" ? "size-16 text-xl" : "size-9 text-sm"
       }`}
     >
-      {iniciaisDe(nome)}
+      {fotoUrl ? (
+        // A foto exige a sessão de quem vê: o otimizador de imagens não a tem,
+        // por isso `unoptimized` (ela já chega pequena, com até 512 px).
+        <Image
+          src={fotoUrl}
+          alt=""
+          width={lado}
+          height={lado}
+          unoptimized
+          className="size-full object-cover"
+        />
+      ) : (
+        iniciaisDe(nome)
+      )}
     </span>
   );
 }

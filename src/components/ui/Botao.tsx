@@ -9,8 +9,15 @@ const VARIANTES = {
   destrutivo: "bg-destrutivo text-texto-destrutivo hover:opacity-90",
 } as const;
 
+type Variante = keyof typeof VARIANTES;
+
+/** Classes do botão, para elementos que precisam parecer botão (ex.: rótulo do envio de arquivo). */
+export function classesDeBotao(variante: Variante = "primaria"): string {
+  return `inline-flex h-controle cursor-pointer items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTES[variante]}`;
+}
+
 type PropsDoBotao = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variante?: keyof typeof VARIANTES;
+  variante?: Variante;
   /** Mostra o indicador de carregamento e bloqueia novos cliques. */
   carregando?: boolean;
   larguraTotal?: boolean;
@@ -32,7 +39,7 @@ export function Botao({
       type={type}
       disabled={disabled || carregando}
       aria-busy={carregando || undefined}
-      className={`inline-flex h-controle cursor-pointer items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTES[variante]} ${larguraTotal ? "w-full" : ""} ${className}`}
+      className={`${classesDeBotao(variante)} ${larguraTotal ? "w-full" : ""} ${className}`}
       {...resto}
     >
       {carregando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />}

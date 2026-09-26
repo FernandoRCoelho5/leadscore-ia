@@ -165,7 +165,7 @@ const ITEM =
 
 async function MenuDaConta({ sessao }: { sessao: Sessao }) {
   const temaAtual = lerTema((await cookies()).get(COOKIE_DO_TEMA)?.value);
-  const { nome, email } = sessao.usuario;
+  const { nome, email, fotoUrl } = sessao.usuario;
   const primeiroNome = nome.split(" ")[0] ?? nome;
 
   return (
@@ -175,7 +175,7 @@ async function MenuDaConta({ sessao }: { sessao: Sessao }) {
         popoverTarget="menu-da-conta"
         className="flex cursor-pointer items-center gap-2 rounded-full py-1 pr-2 pl-1 hover:bg-superficie-2"
       >
-        <Avatar nome={nome} />
+        <Avatar nome={nome} fotoUrl={fotoUrl} />
         <span className="hidden text-sm font-medium sm:inline">{primeiroNome}</span>
         <ChevronDown aria-hidden="true" className="size-4 text-texto-suave" />
         <span className="sr-only">Abrir o menu da conta</span>
@@ -187,7 +187,7 @@ async function MenuDaConta({ sessao }: { sessao: Sessao }) {
         className="fixed inset-auto top-18 right-4 m-0 w-72 rounded-lg border border-borda bg-superficie p-2 text-texto shadow-lg"
       >
         <div className="flex items-center gap-3 px-2 py-2">
-          <Avatar nome={nome} />
+          <Avatar nome={nome} fotoUrl={fotoUrl} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{nome}</p>
             <p className="truncate text-sm text-texto-suave">{email}</p>

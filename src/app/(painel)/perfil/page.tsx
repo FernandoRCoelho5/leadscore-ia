@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 import { Cabecalho } from "@/components/painel/Cabecalho";
+import { FormularioFoto } from "@/components/painel/FormularioFoto";
 import { FormularioNome, FormularioTrocaDeSenha } from "@/components/painel/FormulariosDoPerfil";
-import { Avatar } from "@/components/ui/Avisos";
 import { exigirPermissao } from "@/server/auth/sessao";
 
 export const metadata: Metadata = { title: "Meu perfil" };
@@ -14,21 +14,16 @@ export default async function PaginaPerfil() {
 
   return (
     <>
-      <Cabecalho titulo="Meu perfil" descricao="Seus dados de acesso à Brasa." />
+      <Cabecalho
+        titulo="Meu perfil"
+        descricao="Sua foto, seu nome e seus dados de acesso à Brasa."
+      />
       <div className="grid max-w-2xl gap-6">
         <section aria-labelledby="titulo-dados" className={SECAO}>
           <h2 id="titulo-dados" className="mb-5 text-lg font-semibold">
             Seus dados
           </h2>
-          <div className="mb-5 flex items-center gap-4">
-            <Avatar nome={usuario.nome} tamanho="lg" />
-            <div className="text-sm">
-              <p className="font-medium">Foto</p>
-              <p className="text-texto-suave">
-                Em breve você poderá enviar uma foto. Por enquanto, usamos as suas iniciais.
-              </p>
-            </div>
-          </div>
+          <FormularioFoto nome={usuario.nome} fotoUrl={usuario.fotoUrl} />
           <FormularioNome nome={usuario.nome} />
           <p className="mt-5 text-sm text-texto-suave">
             E-mail de acesso: <span className="font-medium text-texto">{usuario.email}</span>
