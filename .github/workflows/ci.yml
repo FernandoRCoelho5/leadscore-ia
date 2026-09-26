@@ -78,6 +78,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # A branch "e2e" é "schema only": registra as migrations que já existem
+      # nela e aplica as novas, sem apagar nada (D-025).
+      - name: Prepara o banco E2E
+        if: env.E2E_COM_BANCO == '1'
+        run: npm run db:preparar-e2e
       - run: npm run test:e2e
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
