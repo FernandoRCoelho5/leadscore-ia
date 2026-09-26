@@ -36,7 +36,7 @@ export default async function PaginaOnboarding() {
           A IA usa essas informações para dar nota a cada lead. Dá para ajustar depois.
         </p>
         <div className="mt-6">
-          <FormularioOnboarding urlBase={env.BETTER_AUTH_URL} />
+          <FormularioOnboarding urlBase={env.URL_DO_APP} />
         </div>
       </div>
     </main>

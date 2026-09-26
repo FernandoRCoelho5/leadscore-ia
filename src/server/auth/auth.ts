@@ -37,9 +37,9 @@ async function auditar(evento: NovoEventoDeAuditoria): Promise<void> {
 
 export const auth = betterAuth({
   appName: "Brasa",
-  baseURL: env.BETTER_AUTH_URL,
+  baseURL: env.URL_DO_APP,
   secret: env.BETTER_AUTH_SECRET,
-  trustedOrigins: [env.BETTER_AUTH_URL],
+  trustedOrigins: env.ORIGENS_CONFIAVEIS,
   database: drizzleAdapter(db, { provider: "pg", schema }),
   advanced: {
     // IDs no mesmo padrão do resto do banco (UUID v7).

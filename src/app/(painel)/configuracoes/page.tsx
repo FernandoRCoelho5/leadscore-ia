@@ -42,7 +42,7 @@ export default async function PaginaEmpresa() {
             <div>
               <dt className="text-texto-suave">Endereço do formulário público</dt>
               <dd className="font-medium break-all">
-                {env.BETTER_AUTH_URL}/f/{empresa.slug}
+                {env.URL_DO_APP}/f/{empresa.slug}
               </dd>
             </div>
             <div>
