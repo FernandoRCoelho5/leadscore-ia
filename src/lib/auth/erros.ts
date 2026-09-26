@@ -15,6 +15,7 @@ const MENSAGENS: Record<string, string> = {
   INVALID_TOKEN: "Este link não é mais válido. Peça um novo.",
   TOKEN_EXPIRED: "Este link expirou. Peça um novo.",
   CONTA_BLOQUEADA: "Esta conta está bloqueada. Fale com o suporte.",
+  DADOS_INVALIDOS: "Confira o nome e o e-mail.",
 };
 
 /** Traduz o erro para uma mensagem curta em português, sem detalhes técnicos. */

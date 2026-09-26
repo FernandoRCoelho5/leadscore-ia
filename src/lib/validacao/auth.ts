@@ -65,8 +65,21 @@ export const esquemaTrocaDeSenha = z
  * (um link de login que mandaria a pessoa para um site falso).
  */
 export function destinoSeguro(proximo: string | null | undefined): string {
-  if (proximo && proximo.startsWith("/") && !proximo.startsWith("//") && !proximo.includes("\\")) {
-    return proximo;
+  const PADRAO = "/painel";
+  if (!proximo || !proximo.startsWith("/")) {
+    return PADRAO;
   }
-  return "/painel";
+  // O próprio parser de URL resolve o destino como o navegador faria (ele
+  // descarta TAB e quebras de linha e trata "\" como "/"); só vale se continuar
+  // na mesma origem. Assim "/\t/site.com" ou "/\site.com" não escapam.
+  const base = "http://brasa.invalid";
+  try {
+    const url = new URL(proximo, base);
+    return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : PADRAO;
+  } catch {
+    return PADRAO;
+  }
 }
+
+/** E-mail como o banco guarda (no máximo 254 caracteres). */
+export const esquemaEmail = email;

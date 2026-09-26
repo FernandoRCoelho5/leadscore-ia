@@ -10,6 +10,7 @@ import * as schema from "@/db/schema";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
 import { uuidv7 } from "@/lib/uuid";
+import { esquemaEmail, esquemaNome } from "@/lib/validacao/auth";
 import { enviarEmail } from "@/server/email/enviador";
 import { registrarAuditoria, type NovoEventoDeAuditoria } from "@/server/repositories/auditoria";
 import { obterUsuarioAtivo } from "@/server/repositories/usuarios";
@@ -125,6 +126,20 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        // O cadastro pode ser chamado direto pela API, sem passar pelo formulário:
+        // valida de novo nome e e-mail com os mesmos schemas e descarta `image`
+        // (foto só pelo fluxo de upload, com validação do arquivo).
+        before: async (usuario) => {
+          const nome = esquemaNome.safeParse(usuario.name);
+          const email = esquemaEmail.safeParse(usuario.email);
+          if (!nome.success || !email.success) {
+            throw new APIError("BAD_REQUEST", {
+              code: "DADOS_INVALIDOS",
+              message: "Confira o nome e o e-mail.",
+            });
+          }
+          return { data: { ...usuario, name: nome.data, email: email.data, image: null } };
+        },
         after: async (usuario) => {
           await auditar({
             atorId: usuario.id,
@@ -135,6 +150,21 @@ export const auth = betterAuth({
         },
       },
     },
+    account: {
+      update: {
+        // Troca ou redefinição de senha altera a conta "credential".
+        after: async (conta) => {
+          if (conta.providerId === "credential") {
+            await auditar({
+              atorId: conta.userId,
+              acao: "usuario.senha_alterada",
+              recursoTipo: "usuario",
+              recursoId: conta.userId,
+            });
+          }
+        },
+      },
+    },
     session: {
       create: {
         // Usuário excluído (lógico) ou bloqueado não consegue abrir sessão.
@@ -142,6 +172,7 @@ export const auth = betterAuth({
           const usuario = await obterUsuarioAtivo(db, sessao.userId);
           if (!usuario || usuario.bloqueadoEm) {
             throw new APIError("FORBIDDEN", {
+              code: "CONTA_BLOQUEADA",
               message: "Esta conta está bloqueada. Fale com o suporte.",
             });
           }

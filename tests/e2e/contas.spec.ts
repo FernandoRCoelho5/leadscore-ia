@@ -114,6 +114,36 @@ test("cliente: cadastro, onboarding, painel, perfil e saída", async ({ page }) 
   await page.waitForURL("**/painel");
 });
 
+test("o cadastro direto pela API revalida os dados e descarta a URL de foto", async ({
+  request,
+}) => {
+  const cabecalhos = () => ({ origin: "http://localhost:3100", "x-forwarded-for": ipFicticio() });
+
+  const nomeGigante = await request.post("/api/auth/sign-up/email", {
+    headers: cabecalhos(),
+    data: { name: "x".repeat(500), email: emailUnico("gigante"), password: SENHA },
+  });
+  expect(nomeGigante.status()).toBe(400);
+
+  const email = emailUnico("foto");
+  const comFoto = await request.post("/api/auth/sign-up/email", {
+    headers: cabecalhos(),
+    data: { name: "Fulano Foto", email, password: SENHA, image: "https://site-falso.com/x.png" },
+  });
+  expect(comFoto.ok()).toBe(true);
+
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    const { rows } = await pool.query<{ imagem_url: string | null }>(
+      "SELECT imagem_url FROM usuarios WHERE email = $1",
+      [email],
+    );
+    expect(rows[0]?.imagem_url).toBeNull();
+  } finally {
+    await pool.end();
+  }
+});
+
 test("conta bloqueada perde a sessão na hora e não consegue entrar", async ({ page }) => {
   const email = emailUnico("bloqueio");
   await cadastrar(page, "Bruno Bloqueado", email);

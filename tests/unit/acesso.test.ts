@@ -19,10 +19,19 @@ describe("destinoSeguro (proteção contra open redirect)", () => {
     },
   );
 
+  it("mantém a busca e o fragmento do destino interno", () => {
+    expect(destinoSeguro("/leads?classificacao=quente#topo")).toBe(
+      "/leads?classificacao=quente#topo",
+    );
+  });
+
   it.each([
+    // TAB e quebra de linha: o navegador os remove e "/<TAB>/site" vira "//site".
+    "/\t/site-falso.com",
+    "/\n/site-falso.com",
+    "/\\site-falso.com",
     "//site-falso.com",
     "https://site-falso.com",
-    "/\\site-falso.com",
     "javascript:alert(1)",
     "",
     null,
