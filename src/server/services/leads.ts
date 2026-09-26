@@ -4,6 +4,7 @@ import type { Analise, Lead, StatusLead } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
 import { ErroConflito, ErroNaoEncontrado, ErroValidacao } from "@/lib/erros";
 import type { Pagina, Paginacao } from "@/lib/paginacao";
+import { PALAVRA_PARA_ANONIMIZAR } from "@/lib/rotulos";
 import { autorizar } from "@/server/auth/permissoes";
 import { listarAnalisesDoLead } from "@/server/repositories/analises";
 import { registrarAuditoria } from "@/server/repositories/auditoria";
@@ -118,9 +119,6 @@ export async function excluirLeadDaEmpresa(
   });
 }
 
-/** Palavra que a pessoa digita para confirmar a anonimização (ação irreversível). */
-export const CONFIRMACAO_DA_ANONIMIZACAO = "ANONIMIZAR";
-
 /** Atende a um pedido de eliminação de dados do titular (LGPD, D-012). */
 export async function anonimizarLeadDaEmpresa(
   db: BancoDeDados,
@@ -130,12 +128,12 @@ export async function anonimizarLeadDaEmpresa(
   confirmacao: string,
 ): Promise<void> {
   autorizar(contexto.ator, "leads:editar", empresaId);
-  if (confirmacao.trim().toUpperCase() !== CONFIRMACAO_DA_ANONIMIZACAO) {
+  if (confirmacao.trim().toUpperCase() !== PALAVRA_PARA_ANONIMIZAR) {
     throw new ErroValidacao(
       [
         {
           campo: "confirmacao",
-          mensagem: `Digite ${CONFIRMACAO_DA_ANONIMIZACAO} para confirmar.`,
+          mensagem: `Digite ${PALAVRA_PARA_ANONIMIZAR} para confirmar.`,
         },
       ],
       "A anonimização não foi confirmada.",

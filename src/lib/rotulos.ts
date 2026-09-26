@@ -40,3 +40,6 @@ export const ROTULO_DA_ORIGEM = {
   formulario: "Formulário do site",
   manual: "Cadastro manual",
 } as const;
+
+/** Palavra digitada para confirmar a anonimização (LGPD), ação irreversível. */
+export const PALAVRA_PARA_ANONIMIZAR = "ANONIMIZAR";
