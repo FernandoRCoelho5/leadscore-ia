@@ -3,6 +3,7 @@ import "server-only";
 import { and, count, desc, eq, gte, ilike, isNull, lt, ne, or, sql, type SQL } from "drizzle-orm";
 
 import {
+  analises,
   leads,
   type Classificacao,
   type Lead,
@@ -67,13 +68,8 @@ const COLUNAS_DE_ORDENACAO = {
   nome: leads.nome,
 } as const;
 
-export async function listarLeads(
-  db: BancoDeDados,
-  empresaId: string,
-  filtros: FiltrosDeLeads = {},
-  paginacao: Partial<Paginacao> = {},
-): Promise<Pagina<Lead>> {
-  const pagina = esquemaPaginacao.parse(paginacao);
+/** Condições da empresa e dos filtros; usadas pela lista e pela exportação. */
+function condicoesDosFiltros(empresaId: string, filtros: FiltrosDeLeads): SQL[] {
   const condicoes = escopoDaEmpresa(empresaId);
 
   const termo = filtros.busca?.trim();
@@ -100,8 +96,17 @@ export async function listarLeads(
   if (filtros.criadoAte) {
     condicoes.push(lt(leads.createdAt, filtros.criadoAte));
   }
+  return condicoes;
+}
 
-  const filtro = and(...condicoes);
+export async function listarLeads(
+  db: BancoDeDados,
+  empresaId: string,
+  filtros: FiltrosDeLeads = {},
+  paginacao: Partial<Paginacao> = {},
+): Promise<Pagina<Lead>> {
+  const pagina = esquemaPaginacao.parse(paginacao);
+  const filtro = and(...condicoesDosFiltros(empresaId, filtros));
   // Só colunas da lista; um valor inesperado cai na ordenação padrão.
   const coluna = COLUNAS_DE_ORDENACAO[filtros.ordenarPor ?? "criadoEm"] ?? leads.createdAt;
   // NULLS LAST: leads ainda sem score ficam no fim; o id desempata e deixa a paginação estável.
@@ -239,6 +244,142 @@ export async function reservarLeadParaAnalise(
     )
     .returning();
   return lead;
+}
+
+/** Tamanho de cada lote lido do banco na exportação (memória constante). */
+export const TAMANHO_DO_LOTE_DE_EXPORTACAO = 500;
+
+/**
+ * Leads para exportar em CSV, em lotes, do mais novo para o mais antigo.
+ * Paginação por "cursor" (id menor que o último lido), e não por OFFSET: cada
+ * lote custa o mesmo, mesmo com dezenas de milhares de leads. Os ids são
+ * UUID v7, que crescem com o tempo de criação.
+ */
+export async function* lotesDeLeadsParaExportar(
+  db: BancoDeDados,
+  empresaId: string,
+  filtros: FiltrosDeLeads = {},
+  tamanhoDoLote: number = TAMANHO_DO_LOTE_DE_EXPORTACAO,
+): AsyncGenerator<Lead[]> {
+  const condicoes = condicoesDosFiltros(empresaId, filtros);
+  let ultimoId: string | undefined;
+  for (;;) {
+    const lote = await db
+      .select()
+      .from(leads)
+      .where(and(...condicoes, ultimoId ? lt(leads.id, ultimoId) : undefined))
+      .orderBy(desc(leads.id))
+      .limit(tamanhoDoLote);
+    if (lote.length === 0) {
+      return;
+    }
+    yield lote;
+    if (lote.length < tamanhoDoLote) {
+      return;
+    }
+    ultimoId = lote[lote.length - 1]?.id;
+  }
+}
+
+export type ResumoDosLeads = {
+  total: number;
+  doPeriodo: number;
+  porClassificacao: Record<Classificacao | "semAnalise", number>;
+  porStatus: Record<StatusLead, number>;
+};
+
+/**
+ * Números da visão geral numa única consulta (COUNT ... FILTER): o total, os
+ * recebidos desde `desde` e, entre eles, a classificação; o andamento
+ * (status) considera todos os leads da empresa.
+ */
+export async function resumirLeads(
+  db: BancoDeDados,
+  empresaId: string,
+  desde: Date,
+): Promise<ResumoDosLeads> {
+  const noPeriodo = sql`${leads.createdAt} >= ${desde.toISOString()}::timestamptz`;
+  const contar = (condicao: SQL) =>
+    sql<number>`count(*) filter (where ${condicao})`.mapWith(Number);
+  const [linha] = await db
+    .select({
+      total: count(),
+      doPeriodo: contar(noPeriodo),
+      quente: contar(sql`${noPeriodo} and ${leads.classificacaoAtual} = 'quente'`),
+      morno: contar(sql`${noPeriodo} and ${leads.classificacaoAtual} = 'morno'`),
+      frio: contar(sql`${noPeriodo} and ${leads.classificacaoAtual} = 'frio'`),
+      semAnalise: contar(sql`${noPeriodo} and ${leads.classificacaoAtual} is null`),
+      novo: contar(sql`${leads.status} = 'novo'`),
+      emContato: contar(sql`${leads.status} = 'em_contato'`),
+      ganho: contar(sql`${leads.status} = 'ganho'`),
+      perdido: contar(sql`${leads.status} = 'perdido'`),
+    })
+    .from(leads)
+    .where(and(...escopoDaEmpresa(empresaId)));
+
+  return {
+    total: linha?.total ?? 0,
+    doPeriodo: linha?.doPeriodo ?? 0,
+    porClassificacao: {
+      quente: linha?.quente ?? 0,
+      morno: linha?.morno ?? 0,
+      frio: linha?.frio ?? 0,
+      semAnalise: linha?.semAnalise ?? 0,
+    },
+    porStatus: {
+      novo: linha?.novo ?? 0,
+      em_contato: linha?.emContato ?? 0,
+      ganho: linha?.ganho ?? 0,
+      perdido: linha?.perdido ?? 0,
+    },
+  };
+}
+
+export const TEXTO_DA_MENSAGEM_ANONIMIZADA = "[removido a pedido do titular]";
+export const NOME_ANONIMIZADO = "Titular anonimizado";
+const TEXTO_DA_ANALISE_ANONIMIZADA = "[removido]";
+
+/**
+ * Anonimização pela LGPD (D-012), irreversível: apaga os dados pessoais do
+ * lead e os textos das análises dele, mantendo o que serve à estatística
+ * (segmento, status, nota, classificação e datas). Numa transação: ou tudo
+ * muda, ou nada. Devolve `false` se o lead não existir ou já estiver anonimizado.
+ */
+export async function anonimizarLead(
+  db: BancoDeDados,
+  empresaId: string,
+  leadId: string,
+  agora: Date = new Date(),
+): Promise<boolean> {
+  if (!ehUuid(leadId)) {
+    return false;
+  }
+  return db.transaction(async (tx) => {
+    const atualizados = await tx
+      .update(leads)
+      .set({
+        nome: NOME_ANONIMIZADO,
+        email: null,
+        telefone: null,
+        empresaNome: null,
+        ipHash: null,
+        mensagem: TEXTO_DA_MENSAGEM_ANONIMIZADA,
+        anonimizadoEm: agora,
+      })
+      .where(and(eq(leads.id, leadId), ...escopoDaEmpresa(empresaId), isNull(leads.anonimizadoEm)))
+      .returning({ id: leads.id });
+    if (atualizados.length === 0) {
+      return false;
+    }
+    await tx
+      .update(analises)
+      .set({
+        justificativa: TEXTO_DA_ANALISE_ANONIMIZADA,
+        respostaSugerida: TEXTO_DA_ANALISE_ANONIMIZADA,
+      })
+      .where(and(eq(analises.leadId, leadId), eq(analises.empresaId, empresaId)));
+    return true;
+  });
 }
 
 /** Exclusão lógica: marca `deleted_at`; o registro continua no banco. */

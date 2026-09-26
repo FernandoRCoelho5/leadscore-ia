@@ -1,9 +1,16 @@
 import "server-only";
 
-import { and, count, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt, type SQL } from "drizzle-orm";
 
-import { auditoria, type EventoDeAuditoria } from "@/db/schema";
+import { auditoria, empresas, usuarios, type EventoDeAuditoria } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
+import {
+  deslocamento,
+  esquemaPaginacao,
+  montarPagina,
+  type Pagina,
+  type Paginacao,
+} from "@/lib/paginacao";
 
 /**
  * Registro de ações sensíveis (anonimização, exportação, exclusão lógica,
@@ -37,4 +44,55 @@ export async function contarAcoesRecentes(
       and(eq(auditoria.atorId, atorId), eq(auditoria.acao, acao), gte(auditoria.createdAt, desde)),
     );
   return linha?.total ?? 0;
+}
+
+export type FiltrosDaAuditoria = { acao?: string; desde?: Date; ate?: Date };
+
+export type EventoNaLista = Pick<
+  EventoDeAuditoria,
+  "id" | "acao" | "recursoTipo" | "recursoId" | "detalhes" | "createdAt"
+> & { atorNome: string | null; atorEmail: string | null; empresaNome: string | null };
+
+/** Consulta da auditoria (equipe Brasa), do evento mais recente para o mais antigo. */
+export async function listarAuditoria(
+  db: BancoDeDados,
+  filtros: FiltrosDaAuditoria,
+  paginacao: Partial<Paginacao>,
+): Promise<Pagina<EventoNaLista>> {
+  const pagina = esquemaPaginacao.parse(paginacao);
+  const condicoes: SQL[] = [];
+  if (filtros.acao) {
+    condicoes.push(eq(auditoria.acao, filtros.acao));
+  }
+  if (filtros.desde) {
+    condicoes.push(gte(auditoria.createdAt, filtros.desde));
+  }
+  if (filtros.ate) {
+    condicoes.push(lt(auditoria.createdAt, filtros.ate));
+  }
+  const filtro = condicoes.length > 0 ? and(...condicoes) : undefined;
+
+  const [itens, [linhaDoTotal]] = await Promise.all([
+    db
+      .select({
+        id: auditoria.id,
+        acao: auditoria.acao,
+        recursoTipo: auditoria.recursoTipo,
+        recursoId: auditoria.recursoId,
+        detalhes: auditoria.detalhes,
+        createdAt: auditoria.createdAt,
+        atorNome: usuarios.nome,
+        atorEmail: usuarios.email,
+        empresaNome: empresas.nome,
+      })
+      .from(auditoria)
+      .leftJoin(usuarios, eq(usuarios.id, auditoria.atorId))
+      .leftJoin(empresas, eq(empresas.id, auditoria.empresaId))
+      .where(filtro)
+      .orderBy(desc(auditoria.createdAt), desc(auditoria.id))
+      .limit(pagina.porPagina)
+      .offset(deslocamento(pagina)),
+    db.select({ total: count() }).from(auditoria).where(filtro),
+  ]);
+  return montarPagina(itens, linhaDoTotal?.total ?? 0, pagina);
 }
