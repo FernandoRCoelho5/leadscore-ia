@@ -37,7 +37,12 @@ describe("validarEnv", () => {
       'ANTHROPIC_API_KEY: obrigatória quando IA_MODO="real"',
     );
     expect(() =>
-      validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, IA_MODO: "real", ANTHROPIC_API_KEY: "chave" }),
+      validarEnv({
+        ...AUTH,
+        DATABASE_URL: URL_VALIDA,
+        IA_MODO: "real",
+        ANTHROPIC_API_KEY: "chave",
+      }),
     ).not.toThrow();
   });
 
