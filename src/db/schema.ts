@@ -393,6 +393,7 @@ export const limitesTaxaAuth = pgTable(
 export type Empresa = typeof empresas.$inferSelect;
 export type NovaEmpresa = typeof empresas.$inferInsert;
 export type Usuario = typeof usuarios.$inferSelect;
+export type Convite = typeof convites.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
 export type NovoLead = typeof leads.$inferInsert;
 export type Analise = typeof analises.$inferSelect;
