@@ -1,9 +1,10 @@
 import { CircleAlert } from "lucide-react";
-import type {
-  InputHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
+import {
+  Fragment,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react";
 
 /**
@@ -117,10 +118,28 @@ export function AreaDeTexto({
 type PropsDaSelecao = PropsComuns &
   Omit<SelectHTMLAttributes<HTMLSelectElement>, "id"> & {
     /** Texto (valor = rótulo) ou par valor/rótulo (ex.: "em_contato" / "Em contato"). */
-    opcoes: readonly (string | { valor: string; rotulo: string })[];
+    /** Opções com `grupo` são reunidas em <optgroup>, na ordem em que aparecem. */
+    opcoes: readonly (string | OpcaoDaSelecao)[];
     /** Texto da primeira opção, que fica vazia (campo opcional ou "escolha"). */
     textoVazio: string;
   };
+
+export type OpcaoDaSelecao = { valor: string; rotulo: string; grupo?: string };
+
+/** Junta as opções consecutivas do mesmo grupo (sem grupo, ficam soltas). */
+function agruparOpcoes(opcoes: readonly (string | OpcaoDaSelecao)[]) {
+  const blocos: { grupo?: string; itens: OpcaoDaSelecao[] }[] = [];
+  for (const opcao of opcoes) {
+    const item = typeof opcao === "string" ? { valor: opcao, rotulo: opcao } : opcao;
+    const ultimo = blocos.at(-1);
+    if (ultimo && ultimo.grupo === item.grupo) {
+      ultimo.itens.push(item);
+    } else {
+      blocos.push({ grupo: item.grupo, itens: [item] });
+    }
+  }
+  return blocos;
+}
 
 /** Lista de opções nativa: funciona com teclado, leitor de tela e no celular. */
 export function Selecao({
@@ -147,13 +166,18 @@ export function Selecao({
         {...resto}
       >
         <option value="">{textoVazio}</option>
-        {opcoes.map((opcao) => {
-          const { valor, rotulo } =
-            typeof opcao === "string" ? { valor: opcao, rotulo: opcao } : opcao;
-          return (
+        {agruparOpcoes(opcoes).map(({ grupo, itens }, indice) => {
+          const elementos = itens.map(({ valor, rotulo }) => (
             <option key={valor} value={valor}>
               {rotulo}
             </option>
+          ));
+          return grupo ? (
+            <optgroup key={grupo} label={grupo}>
+              {elementos}
+            </optgroup>
+          ) : (
+            <Fragment key={`sem-grupo-${indice}`}>{elementos}</Fragment>
           );
         })}
       </select>

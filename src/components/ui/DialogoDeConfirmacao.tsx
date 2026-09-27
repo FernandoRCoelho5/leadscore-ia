@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 
 import { Botao } from "./Botao";
 
@@ -12,7 +12,9 @@ import { Botao } from "./Botao";
  */
 export function DialogoDeConfirmacao({
   rotuloDoGatilho,
+  complementoDoGatilho,
   iconeDoGatilho,
+  gatilhoCompacto = false,
   titulo,
   children,
   rotuloDeConfirmar,
@@ -21,7 +23,11 @@ export function DialogoDeConfirmacao({
   confirmarDesabilitado = false,
 }: {
   rotuloDoGatilho: string;
+  /** Texto só para leitores de tela, quando há um gatilho por linha ("Bloquear" + "Maria"). */
+  complementoDoGatilho?: string;
   iconeDoGatilho?: ReactNode;
+  /** Botão do tamanho do texto (em tabelas), em vez de ocupar a largura toda. */
+  gatilhoCompacto?: boolean;
   titulo: string;
   children: ReactNode;
   rotuloDeConfirmar: string;
@@ -31,17 +37,19 @@ export function DialogoDeConfirmacao({
   confirmarDesabilitado?: boolean;
 }) {
   const refDialogo = useRef<HTMLDialogElement>(null);
-  const idDoTitulo = `dialogo-${rotuloDoGatilho.replace(/\W+/g, "-").toLowerCase()}`;
+  // useId: com um diálogo por linha de uma tabela, os ids não se repetem.
+  const idDoTitulo = useId();
 
   return (
     <>
       <button
         type="button"
         onClick={() => refDialogo.current?.showModal()}
-        className="inline-flex h-controle w-full cursor-pointer items-center gap-2 rounded-md border border-erro/40 bg-superficie px-4 text-sm font-semibold text-erro transition-colors duration-150 hover:bg-erro-fundo"
+        className={`inline-flex h-controle cursor-pointer items-center gap-2 rounded-md border border-erro/40 bg-superficie text-sm font-semibold text-erro transition-colors duration-150 hover:bg-erro-fundo ${gatilhoCompacto ? "px-3" : "w-full px-4"}`}
       >
         {iconeDoGatilho}
         {rotuloDoGatilho}
+        {complementoDoGatilho && <span className="sr-only"> {complementoDoGatilho}</span>}
       </button>
       <dialog
         ref={refDialogo}

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { formatarDataHora } from "@/lib/datas";
-import { ErroNaoAutenticado, ErroNaoEncontrado } from "@/lib/erros";
+import { ErroNaoEncontrado } from "@/lib/erros";
 import {
   ROTULO_DA_ANALISE,
   ROTULO_DA_CLASSIFICACAO,
@@ -12,7 +12,7 @@ import {
   filtrosDoRepositorio,
   normalizarParametros,
 } from "@/lib/validacao/filtros";
-import { contextoDa, obterSessao } from "@/server/auth/sessao";
+import { contextoDa, exigirSessaoNaApi } from "@/server/auth/sessao";
 import { respostaCsv } from "@/server/http/csv";
 import { comTratamentoDeErros } from "@/server/http/responder";
 import { exportarLeadsDaEmpresa } from "@/server/services/leads";
@@ -23,10 +23,7 @@ import { exportarLeadsDaEmpresa } from "@/server/services/leads";
  * registro na auditoria. A empresa vem da sessão, nunca da URL.
  */
 export const GET = comTratamentoDeErros(async (request) => {
-  const sessao = await obterSessao();
-  if (!sessao) {
-    throw new ErroNaoAutenticado();
-  }
+  const sessao = await exigirSessaoNaApi();
   if (!sessao.empresaAtiva) {
     throw new ErroNaoEncontrado("Nenhuma empresa selecionada.");
   }

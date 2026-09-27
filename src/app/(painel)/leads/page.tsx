@@ -1,4 +1,4 @@
-import { Download, Inbox, SearchX } from "lucide-react";
+import { Inbox, SearchX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { FiltrosDeLeads } from "@/components/leads/FiltrosDeLeads";
 import { ListaDeLeads } from "@/components/leads/ListaDeLeads";
 import { Cabecalho } from "@/components/painel/Cabecalho";
+import { LinkDeExportacao } from "@/components/painel/LinkDeExportacao";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
 import { classesDeBotao } from "@/components/ui/Botao";
@@ -60,14 +61,13 @@ export default async function PaginaLeads({ searchParams }: PageProps<"/leads">)
         descricao={nome}
         acao={
           podeExportar && (
-            <a
-              href={urlComFiltros("/api/leads/exportar", { ...atuais, ordem: undefined })}
-              download
-              className={classesDeBotao("contorno")}
-            >
-              <Download aria-hidden="true" className="size-4" />
-              Exportar CSV
-            </a>
+            <LinkDeExportacao
+              href={urlComFiltros("/api/leads/exportar", {
+                ...atuais,
+                ordem: undefined,
+                porPagina: undefined,
+              })}
+            />
           )
         }
       />

@@ -4,10 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { ErroNaoEncontrado, ErroValidacao } from "@/lib/erros";
+import { ErroNaoEncontrado } from "@/lib/erros";
 import { STATUS_DO_LEAD } from "@/lib/rotulos";
 import { contextoDa, exigirSessaoComEmpresa, type Sessao } from "@/server/auth/sessao";
-import { executarAcao, type ResultadoDeAcao } from "@/server/http/acao";
+import { executarAcao, validarEntrada, type ResultadoDeAcao } from "@/server/http/acao";
 import { obterMotor } from "@/server/ia";
 import { reanalisarLead, type ResultadoDaAnaliseDoLead } from "@/server/services/analise";
 import {
@@ -23,14 +23,6 @@ import {
  */
 
 const esquemaDoLead = z.uuid("Lead inválido.");
-
-function validar<Saida>(esquema: z.ZodType<Saida>, valor: unknown): Saida {
-  const validacao = esquema.safeParse(valor);
-  if (!validacao.success) {
-    throw ErroValidacao.deZod(validacao.error);
-  }
-  return validacao.data;
-}
 
 async function empresaDaSessao(): Promise<{ sessao: Sessao; empresaId: string }> {
   const sessao = await exigirSessaoComEmpresa();
@@ -56,7 +48,7 @@ export async function reanalisarLeadAcao(
 ): Promise<ResultadoDeAcao<ResultadoDaAnaliseDoLead>> {
   return executarAcao(async () => {
     const { sessao, empresaId } = await empresaDaSessao();
-    const id = validar(esquemaDoLead, leadId);
+    const id = validarEntrada(esquemaDoLead, leadId);
     const resultado = await reanalisarLead(db, obterMotor(), contextoDa(sessao), empresaId, id);
     atualizarTelas(id);
     return resultado;
@@ -69,8 +61,8 @@ export async function alterarStatusAcao(
 ): Promise<ResultadoDeAcao<null>> {
   return executarAcao(async () => {
     const { sessao, empresaId } = await empresaDaSessao();
-    const id = validar(esquemaDoLead, leadId);
-    const novo = validar(z.enum(STATUS_DO_LEAD, "Andamento inválido."), status);
+    const id = validarEntrada(esquemaDoLead, leadId);
+    const novo = validarEntrada(z.enum(STATUS_DO_LEAD, "Andamento inválido."), status);
     await alterarStatusDoLead(db, contextoDa(sessao), empresaId, id, novo);
     atualizarTelas(id);
     return null;
@@ -80,7 +72,7 @@ export async function alterarStatusAcao(
 export async function excluirLeadAcao(leadId: unknown): Promise<ResultadoDeAcao<null>> {
   return executarAcao(async () => {
     const { sessao, empresaId } = await empresaDaSessao();
-    const id = validar(esquemaDoLead, leadId);
+    const id = validarEntrada(esquemaDoLead, leadId);
     await excluirLeadDaEmpresa(db, contextoDa(sessao), empresaId, id);
     atualizarTelas(id);
     return null;
@@ -93,8 +85,8 @@ export async function anonimizarLeadAcao(
 ): Promise<ResultadoDeAcao<null>> {
   return executarAcao(async () => {
     const { sessao, empresaId } = await empresaDaSessao();
-    const id = validar(esquemaDoLead, leadId);
-    const texto = validar(z.string().max(50), confirmacao);
+    const id = validarEntrada(esquemaDoLead, leadId);
+    const texto = validarEntrada(z.string().max(50), confirmacao);
     await anonimizarLeadDaEmpresa(db, contextoDa(sessao), empresaId, id, texto);
     atualizarTelas(id);
     return null;
