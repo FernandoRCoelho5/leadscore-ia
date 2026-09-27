@@ -57,10 +57,12 @@ src/
     (publico)/        login, cadastro, redefinir-senha, politica-de-privacidade
     f/[slug]/         formulário público de captação (incorporável em iframe, D-028)
     onboarding/       cadastro da empresa e do perfil do negócio
+    empresa-bloqueada/ aviso ao cliente de empresa bloqueada (D-029)
     (painel)/         layout: menu lateral por perfil + topo com avatar
       painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
-    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028), leads/exportar
+    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028),
+                      leads/exportar, admin/{empresas,usuarios,auditoria}/exportar (D-029)
   server/
     services/         casos de uso (criarLead, analisarLead, anonimizarLead...)
     repositories/     consultas Drizzle (empresaId obrigatório, sem deletados, paginadas)
@@ -74,8 +76,9 @@ src/
     validacao/        schemas Zod compartilhados entre cliente e servidor
     email/  rate-limit/  armazenamento/
     csv.ts  erros.ts  paginacao.ts  logger.ts  uuid.ts
+    auditoria.ts      catálogo das ações da auditoria (código, grupo e texto, D-029)
   db/                 schema.ts, index.ts   (migrations versionadas em /drizzle)
-  components/         ui/, layout/, leads/
+  components/         ui/, layout/, leads/, painel/, admin/
   env.ts              validação das variáveis de ambiente com Zod
   proxy.ts            (Next 16: substitui o antigo middleware.ts)
 ```
@@ -251,6 +254,11 @@ Regras complementares:
 - O cadastro público cria apenas usuários `cliente`. Contas `admin` e
   `suporte` nunca são criadas pelo cadastro; o primeiro `admin` vem do seed.
 - O `suporte` não altera nenhum dado de cliente.
+- A equipe só vê os leads de um cliente depois de abrir a empresa pela lista
+  de Empresas: o acesso é auditado e vale por 8 horas ou até sair da conta
+  (D-029).
+- Cliente de empresa bloqueada não usa o painel nem cria outra empresa pelo
+  onboarding (D-029).
 
 ## 5. Fluxos principais
 
