@@ -78,8 +78,8 @@ test("o admin muda o perfil de um cliente para suporte, e ele passa a ver a admi
   try {
     await admin.goto(`/admin/usuarios?busca=${encodeURIComponent(emailDaPessoa)}`);
     const tabela = admin.getByRole("table", { name: "Usuários da plataforma" });
-    await tabela.getByRole("button", { name: "Acesso de Rita Promovida" }).click();
-    const dialogo = admin.getByRole("dialog", { name: "Perfil de acesso" });
+    await tabela.getByRole("button", { name: "Gerenciar Rita Promovida" }).click();
+    const dialogo = admin.getByRole("dialog", { name: "Gerenciar usuário" });
     await dialogo.getByRole("radio", { name: /^Suporte/ }).check();
     await dialogo.getByRole("button", { name: "Salvar perfil" }).click();
     await expect(dialogo.getByText("Perfil alterado para Suporte.")).toBeVisible();

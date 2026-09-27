@@ -141,3 +141,28 @@ test("equipe: abre a empresa do cliente (auditado), ajusta o limite, bloqueia e 
     await consultar("UPDATE usuarios SET bloqueado_em = now() WHERE email = $1", [emailDoAdmin]);
   }
 });
+
+test("um cliente não abre o lead de outra empresa nem pela URL (404, sem revelar que existe)", async ({
+  browser,
+}) => {
+  const outra = await novaPagina(browser);
+  const { empresaId: empresaDaOutra } = await clienteComEmpresa(outra);
+  await inserirLead(empresaDaOutra, "Lead Alheio", "quente", 90);
+  const [lead] = await consultar<{ id: string }>(
+    "SELECT id FROM leads WHERE empresa_id = $1 AND nome = 'Lead Alheio'",
+    [empresaDaOutra],
+  );
+
+  const intrusa = await novaPagina(browser);
+  await clienteComEmpresa(intrusa, "Ivo Intruso");
+
+  const resposta = await intrusa.goto(`/leads/${lead?.id ?? ""}`);
+  expect(resposta?.status()).toBe(404);
+  await expect(intrusa.getByRole("heading", { name: "Página não encontrada" })).toBeVisible();
+  await expect(intrusa.getByText("Lead Alheio")).toHaveCount(0);
+
+  // A exportação usa só a empresa da sessão: o lead alheio não aparece no arquivo.
+  const csv = await intrusa.request.get("/api/leads/exportar");
+  expect(csv.ok()).toBe(true);
+  expect(await csv.text()).not.toContain("Lead Alheio");
+});
