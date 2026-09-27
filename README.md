@@ -45,7 +45,7 @@ O produto se chamava LeadScore IA. O repositório e os nomes técnicos continuam
 | IA | Claude API, modelo `claude-haiku-4-5-20251001`, com modo simulado (mock) |
 | Arquivos | Vercel Blob privado (fotos de perfil) |
 | Testes | Vitest + PGlite (Postgres em memória) e Playwright |
-| Deploy | Vercel (região `gru1`) |
+| Deploy | Vercel (região `gru1`), com as migrations aplicadas no build ([guia](docs/implantacao.md)) |
 
 ## Como rodar localmente
 
@@ -75,12 +75,14 @@ comentado é o [.env.example](.env.example).
 | `ANTHROPIC_API_KEY` | com `IA_MODO=real` | Chave da Claude API |
 | `RESEND_API_KEY`, `EMAIL_REMETENTE` | não | E-mails de senha e de convite; sem a chave, em desenvolvimento o e-mail aparece no terminal |
 | `BLOB_READ_WRITE_TOKEN` | não | Fotos de perfil; sem ele, o envio de foto fica indisponível |
+| `PRIVACIDADE_RESPONSAVEL`, `PRIVACIDADE_CONTATO` | o contato, em produção | Quem responde pelos dados e o e-mail dos titulares, na política de privacidade |
 | `SEED_SENHA_DEMO` | não | Senha dos usuários de demonstração do seed |
 
 ### Dados de demonstração
 
 O `npm run seed` só insere dados e pode rodar várias vezes. O que já existe é
-mantido. Ele cria:
+mantido. Ele recusa bancos de produção (`VERCEL_ENV=production` ou contas com
+e-mail real). Ele cria:
 
 | Conta | Perfil | Empresa |
 |---|---|---|
@@ -106,6 +108,8 @@ fica em `/f/demo`.
 | `npm run db:verificar` | Confere a conexão e as migrations aplicadas (somente leitura) |
 | `npm run db:gerar` / `npm run db:migrar` | Gera a migration a partir do schema / aplica as pendentes |
 | `npm run seed` | Dados de demonstração |
+| `npm run db:implantar` | Aplica as migrations no build da Vercel (só em `production` e `preview`) |
+| `npm run admin:promover -- <e-mail>` | Promove a primeira conta de admin da plataforma |
 | `npm run ia:avaliar` | Avalia o motor de IA com leads de exemplo (mock; `--confirmar` usa a API real) |
 
 ### Migrations
@@ -155,6 +159,8 @@ docs/           arquitetura, decisões (D-001...), identidade visual
   descartadas.
 - [Identidade visual](docs/identidade-visual.md): tokens, cores, logo e
   componentes.
+- [Implantação](docs/implantacao.md): variáveis por ambiente, primeiro
+  admin, verificação depois do deploy e rollback.
 
 ## Segurança e privacidade
 
@@ -164,6 +170,8 @@ docs/           arquitetura, decisões (D-001...), identidade visual
 - IP guardado só como HMAC.
 - A IA não recebe nome, e-mail nem telefone do lead.
 - Ações sensíveis vão para a auditoria, sem dados pessoais.
+- [Política de privacidade](src/app/politica-de-privacidade/page.tsx) pública
+  em `/politica-de-privacidade`.
 - Cada entrega passa por uma análise do OWASP Top 10, registrada no pull
   request da etapa.
 
