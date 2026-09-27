@@ -28,7 +28,11 @@ export default async function PaginaLogin({ searchParams }: PageProps<"/login">)
       <p className="mt-6 text-center text-sm text-texto-suave">
         Ainda não tem conta?{" "}
         <Link
-          href="/cadastro"
+          href={
+            typeof proximo === "string"
+              ? `/cadastro?proximo=${encodeURIComponent(destino)}`
+              : "/cadastro"
+          }
           className="font-semibold text-marca-texto underline-offset-2 hover:underline"
         >
           Criar conta

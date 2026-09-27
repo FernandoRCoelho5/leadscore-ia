@@ -75,7 +75,8 @@ export function FormularioLogin({ destino, aviso }: { destino: string; aviso?: s
   );
 }
 
-export function FormularioCadastro() {
+/** `destino`: para onde ir depois de criar a conta (já validado pela página). */
+export function FormularioCadastro({ destino }: { destino: string }) {
   const router = useRouter();
   const { aoEnviar, erros, erroGeral, pendente, refResumo } = useFormulario({
     esquema: esquemaCadastro,
@@ -84,7 +85,7 @@ export function FormularioCadastro() {
       if (error) {
         return falha(error);
       }
-      router.replace("/onboarding");
+      router.replace(destino);
       router.refresh();
     },
   });

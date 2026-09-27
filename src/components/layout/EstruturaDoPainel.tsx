@@ -11,6 +11,7 @@ import {
   Settings,
   Sun,
   UserRound,
+  Users,
   UsersRound,
   X,
 } from "lucide-react";
@@ -56,6 +57,13 @@ const GRUPOS: { titulo?: string; itens: ItemDoMenu[] }[] = [
         href: "/leads",
         icone: <Inbox aria-hidden="true" />,
         acao: "leads:ver",
+        daEmpresa: true,
+      },
+      {
+        rotulo: "Membros",
+        href: "/membros",
+        icone: <Users aria-hidden="true" />,
+        acao: "membros:ver",
         daEmpresa: true,
       },
       {
