@@ -2,7 +2,7 @@ import "./carregarEnv";
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull, notIlike } from "drizzle-orm";
 
 import { db, encerrarBanco } from "../src/db";
 import { env } from "../src/env";
@@ -18,6 +18,8 @@ import { auth } from "../src/server/auth/auth";
 import { consumirAnalise } from "../src/server/repositories/usoMensal";
 import { criarVinculo } from "../src/server/repositories/usuarios";
 
+import { motivoParaRecusarSeed, SUFIXOS_DE_CONTAS_FICTICIAS } from "./banco/travaDoSeed";
+
 /**
  * Seed de demonstração:
  * - Norte Digital (agência B2B, slug "demo"): leads quentes, mornos, frios e
@@ -26,7 +28,8 @@ import { criarVinculo } from "../src/server/repositories/usuarios";
  *   pessoa, para mostrar que um cliente não vê os dados do outro;
  * - um usuário de cada perfil da equipe Brasa (admin e suporte).
  *
- * Regras: só INSERE dados, nunca apaga nem altera. Empresa ou usuário que já
+ * Regras: só INSERE dados, nunca apaga nem altera. Recusa bancos de produção
+ * (scripts/banco/travaDoSeed.ts): VERCEL_ENV=production ou contas reais. Empresa ou usuário que já
  * existe é mantido como está (pode rodar quantas vezes quiser). As análises
  * são marcadas como mock (não vieram da Claude API).
  *
@@ -519,7 +522,26 @@ async function semearUsuarios(empresasPorSlug: Map<string, string>): Promise<voi
   }
 }
 
+/** Contas que não são de demonstração, de teste nem anonimizadas: sinal de banco de produção. */
+async function contarContasReais(): Promise<number> {
+  const [linha] = await db
+    .select({ total: count() })
+    .from(usuarios)
+    .where(
+      and(...SUFIXOS_DE_CONTAS_FICTICIAS.map((sufixo) => notIlike(usuarios.email, `%${sufixo}`))),
+    );
+  return linha?.total ?? 0;
+}
+
 async function principal(): Promise<void> {
+  const motivo = motivoParaRecusarSeed({
+    ambiente: env.VERCEL_ENV,
+    contasReais: await contarContasReais(),
+  });
+  if (motivo) {
+    throw new Error(`nada foi inserido: ${motivo}`);
+  }
+
   const empresasPorSlug = new Map<string, string>();
   for (const definicao of EMPRESAS) {
     empresasPorSlug.set(definicao.slug, await semearEmpresa(definicao));
