@@ -1,0 +1,2 @@
+CREATE INDEX "leads_empresa_score_idx" ON "leads" USING btree ("empresa_id","score_atual" DESC NULLS LAST,"id" DESC NULLS FIRST) WHERE deleted_at IS NULL;--> statement-breakpoint
+CREATE INDEX "leads_empresa_id_idx" ON "leads" USING btree ("empresa_id","id" DESC NULLS FIRST) WHERE deleted_at IS NULL;
