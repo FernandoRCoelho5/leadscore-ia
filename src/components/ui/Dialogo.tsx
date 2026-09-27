@@ -43,11 +43,13 @@ export function Dialogo({
         {rotuloDoGatilho}
         {complementoDoGatilho && <span className="sr-only"> {complementoDoGatilho}</span>}
       </button>
+      {/* O <dialog> herda o CSS de onde está no HTML (ex.: a célula de uma
+          tabela com nowrap), mesmo aparecendo por cima de tudo. */}
       <dialog
         ref={refDialogo}
         aria-labelledby={idDoTitulo}
         onClose={aoFechar}
-        className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-texto shadow-lg backdrop:bg-carvao-950/50"
+        className="m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-carvao-950/50"
       >
         <div className="flex items-start justify-between gap-4 border-b border-borda px-6 py-4">
           <div className="min-w-0">

@@ -65,7 +65,7 @@ export default async function PaginaMembros({ searchParams }: PageProps<"/membro
   return (
     <>
       <Cabecalho titulo="Membros" descricao={`Pessoas com acesso aos leads da ${nome}.`} />
-      <div className="grid items-start gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-8 lg:col-span-2">
           <Secao id="pessoas" titulo="Pessoas">
             {membros.total === 0 ? (
