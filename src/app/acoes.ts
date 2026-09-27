@@ -4,28 +4,18 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { env } from "@/env";
 import { ErroApp } from "@/lib/erros";
 import { COOKIE_DO_TEMA, lerTema } from "@/lib/tema";
 import { auth } from "@/server/auth/auth";
 import { COOKIE_EMPRESA_ATIVA, contextoDa, exigirSessao } from "@/server/auth/sessao";
+import { OPCOES_DE_COOKIE } from "@/server/http/cookies";
 import { abrirEmpresaParaEquipe } from "@/server/services/administracao";
 
 /** Ações globais do menu da conta. Funcionam como formulários comuns (até sem JavaScript). */
 
-const UM_ANO = 60 * 60 * 24 * 365;
-
-const opcoesDeCookie = {
-  path: "/",
-  maxAge: UM_ANO,
-  sameSite: "lax",
-  httpOnly: true,
-  secure: env.NODE_ENV === "production",
-} as const;
-
 export async function definirTemaAcao(formulario: FormData): Promise<void> {
   const tema = lerTema(String(formulario.get("tema") ?? ""));
-  (await cookies()).set(COOKIE_DO_TEMA, tema, opcoesDeCookie);
+  (await cookies()).set(COOKIE_DO_TEMA, tema, OPCOES_DE_COOKIE);
 }
 
 export async function sairAcao(): Promise<void> {
@@ -41,7 +31,7 @@ export async function definirEmpresaAtivaAcao(formulario: FormData): Promise<voi
   const sessao = await exigirSessao();
   const empresaId = String(formulario.get("empresaId") ?? "");
   if (sessao.vinculos.some((vinculo) => vinculo.empresaId === empresaId)) {
-    (await cookies()).set(COOKIE_EMPRESA_ATIVA, empresaId, opcoesDeCookie);
+    (await cookies()).set(COOKIE_EMPRESA_ATIVA, empresaId, OPCOES_DE_COOKIE);
   }
   redirect("/painel");
 }
@@ -64,7 +54,10 @@ export async function abrirEmpresaAcao(formulario: FormData): Promise<void> {
     }
     throw erro;
   }
-  (await cookies()).set(COOKIE_EMPRESA_ATIVA, empresaId, { ...opcoesDeCookie, maxAge: OITO_HORAS });
+  (await cookies()).set(COOKIE_EMPRESA_ATIVA, empresaId, {
+    ...OPCOES_DE_COOKIE,
+    maxAge: OITO_HORAS,
+  });
   redirect("/painel");
 }
 
