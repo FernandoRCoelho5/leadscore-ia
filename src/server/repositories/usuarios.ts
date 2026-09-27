@@ -32,6 +32,19 @@ export async function obterUsuarioAtivo(
   return usuario;
 }
 
+/** Conta não excluída pelo e-mail, sem diferenciar maiúsculas (como o índice único). */
+export async function obterUsuarioAtivoPorEmail(
+  db: BancoDeDados,
+  email: string,
+): Promise<Usuario | undefined> {
+  const [usuario] = await db
+    .select()
+    .from(usuarios)
+    .where(and(sql`lower(${usuarios.email}) = lower(${email.trim()})`, isNull(usuarios.deletedAt)))
+    .limit(1);
+  return usuario;
+}
+
 export async function atualizarNomeDoUsuario(
   db: BancoDeDados,
   usuarioId: string,

@@ -25,6 +25,7 @@
     "db:implantar": "tsx scripts/migrarNoDeploy.ts",
     "ia:avaliar": "node --conditions=react-server --import tsx scripts/avaliarIA.ts",
     "seed": "node --conditions=react-server --import tsx scripts/seed.ts",
+    "admin:promover": "node --conditions=react-server --import tsx scripts/promoverAdmin.ts",
     "marca:icones": "node scripts/marca/gerarIcones.mjs"
   },
   "dependencies": {
