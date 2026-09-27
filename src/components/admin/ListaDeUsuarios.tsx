@@ -4,8 +4,7 @@ import { formatarData } from "@/lib/datas";
 import { ROTULO_DA_SITUACAO_DO_USUARIO } from "@/lib/rotulos";
 import type { UsuarioNaLista } from "@/server/repositories/usuarios";
 
-import { AlterarPapel } from "./AlterarPapel";
-import { BloqueioDoUsuario } from "./BloqueioDoUsuario";
+import { GerenciarUsuario } from "./GerenciarUsuario";
 
 /**
  * Usuários da página atual: tabela no computador e cartões no celular. A
@@ -48,18 +47,14 @@ export function ListaDeUsuarios({
 }) {
   const podeAgirSobre = (usuario: UsuarioNaLista) => podeGerir && usuario.id !== usuarioAtualId;
   const acoes = (usuario: UsuarioNaLista) => (
-    <div className="flex flex-wrap items-start gap-2 md:flex-nowrap">
-      <AlterarPapel
-        usuario={{
-          id: usuario.id,
-          nome: usuario.nome,
-          papel: usuario.papelPlataforma ?? "cliente",
-        }}
-      />
-      <BloqueioDoUsuario
-        usuario={{ id: usuario.id, nome: usuario.nome, bloqueado: usuario.bloqueadoEm !== null }}
-      />
-    </div>
+    <GerenciarUsuario
+      usuario={{
+        id: usuario.id,
+        nome: usuario.nome,
+        papel: usuario.papelPlataforma ?? "cliente",
+        bloqueado: usuario.bloqueadoEm !== null,
+      }}
+    />
   );
 
   return (
