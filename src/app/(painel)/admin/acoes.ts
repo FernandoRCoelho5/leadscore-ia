@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { SITUACOES_DA_EMPRESA } from "@/lib/rotulos";
+import { PAPEIS_DE_ACESSO, SITUACOES_DA_EMPRESA } from "@/lib/rotulos";
 import { contextoDa, exigirSessao } from "@/server/auth/sessao";
 import { executarAcao, validarEntrada, type ResultadoDeAcao } from "@/server/http/acao";
 import {
   alterarBloqueioNaPlataforma,
   alterarLimiteDeAnalises,
+  alterarPapelNaPlataforma,
   alterarSituacaoDaEmpresaNaPlataforma,
   LIMITE_MAXIMO_DE_ANALISES,
 } from "@/server/services/administracao";
@@ -73,6 +74,20 @@ export async function alterarBloqueioDoUsuarioAcao(
     const id = validarEntrada(esquemaDoUsuario, usuarioId);
     const valor = validarEntrada(z.boolean("Pedido inválido."), bloquear);
     await alterarBloqueioNaPlataforma(db, contextoDa(sessao), id, valor);
+    atualizarTelas("/admin/usuarios");
+    return null;
+  });
+}
+
+export async function alterarPapelAcao(
+  usuarioId: unknown,
+  papel: unknown,
+): Promise<ResultadoDeAcao<null>> {
+  return executarAcao(async () => {
+    const sessao = await exigirSessao();
+    const id = validarEntrada(esquemaDoUsuario, usuarioId);
+    const novo = validarEntrada(z.enum(PAPEIS_DE_ACESSO, "Perfil inválido."), papel);
+    await alterarPapelNaPlataforma(db, contextoDa(sessao), id, novo);
     atualizarTelas("/admin/usuarios");
     return null;
   });

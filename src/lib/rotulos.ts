@@ -69,3 +69,10 @@ export const ROTULO_DO_PAPEL: Record<PapelDeAcesso, string> = {
   suporte: "Suporte",
   cliente: "Cliente",
 };
+
+/** O que cada perfil pode fazer, em uma frase (tela de troca de perfil). */
+export const DESCRICAO_DO_PAPEL: Record<PapelDeAcesso, string> = {
+  cliente: "Usa o painel das empresas das quais é membro. Sem acesso à administração.",
+  suporte: "Equipe Brasa: vê todas as empresas, os usuários e a auditoria, sem alterar nada.",
+  admin: "Equipe Brasa: acesso total, inclusive bloqueios, limites e perfis de acesso.",
+};
