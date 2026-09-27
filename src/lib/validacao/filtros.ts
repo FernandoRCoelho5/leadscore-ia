@@ -1,8 +1,15 @@
 import { z } from "zod";
 
+import { CODIGOS_DAS_ACOES } from "@/lib/auditoria";
 import { fimDoDia, inicioDoDia } from "@/lib/datas";
 import { TAMANHO_MAXIMO_PAGINA, TAMANHO_PADRAO_PAGINA } from "@/lib/paginacao";
-import { CLASSIFICACOES, STATUS_DO_LEAD } from "@/lib/rotulos";
+import {
+  CLASSIFICACOES,
+  PAPEIS_DE_ACESSO,
+  SITUACOES_DA_EMPRESA,
+  SITUACOES_DO_USUARIO,
+  STATUS_DO_LEAD,
+} from "@/lib/rotulos";
 
 /**
  * Filtros das listas, lidos da URL (D-029). A URL é editável por qualquer um:
@@ -66,16 +73,55 @@ export const ORDENS_DE_LEADS = {
 /** Converte os filtros da URL nos filtros do repositório (datas no fuso de São Paulo). */
 export function filtrosDoRepositorio(filtros: FiltrosDaUrlDeLeads) {
   const ordem = ORDENS_DE_LEADS[filtros.ordem ?? "recentes"];
+  const { desde, ate } = periodo(filtros.de, filtros.ate);
   return {
     busca: filtros.busca,
     classificacao: filtros.classificacao,
     status: filtros.status,
-    criadoDe: filtros.de ? inicioDoDia(filtros.de) : undefined,
-    // "Até" inclui o dia inteiro: o limite é a meia-noite do dia seguinte.
-    criadoAte: filtros.ate ? fimDoDia(filtros.ate) : undefined,
+    criadoDe: desde,
+    criadoAte: ate,
     ordenarPor: ordem.ordenarPor,
     direcao: ordem.direcao,
   };
+}
+
+/**
+ * Período "de/até" da URL em limites no fuso de São Paulo. "Até" inclui o dia
+ * inteiro: o limite (exclusivo) é a meia-noite do dia seguinte.
+ */
+function periodo(de: string | undefined, ate: string | undefined) {
+  return {
+    desde: de ? inicioDoDia(de) : undefined,
+    ate: ate ? fimDoDia(ate) : undefined,
+  };
+}
+
+// Listas da administração (equipe Brasa).
+
+export const esquemaFiltrosDeEmpresas = z
+  .object({ busca, situacao: opcional(z.enum(SITUACOES_DA_EMPRESA)) })
+  .extend(esquemaPaginacaoDaUrl.shape);
+
+export type FiltrosDaUrlDeEmpresas = z.output<typeof esquemaFiltrosDeEmpresas>;
+
+export const esquemaFiltrosDeUsuarios = z
+  .object({
+    busca,
+    papel: opcional(z.enum(PAPEIS_DE_ACESSO)),
+    situacao: opcional(z.enum(SITUACOES_DO_USUARIO)),
+  })
+  .extend(esquemaPaginacaoDaUrl.shape);
+
+export type FiltrosDaUrlDeUsuarios = z.output<typeof esquemaFiltrosDeUsuarios>;
+
+export const esquemaFiltrosDaAuditoria = z
+  .object({ acao: opcional(z.enum(CODIGOS_DAS_ACOES)), de: dia, ate: dia })
+  .extend(esquemaPaginacaoDaUrl.shape);
+
+export type FiltrosDaUrlDaAuditoria = z.output<typeof esquemaFiltrosDaAuditoria>;
+
+export function filtrosDaAuditoriaDoRepositorio(filtros: FiltrosDaUrlDaAuditoria) {
+  return { acao: filtros.acao, ...periodo(filtros.de, filtros.ate) };
 }
 
 /**

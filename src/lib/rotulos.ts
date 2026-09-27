@@ -43,3 +43,29 @@ export const ROTULO_DA_ORIGEM = {
 
 /** Palavra digitada para confirmar a anonimização (LGPD), ação irreversível. */
 export const PALAVRA_PARA_ANONIMIZAR = "ANONIMIZAR";
+
+export const SITUACOES_DA_EMPRESA = ["ativa", "bloqueada"] as const;
+export type SituacaoDaEmpresa = (typeof SITUACOES_DA_EMPRESA)[number];
+
+export const ROTULO_DA_SITUACAO_DA_EMPRESA: Record<SituacaoDaEmpresa, string> = {
+  ativa: "Ativa",
+  bloqueada: "Bloqueada",
+};
+
+export const SITUACOES_DO_USUARIO = ["ativo", "bloqueado"] as const;
+export type SituacaoDoUsuario = (typeof SITUACOES_DO_USUARIO)[number];
+
+export const ROTULO_DA_SITUACAO_DO_USUARIO: Record<SituacaoDoUsuario, string> = {
+  ativo: "Ativo",
+  bloqueado: "Bloqueado",
+};
+
+/** Perfis de acesso (RBAC), na ordem dos filtros. */
+export const PAPEIS_DE_ACESSO = ["admin", "suporte", "cliente"] as const;
+export type PapelDeAcesso = (typeof PAPEIS_DE_ACESSO)[number];
+
+export const ROTULO_DO_PAPEL: Record<PapelDeAcesso, string> = {
+  admin: "Admin",
+  suporte: "Suporte",
+  cliente: "Cliente",
+};
