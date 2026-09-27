@@ -6,6 +6,7 @@ import type { BancoDeDados } from "@/db/tipos";
 import { ErroConflito, ErroNaoEncontrado, ErroProibido, ErroValidacao } from "@/lib/erros";
 import type { Papel } from "@/server/auth/permissoes";
 import { registrarAnalise } from "@/server/repositories/analises";
+import { lotesDaAuditoriaParaExportar } from "@/server/repositories/auditoria";
 import { criarLead, lotesDeLeadsParaExportar } from "@/server/repositories/leads";
 import { consumirAnalise } from "@/server/repositories/usoMensal";
 import {
@@ -14,6 +15,7 @@ import {
   alterarLimiteDeAnalises,
   alterarSituacaoDaEmpresaNaPlataforma,
   consultarAuditoria,
+  exportarAuditoria,
   listarEmpresasDaPlataforma,
   listarUsuariosDaPlataforma,
   registrarExportacaoDaAdministracao,
@@ -414,6 +416,45 @@ describe("administração", () => {
       atorEmail: `pessoa-painel-${sequencia - 1}@teste.example`,
     });
     await expect(consultarAuditoria(db, cliente, {}, {})).rejects.toBeInstanceOf(ErroProibido);
+  });
+
+  it("a auditoria é exportada por cursor, sem repetir nem pular eventos", async () => {
+    const { empresa } = await cenario();
+    const suporte = await novoUsuario("suporte");
+    for (let vez = 0; vez < 7; vez += 1) {
+      await abrirEmpresaParaEquipe(db, suporte, empresa.id);
+    }
+
+    const lotes: string[][] = [];
+    for await (const lote of lotesDaAuditoriaParaExportar(db, { acao: "empresa.acessada" }, 3)) {
+      lotes.push(lote.map((evento) => evento.id));
+    }
+
+    const { total } = await consultarAuditoria(db, suporte, { acao: "empresa.acessada" }, {});
+    const ids = lotes.flat();
+    expect(total).toBeGreaterThanOrEqual(7);
+    expect(ids).toHaveLength(total);
+    expect(new Set(ids).size).toBe(total);
+    expect(lotes.every((lote) => lote.length <= 3)).toBe(true);
+    // Do mais novo para o mais antigo (UUID v7 cresce com o tempo).
+    expect(ids).toEqual([...ids].sort().reverse());
+  });
+
+  it("exportar a auditoria vira um evento com os filtros; o cliente não exporta", async () => {
+    const { cliente } = await cenario();
+    const suporte = await novoUsuario("suporte");
+    const desde = new Date("2026-09-01T03:00:00Z");
+
+    const lotes = await exportarAuditoria(db, suporte, { acao: "auth.login", desde });
+    await lotes.return(undefined);
+
+    const exportacoes = await eventos("auditoria.exportada");
+    expect(exportacoes.find((evento) => evento.atorId === suporte.usuarioId)?.detalhes).toEqual({
+      acao: "auth.login",
+      de: desde.toISOString(),
+      ate: null,
+    });
+    await expect(exportarAuditoria(db, cliente, {})).rejects.toBeInstanceOf(ErroProibido);
   });
 
   it("todasAsPaginas percorre a lista inteira para o CSV", async () => {

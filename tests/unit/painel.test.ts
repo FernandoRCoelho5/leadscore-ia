@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  ACOES_DA_AUDITORIA,
+  CODIGOS_DAS_ACOES,
+  resumirDetalhes,
+  rotuloDaAcao,
+} from "@/lib/auditoria";
 import { BOM, celula, linhaCsv, nomeDoArquivo } from "@/lib/csv";
 import { diaEmSaoPaulo, fimDoDia, formatarDataHora, inicioDoDia, inicioDoMes } from "@/lib/datas";
 import {
+  esquemaFiltrosDaAuditoria,
+  esquemaFiltrosDeEmpresas,
   esquemaFiltrosDeLeads,
+  esquemaFiltrosDeUsuarios,
+  filtrosDaAuditoriaDoRepositorio,
   filtrosDoRepositorio,
   normalizarParametros,
   urlComFiltros,
@@ -90,5 +100,64 @@ describe("filtros da URL", () => {
     expect(urlComFiltros("/leads", atuais)).toBe("/leads?busca=ana&pagina=3");
     expect(urlComFiltros("/leads", atuais, { pagina: 1 })).toBe("/leads?busca=ana");
     expect(urlComFiltros("/leads", {}, {})).toBe("/leads");
+  });
+});
+
+describe("filtros das listas da administração", () => {
+  it("empresas e usuários: aceitam só as situações e os perfis conhecidos", () => {
+    expect(
+      esquemaFiltrosDeEmpresas.parse({ situacao: "bloqueada", busca: " agência " }),
+    ).toMatchObject({ situacao: "bloqueada", busca: "agência" });
+    expect(esquemaFiltrosDeEmpresas.parse({ situacao: "apagada" }).situacao).toBeUndefined();
+
+    expect(esquemaFiltrosDeUsuarios.parse({ papel: "suporte", situacao: "ativo" })).toMatchObject({
+      papel: "suporte",
+      situacao: "ativo",
+    });
+    expect(esquemaFiltrosDeUsuarios.parse({ papel: "dono", situacao: "x" })).toMatchObject({
+      papel: undefined,
+      situacao: undefined,
+    });
+  });
+
+  it("auditoria: só ações do catálogo; o período vira limites em São Paulo", () => {
+    const filtros = esquemaFiltrosDaAuditoria.parse({
+      acao: "lead.anonimizado",
+      de: "2026-09-10",
+      ate: "2026-09-10",
+    });
+
+    expect(filtrosDaAuditoriaDoRepositorio(filtros)).toEqual({
+      acao: "lead.anonimizado",
+      desde: new Date("2026-09-10T03:00:00.000Z"),
+      ate: new Date("2026-09-11T03:00:00.000Z"),
+    });
+    // Texto livre na ação não chega ao banco.
+    expect(esquemaFiltrosDaAuditoria.parse({ acao: "'; drop table x; --" }).acao).toBeUndefined();
+  });
+});
+
+describe("catálogo da auditoria", () => {
+  it("toda ação tem grupo e texto, sem repetir o texto", () => {
+    const rotulos = CODIGOS_DAS_ACOES.map((codigo) => ACOES_DA_AUDITORIA[codigo].rotulo);
+
+    expect(CODIGOS_DAS_ACOES.length).toBeGreaterThan(0);
+    expect(new Set(rotulos).size).toBe(rotulos.length);
+    expect(CODIGOS_DAS_ACOES.every((codigo) => ACOES_DA_AUDITORIA[codigo].grupo)).toBe(true);
+  });
+
+  it("mostra o texto da ação; um código fora do catálogo aparece como foi gravado", () => {
+    expect(rotuloDaAcao("lead.excluido")).toBe("Excluiu um lead");
+    expect(rotuloDaAcao("acao.antiga")).toBe("acao.antiga");
+    // Nomes herdados de Object não contam como ação do catálogo.
+    expect(rotuloDaAcao("toString")).toBe("toString");
+  });
+
+  it("resume os detalhes em uma linha, sem campos vazios", () => {
+    expect(resumirDetalhes({ de: 100, para: 250, motivo: null, vazio: "" })).toBe(
+      "de: 100 · para: 250",
+    );
+    expect(resumirDetalhes({ campos: ["nome"] })).toBe('campos: ["nome"]');
+    expect(resumirDetalhes({})).toBe("");
   });
 });
