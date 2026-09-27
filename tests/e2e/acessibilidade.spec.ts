@@ -78,6 +78,8 @@ test("o link 'Pular para o conteúdo' é o primeiro do teclado e leva ao conteú
 });
 
 test("telas do cliente não têm problemas de acessibilidade", async ({ browser }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   test.skip(!process.env.E2E_COM_BANCO, "Precisa de banco (área logada).");
   const page = await novaPagina(browser);
   const { empresaId } = await clienteComEmpresa(page);
@@ -106,6 +108,8 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
 });
 
 test("telas da administração não têm problemas de acessibilidade", async ({ browser }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   test.skip(!process.env.E2E_COM_BANCO, "Precisa de banco (área logada).");
   const page = await novaPagina(browser);
   const email = emailUnico("admin-a11y");

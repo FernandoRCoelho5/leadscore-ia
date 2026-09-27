@@ -72,6 +72,8 @@ test("cliente: lista com filtros, detalhe, andamento e exportação em CSV", asy
 test("equipe: abre a empresa do cliente (auditado), ajusta o limite, bloqueia e desbloqueia", async ({
   browser,
 }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   const cliente = await novaPagina(browser);
   const { nome } = await clienteComEmpresa(cliente);
 
@@ -145,6 +147,8 @@ test("equipe: abre a empresa do cliente (auditado), ajusta o limite, bloqueia e 
 test("um cliente não abre o lead de outra empresa nem pela URL (404, sem revelar que existe)", async ({
   browser,
 }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   const outra = await novaPagina(browser);
   const { empresaId: empresaDaOutra } = await clienteComEmpresa(outra);
   await inserirLead(empresaDaOutra, "Lead Alheio", "quente", 90);

@@ -12,6 +12,8 @@ test.skip(!process.env.E2E_COM_BANCO, "Defina E2E_COM_BANCO=1 para rodar os test
 test("convite por link: a pessoa cria a conta pelo link, entra na empresa e pode ser removida", async ({
   browser,
 }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   const dona = await novaPagina(browser);
   const { nome: empresa } = await clienteComEmpresa(dona);
 
@@ -64,6 +66,8 @@ test("convite por link: a pessoa cria a conta pelo link, entra na empresa e pode
 test("o admin muda o perfil de um cliente para suporte, e ele passa a ver a administração", async ({
   browser,
 }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   const pessoa = await novaPagina(browser);
   const emailDaPessoa = emailUnico("promovida");
   await cadastrar(pessoa, "Rita Promovida", emailDaPessoa);
