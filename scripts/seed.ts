@@ -19,17 +19,20 @@ import { consumirAnalise } from "../src/server/repositories/usoMensal";
 import { criarVinculo } from "../src/server/repositories/usuarios";
 
 /**
- * Seed de demonstração: uma empresa (agência B2B) com leads quentes, mornos,
- * frios e um pendente, e um usuário de cada perfil (admin, suporte, cliente).
+ * Seed de demonstração:
+ * - Norte Digital (agência B2B, slug "demo"): leads quentes, mornos, frios e
+ *   um pendente, com duas pessoas na empresa (para a tela Membros);
+ * - Horizonte Contábil (slug "demo-contabil"): outra empresa, com outra
+ *   pessoa, para mostrar que um cliente não vê os dados do outro;
+ * - um usuário de cada perfil da equipe Brasa (admin e suporte).
  *
- * Regras: só INSERE dados, nunca apaga nem altera. Se a empresa de
- * demonstração já existir, não faz nada (pode rodar quantas vezes quiser).
- * As análises são marcadas como mock (não vieram da Claude API).
+ * Regras: só INSERE dados, nunca apaga nem altera. Empresa ou usuário que já
+ * existe é mantido como está (pode rodar quantas vezes quiser). As análises
+ * são marcadas como mock (não vieram da Claude API).
  *
  * Uso: npm run seed
  */
 
-const SLUG_DEMO = "demo";
 const DIA_EM_MS = 24 * 60 * 60 * 1000;
 
 type LeadDeDemonstracao = {
@@ -48,7 +51,7 @@ type LeadDeDemonstracao = {
   };
 };
 
-const LEADS: LeadDeDemonstracao[] = [
+const LEADS_DA_AGENCIA: LeadDeDemonstracao[] = [
   {
     nome: "Rafael Monteiro",
     email: "rafael@metalurgicamonteiro.example",
@@ -251,15 +254,122 @@ const LEADS: LeadDeDemonstracao[] = [
   },
 ];
 
-/** Cria a empresa de demonstração com os leads (se ainda não existir) e devolve o id dela. */
-async function semearEmpresaDemo(): Promise<string> {
+const LEADS_DA_CONTABILIDADE: LeadDeDemonstracao[] = [
+  {
+    nome: "Sílvia Prado",
+    email: "silvia@pradoalimentos.example",
+    empresaNome: "Prado Alimentos",
+    segmento: "Indústria",
+    mensagem:
+      "Somos uma indústria de alimentos com 60 funcionários e vamos sair do Simples Nacional no ano que vem. Precisamos de planejamento tributário e da contabilidade completa a partir de janeiro.",
+    status: "em_contato",
+    diasAtras: 1,
+    analise: {
+      score: 90,
+      classificacao: "quente",
+      justificativa:
+        "Indústria de médio porte, exatamente o perfil atendido, com mudança de regime tributário e data de início definida.",
+      respostaSugerida:
+        "Olá, Sílvia! A saída do Simples é o momento certo para um planejamento tributário. Podemos marcar uma reunião esta semana para simular os regimes com os números da Prado Alimentos?",
+    },
+  },
+  {
+    nome: "Gustavo Reis",
+    email: "gustavo@reislogistica.example",
+    empresaNome: "Reis Logística",
+    segmento: "Logística",
+    mensagem:
+      "Estamos insatisfeitos com o escritório atual e queremos trocar de contabilidade. Temos 35 funcionários.",
+    status: "novo",
+    diasAtras: 2,
+    analise: {
+      score: 79,
+      classificacao: "quente",
+      justificativa:
+        "Empresa B2B dentro do porte ideal, com intenção clara de troca; falta só o prazo.",
+      respostaSugerida:
+        "Olá, Gustavo! Cuidamos de toda a transição do escritório anterior, sem interromper a folha nem as obrigações. Posso te ligar amanhã para entender o que não está funcionando hoje?",
+    },
+  },
+  {
+    nome: "Helena Duarte",
+    email: "helena@duartedesign.example",
+    empresaNome: "Duarte Design",
+    segmento: "Serviços",
+    mensagem: "Sou MEI e queria saber quanto custa para abrir uma empresa. Ainda estou pensando.",
+    status: "novo",
+    diasAtras: 3,
+    analise: {
+      score: 38,
+      classificacao: "frio",
+      justificativa:
+        "Microempreendedora em fase de pesquisa, abaixo do porte atendido e sem prazo.",
+      respostaSugerida:
+        "Olá, Helena! Obrigado pelo contato. Para quem está começando, o próprio portal do Empreendedor ajuda bastante. Quando a empresa crescer, será um prazer conversar!",
+    },
+  },
+  {
+    nome: "Otávio Mendes",
+    email: "otavio@mendesauto.example",
+    empresaNome: "Mendes Autopeças",
+    segmento: "Comércio",
+    mensagem: "Temos 3 lojas e queremos organizar o fiscal e o estoque. Podem mandar uma proposta?",
+    status: "novo",
+    diasAtras: 0,
+  },
+];
+
+type EmpresaDeDemonstracao = {
+  slug: string;
+  nome: string;
+  descricao: string;
+  produtosServicos: string;
+  clienteIdeal: string;
+  ticketMedioCentavos: number;
+  regioesAtendidas: string;
+  leads: LeadDeDemonstracao[];
+};
+
+const EMPRESAS: EmpresaDeDemonstracao[] = [
+  {
+    slug: "demo",
+    nome: "Norte Digital (demonstração)",
+    descricao:
+      "Agência de marketing digital especializada em pequenas e médias empresas B2B: sites institucionais, tráfego pago e automação de vendas.",
+    produtosServicos:
+      "Criação de sites e landing pages; gestão de tráfego pago (Google e Meta Ads); SEO; automação de marketing e integração com CRM.",
+    clienteIdeal:
+      "Indústrias, distribuidoras e empresas de serviços B2B com 10 a 200 funcionários que querem gerar mais oportunidades comerciais pela internet.",
+    ticketMedioCentavos: 450_000,
+    regioesAtendidas:
+      "Sul Fluminense, Rio de Janeiro e Vale do Paraíba, com atendimento remoto em todo o Brasil.",
+    leads: LEADS_DA_AGENCIA,
+  },
+  {
+    slug: "demo-contabil",
+    nome: "Horizonte Contábil (demonstração)",
+    descricao:
+      "Escritório de contabilidade para empresas de médio porte: fiscal, folha de pagamento e planejamento tributário.",
+    produtosServicos:
+      "Contabilidade completa; departamento pessoal; planejamento tributário; abertura e transição de empresas.",
+    clienteIdeal:
+      "Indústrias, comércios e prestadores de serviço com 20 a 300 funcionários, fora do Simples Nacional ou prestes a sair dele.",
+    ticketMedioCentavos: 250_000,
+    regioesAtendidas: "Sul Fluminense e Vale do Paraíba.",
+    leads: LEADS_DA_CONTABILIDADE,
+  },
+];
+
+/** Cria a empresa com os leads (se ainda não existir) e devolve o id dela. */
+async function semearEmpresa(definicao: EmpresaDeDemonstracao): Promise<string> {
+  const { slug, leads: leadsDaEmpresa, ...perfil } = definicao;
   const [existente] = await db
     .select({ id: empresas.id })
     .from(empresas)
-    .where(and(eq(empresas.slug, SLUG_DEMO), isNull(empresas.deletedAt)))
+    .where(and(eq(empresas.slug, slug), isNull(empresas.deletedAt)))
     .limit(1);
   if (existente) {
-    console.log(`A empresa de demonstração "${SLUG_DEMO}" já existe: empresa e leads mantidos.`);
+    console.log(`A empresa de demonstração "${slug}" já existe: empresa e leads mantidos.`);
     return existente.id;
   }
 
@@ -267,26 +377,14 @@ async function semearEmpresaDemo(): Promise<string> {
   const resumo = await db.transaction(async (tx) => {
     const [empresa] = await tx
       .insert(empresas)
-      .values({
-        nome: "Norte Digital (demonstração)",
-        slug: SLUG_DEMO,
-        descricao:
-          "Agência de marketing digital especializada em pequenas e médias empresas B2B: sites institucionais, tráfego pago e automação de vendas.",
-        produtosServicos:
-          "Criação de sites e landing pages; gestão de tráfego pago (Google e Meta Ads); SEO; automação de marketing e integração com CRM.",
-        clienteIdeal:
-          "Indústrias, distribuidoras e empresas de serviços B2B com 10 a 200 funcionários que querem gerar mais oportunidades comerciais pela internet.",
-        ticketMedioCentavos: 450_000,
-        regioesAtendidas:
-          "Sul Fluminense, Rio de Janeiro e Vale do Paraíba, com atendimento remoto em todo o Brasil.",
-      })
+      .values({ slug, ...perfil })
       .returning();
     if (!empresa) {
       throw new Error("O banco não devolveu a empresa de demonstração.");
     }
 
     let comAnalise = 0;
-    for (const [indice, dados] of LEADS.entries()) {
+    for (const [indice, dados] of leadsDaEmpresa.entries()) {
       const criadoEm = new Date(agora - dados.diasAtras * DIA_EM_MS - indice * 60_000);
       const [lead] = await tx
         .insert(leads)
@@ -330,11 +428,11 @@ async function semearEmpresaDemo(): Promise<string> {
       comAnalise += 1;
     }
 
-    return { id: empresa.id, empresa: empresa.nome, leads: LEADS.length, comAnalise };
+    return { id: empresa.id, empresa: empresa.nome, leads: leadsDaEmpresa.length, comAnalise };
   });
 
   console.log(
-    `Empresa "${resumo.empresa}" (slug "${SLUG_DEMO}") criada com ${resumo.leads} leads, ` +
+    `Empresa "${resumo.empresa}" (slug "${slug}") criada com ${resumo.leads} leads, ` +
       `${resumo.comAnalise} com análise de demonstração.`,
   );
   return resumo.id;
@@ -344,20 +442,34 @@ type UsuarioDeDemonstracao = {
   email: string;
   nome: string;
   papel: "admin" | "suporte" | "cliente";
+  /** Slug da empresa da qual o cliente é membro. */
+  empresa?: string;
 };
 
 const USUARIOS: UsuarioDeDemonstracao[] = [
   { email: "admin@demo.brasa.example", nome: "Ana Admin", papel: "admin" },
   { email: "suporte@demo.brasa.example", nome: "Sérgio Suporte", papel: "suporte" },
-  { email: "cliente@demo.brasa.example", nome: "Carlos Cliente", papel: "cliente" },
+  {
+    email: "cliente@demo.brasa.example",
+    nome: "Carlos Cliente",
+    papel: "cliente",
+    empresa: "demo",
+  },
+  { email: "vendas@demo.brasa.example", nome: "Marina Vendas", papel: "cliente", empresa: "demo" },
+  {
+    email: "contabil@demo.brasa.example",
+    nome: "Bruna Contábil",
+    papel: "cliente",
+    empresa: "demo-contabil",
+  },
 ];
 
 /**
- * Cria um usuário de cada perfil (se ainda não existir). As contas passam
- * pela API do Better Auth (hash da senha e auditoria). As senhas são
+ * Cria os usuários (se ainda não existirem). As contas passam pela API do
+ * Better Auth (hash da senha e auditoria). Sem SEED_SENHA_DEMO, as senhas são
  * aleatórias e aparecem só uma vez no terminal: nunca ficam no código.
  */
-async function semearUsuarios(empresaDemoId: string): Promise<void> {
+async function semearUsuarios(empresasPorSlug: Map<string, string>): Promise<void> {
   // Senha única opcional (SEED_SENHA_DEMO no .env.local); sem ela, uma aleatória por usuário.
   const senhaDefinida = process.env.SEED_SENHA_DEMO?.trim() || undefined;
   if (senhaDefinida !== undefined && senhaDefinida.length < 10) {
@@ -382,7 +494,11 @@ async function semearUsuarios(empresaDemoId: string): Promise<void> {
     });
 
     if (dados.papel === "cliente") {
-      await criarVinculo(db, user.id, empresaDemoId);
+      const empresaId = dados.empresa ? empresasPorSlug.get(dados.empresa) : undefined;
+      if (!empresaId) {
+        throw new Error(`Empresa de demonstração "${dados.empresa ?? "?"}" não encontrada.`);
+      }
+      await criarVinculo(db, user.id, empresaId);
     } else {
       await db
         .update(usuarios)
@@ -404,8 +520,11 @@ async function semearUsuarios(empresaDemoId: string): Promise<void> {
 }
 
 async function principal(): Promise<void> {
-  const empresaDemoId = await semearEmpresaDemo();
-  await semearUsuarios(empresaDemoId);
+  const empresasPorSlug = new Map<string, string>();
+  for (const definicao of EMPRESAS) {
+    empresasPorSlug.set(definicao.slug, await semearEmpresa(definicao));
+  }
+  await semearUsuarios(empresasPorSlug);
 
   // Só o nome do banco (parte final da URL), nunca a URL com credenciais.
   const banco = new URL(env.DATABASE_URL).pathname.slice(1);
