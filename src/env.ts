@@ -42,6 +42,15 @@ const formato = z.object({
   // foto fica indisponível (o resto do app funciona).
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
   BLOB_STORE_ID: z.string().optional(),
+  // Política de privacidade (LGPD, art. 41): quem responde pelos dados das
+  // contas e o canal do titular. O contato é obrigatório em produção (D-031).
+  PRIVACIDADE_RESPONSAVEL: z
+    .string()
+    .max(160, "deve ter até 160 caracteres")
+    .default("Equipe Brasa"),
+  PRIVACIDADE_CONTATO: z
+    .email({ error: "deve ser um e-mail (ex.: privacidade@empresa.com.br)" })
+    .optional(),
   // Definidas pela Vercel (System Environment Variables). VERCEL_ENV separa as
   // fotos de cada ambiente no mesmo store; VERCEL_URL (endereço único do deploy)
   // e VERCEL_BRANCH_URL (endereço fixo da branch) servem aos deploys de preview.
@@ -67,6 +76,11 @@ const esquemaEnv = formato
       when: () => true,
     },
   )
+  .refine((env) => env.VERCEL_ENV !== "production" || env.PRIVACIDADE_CONTATO !== undefined, {
+    path: ["PRIVACIDADE_CONTATO"],
+    error: "obrigatória em produção (canal do titular na política de privacidade)",
+    when: () => true,
+  })
   .transform((env) => {
     // As validações acima garantem um dos dois; o transform só roda com dados válidos.
     const urlDoApp = env.BETTER_AUTH_URL ?? `https://${env.VERCEL_URL}`;

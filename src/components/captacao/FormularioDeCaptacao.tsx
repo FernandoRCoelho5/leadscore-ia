@@ -8,6 +8,7 @@ import { Botao } from "@/components/ui/Botao";
 import { AreaDeTexto, CaixaDeMarcacao, CampoTexto, Selecao } from "@/components/ui/Campo";
 import { useFormulario, type ResultadoDoEnvio } from "@/components/ui/useFormulario";
 import type { DetalheDeCampo } from "@/lib/erros";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 import {
   CAMPO_ARMADILHA,
   CAMPO_CARIMBO,
@@ -153,7 +154,17 @@ export function FormularioDeCaptacao({ slug, nomeDaEmpresa, carimbo }: Props) {
           </p>
           <p>
             Você pode pedir a {nomeDaEmpresa}, a qualquer momento, acesso, correção ou eliminação
-            dos seus dados.
+            dos seus dados. Mais detalhes na{" "}
+            <a
+              href={CAMINHO_DA_POLITICA}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-marca-texto underline underline-offset-2 hover:no-underline"
+            >
+              política de privacidade da Brasa
+              <span className="sr-only"> (abre em outra aba)</span>
+            </a>
+            .
           </p>
         </div>
       </details>

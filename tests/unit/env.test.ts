@@ -100,7 +100,12 @@ describe("validarEnv", () => {
   });
 
   it("com BETTER_AUTH_URL, ela é o endereço do app e a origem confiável", () => {
-    const env = validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, VERCEL_ENV: "production" });
+    const env = validarEnv({
+      ...AUTH,
+      DATABASE_URL: URL_VALIDA,
+      VERCEL_ENV: "production",
+      PRIVACIDADE_CONTATO: "privacidade@exemplo.com.br",
+    });
 
     expect(env.URL_DO_APP).toBe("http://localhost:3000");
     expect(env.ORIGENS_CONFIAVEIS).toEqual(["http://localhost:3000"]);
@@ -112,6 +117,31 @@ describe("validarEnv", () => {
         "VERCEL_URL: deve ser só o nome do host",
       );
     }
+  });
+
+  it("exige o contato da política de privacidade só em produção", () => {
+    const producao = {
+      ...AUTH,
+      DATABASE_URL: URL_VALIDA,
+      VERCEL_ENV: "production",
+      BETTER_AUTH_URL: "https://brasa.exemplo.com.br",
+    };
+    expect(() => validarEnv(producao)).toThrow("PRIVACIDADE_CONTATO: obrigatória em produção");
+    expect(
+      validarEnv({ ...producao, PRIVACIDADE_CONTATO: "privacidade@exemplo.com.br" })
+        .PRIVACIDADE_CONTATO,
+    ).toBe("privacidade@exemplo.com.br");
+    // Local e previews funcionam sem ele (a página avisa que falta configurar).
+    expect(validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA }).PRIVACIDADE_CONTATO).toBeUndefined();
+  });
+
+  it("valida o e-mail de contato e aplica o responsável padrão", () => {
+    expect(() =>
+      validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, PRIVACIDADE_CONTATO: "não é e-mail" }),
+    ).toThrow("PRIVACIDADE_CONTATO: deve ser um e-mail");
+    expect(validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA }).PRIVACIDADE_RESPONSAVEL).toBe(
+      "Equipe Brasa",
+    );
   });
 
   it("nunca inclui o valor das variáveis na mensagem de erro", () => {

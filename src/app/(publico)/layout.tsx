@@ -1,8 +1,12 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/marca/Logo";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 
-/** Telas de acesso: logotipo no topo e um cartão central com o formulário. */
+/**
+ * Telas de acesso: logotipo no topo, um cartão central com o formulário e, no
+ * rodapé, a política de privacidade (LGPD: informar antes de coletar).
+ */
 export default function LayoutDeAcesso({ children }: LayoutProps<"/">) {
   return (
     <main
@@ -15,6 +19,12 @@ export default function LayoutDeAcesso({ children }: LayoutProps<"/">) {
       <div className="w-full max-w-md rounded-lg border border-borda bg-superficie p-6 shadow-sm sm:p-8">
         {children}
       </div>
+      <Link
+        href={CAMINHO_DA_POLITICA}
+        className="mt-4 rounded-md px-2 py-3 text-sm text-texto-suave underline-offset-2 hover:text-texto hover:underline"
+      >
+        Política de privacidade
+      </Link>
     </main>
   );
 }
