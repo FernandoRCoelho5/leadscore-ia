@@ -2,12 +2,12 @@ import { CircleAlert, LogIn } from "lucide-react";
 
 import { abrirEmpresaAcao } from "@/app/acoes";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { SeloDeSituacao } from "@/components/ui/Selos";
 import { formatarData } from "@/lib/datas";
 import { ROTULO_DA_SITUACAO_DA_EMPRESA } from "@/lib/rotulos";
 import type { EmpresaNaLista } from "@/server/repositories/empresas";
 
 import { GerenciarEmpresa } from "./GerenciarEmpresa";
-import { SeloDeSituacao } from "./Selos";
 
 /**
  * Empresas clientes da página atual: tabela no computador e cartões no

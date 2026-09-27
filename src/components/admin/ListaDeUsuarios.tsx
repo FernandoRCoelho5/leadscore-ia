@@ -1,10 +1,11 @@
 import { Avatar } from "@/components/ui/Avisos";
+import { SeloDeSituacao, SeloDoPapel } from "@/components/ui/Selos";
 import { formatarData } from "@/lib/datas";
 import { ROTULO_DA_SITUACAO_DO_USUARIO } from "@/lib/rotulos";
 import type { UsuarioNaLista } from "@/server/repositories/usuarios";
 
+import { AlterarPapel } from "./AlterarPapel";
 import { BloqueioDoUsuario } from "./BloqueioDoUsuario";
-import { SeloDeSituacao, SeloDoPapel } from "./Selos";
 
 /**
  * Usuários da página atual: tabela no computador e cartões no celular. A
@@ -37,18 +38,28 @@ function Pessoa({ usuario }: { usuario: UsuarioNaLista }) {
 export function ListaDeUsuarios({
   usuarios,
   usuarioAtualId,
-  podeBloquear,
+  podeGerir,
 }: {
   usuarios: UsuarioNaLista[];
-  /** Quem está vendo a lista: não pode bloquear a si mesmo. */
+  /** Quem está vendo a lista: não altera a própria conta. */
   usuarioAtualId: string;
-  podeBloquear: boolean;
+  /** Admin: muda o perfil de acesso e bloqueia. */
+  podeGerir: boolean;
 }) {
-  const podeAgirSobre = (usuario: UsuarioNaLista) => podeBloquear && usuario.id !== usuarioAtualId;
-  const bloqueio = (usuario: UsuarioNaLista) => (
-    <BloqueioDoUsuario
-      usuario={{ id: usuario.id, nome: usuario.nome, bloqueado: usuario.bloqueadoEm !== null }}
-    />
+  const podeAgirSobre = (usuario: UsuarioNaLista) => podeGerir && usuario.id !== usuarioAtualId;
+  const acoes = (usuario: UsuarioNaLista) => (
+    <div className="flex flex-wrap items-start gap-2 md:flex-nowrap">
+      <AlterarPapel
+        usuario={{
+          id: usuario.id,
+          nome: usuario.nome,
+          papel: usuario.papelPlataforma ?? "cliente",
+        }}
+      />
+      <BloqueioDoUsuario
+        usuario={{ id: usuario.id, nome: usuario.nome, bloqueado: usuario.bloqueadoEm !== null }}
+      />
+    </div>
   );
 
   return (
@@ -69,7 +80,7 @@ export function ListaDeUsuarios({
               </p>
             )}
             <p className="mt-1 text-xs text-texto-suave">Desde {formatarData(usuario.createdAt)}</p>
-            {podeAgirSobre(usuario) && <div className="mt-3">{bloqueio(usuario)}</div>}
+            {podeAgirSobre(usuario) && <div className="mt-3">{acoes(usuario)}</div>}
           </li>
         ))}
       </ul>
@@ -95,7 +106,7 @@ export function ListaDeUsuarios({
               <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
                 Criado em
               </th>
-              {podeBloquear && (
+              {podeGerir && (
                 <th scope="col" className="px-4 py-3 font-medium">
                   <span className="sr-only">Ações</span>
                 </th>
@@ -124,11 +135,11 @@ export function ListaDeUsuarios({
                 <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
                   {formatarData(usuario.createdAt)}
                 </td>
-                {podeBloquear && (
-                  <td className="px-4 py-3">
+                {podeGerir && (
+                  <td className="w-px px-4 py-3 whitespace-nowrap">
                     <div className="flex justify-end">
                       {podeAgirSobre(usuario) ? (
-                        bloqueio(usuario)
+                        acoes(usuario)
                       ) : (
                         <span className="text-sm text-texto-suave">Você</span>
                       )}
