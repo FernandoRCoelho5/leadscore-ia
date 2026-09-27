@@ -54,12 +54,12 @@ componente de cliente, o build falha.
 ```
 src/
   app/
-    (publico)/        login, cadastro, redefinir-senha, politica-de-privacidade
+    (publico)/        login, cadastro, redefinir-senha, convite/[token] (D-030), politica-de-privacidade
     f/[slug]/         formulário público de captação (incorporável em iframe, D-028)
     onboarding/       cadastro da empresa e do perfil do negócio
     empresa-bloqueada/ aviso ao cliente de empresa bloqueada (D-029)
     (painel)/         layout: menu lateral por perfil + topo com avatar
-      painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
+      painel/  leads/  leads/[id]/  membros/  configuracoes/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
     api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028),
                       leads/exportar, admin/{empresas,usuarios,auditoria}/exportar (D-029)
@@ -71,7 +71,7 @@ src/
     armazenamento/    fotos no Vercel Blob privado (D-024)
     ia/               motor.ts (contrato), claude.ts, mock.ts, prompt.ts, schema.ts (D-027)
     http/             executarAcao, agendarAnalise (after())
-    seguranca/        limitador de taxa, hash do IP, carimbo do formulário (D-028)
+    seguranca/        limitador de taxa, hash do IP, carimbo do formulário (D-028), tokens de convite (D-030)
   lib/
     validacao/        schemas Zod compartilhados entre cliente e servidor
     email/  rate-limit/  armazenamento/
@@ -219,6 +219,8 @@ erDiagram
 | `leads` | `(empresa_id, created_at DESC) WHERE deleted_at IS NULL` | Listagem padrão e período |
 | `leads` | `(empresa_id, classificacao_atual, created_at DESC) WHERE deleted_at IS NULL` | Filtro por classificação |
 | `leads` | `(empresa_id, status, created_at DESC) WHERE deleted_at IS NULL` | Filtro por status do funil |
+| `leads` | `(empresa_id, score_atual DESC NULLS LAST, id DESC) WHERE deleted_at IS NULL` | Ordenar por "Maior nota" (D-030) |
+| `leads` | `(empresa_id, id DESC) WHERE deleted_at IS NULL` | Exportação CSV por cursor (D-030) |
 | `leads` | Três índices GIN com `pg_trgm` (nome, e-mail e empresa); o Postgres combina os três na busca | Busca `ILIKE '%termo%'` |
 | `analises` | `(lead_id, created_at DESC)` | Histórico do lead |
 | `auditoria` | `(empresa_id, created_at DESC)` | Consulta de auditoria |
@@ -243,16 +245,19 @@ perfil não pode usar.
 | Empresa · editar dados e perfil do negócio | ✅ | ❌ | ✅ própria |
 | Empresa · bloquear, alterar limite mensal | ✅ | ❌ | ❌ |
 | Empresas e usuários · listar todos + CSV | ✅ | ✅ | ❌ |
+| Membros · ver | ✅ | ✅ | ✅ própria |
 | Membros · convidar (link) e remover (lógico) | ✅ | ❌ | ✅ própria |
-| Usuários da plataforma · criar, alterar papel, bloquear | ✅ | ❌ | ❌ |
+| Usuários da plataforma · alterar perfil de acesso, bloquear | ✅ | ❌ | ❌ |
 | Auditoria · consultar + CSV | ✅ | ✅ leitura | ❌ (futuro: da própria empresa) |
 | Próprio perfil (nome, foto, senha) | ✅ | ✅ | ✅ |
 | Foto e nome de outro usuário · ver | ✅ | ✅ | colegas de uma empresa em comum |
 
 Regras complementares:
 
-- O cadastro público cria apenas usuários `cliente`. Contas `admin` e
-  `suporte` nunca são criadas pelo cadastro; o primeiro `admin` vem do seed.
+- O cadastro público cria apenas usuários `cliente`. Uma conta da equipe
+  nasce no cadastro e é promovida por um `admin` (D-030); o primeiro `admin`
+  vem do seed. Ninguém muda o próprio perfil, e a plataforma nunca fica sem
+  `admin` ativo.
 - O `suporte` não altera nenhum dado de cliente.
 - A equipe só vê os leads de um cliente depois de abrir a empresa pela lista
   de Empresas: o acesso é auditado e vale por 8 horas ou até sair da conta

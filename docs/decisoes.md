@@ -292,8 +292,9 @@ pode diferir do Neon em extensões; os testes E2E cobrem essa diferença.
   [arquitetura.md](arquitetura.md#índices-planejados)).
 - Paginação no servidor com no máximo 100 itens por página (offset). Se uma
   empresa passar de cerca de 100 mil leads, a paginação migra para cursor.
-- Exportação CSV em streaming, em lotes de 1.000 registros por cursor, com teto
-  de linhas; nada é carregado inteiro na memória.
+- Exportação CSV em streaming, em lotes de 500 registros por cursor; nada é
+  carregado inteiro na memória. (Revisto na D-029: sem teto de linhas, porque a
+  memória fica constante; o teto previsto aqui não foi necessário.)
 - Indicadores calculados no SQL (`GROUP BY`), nunca em memória; cache por
   empresa só se as medições mostrarem necessidade.
 - Aplicação e banco na mesma região (São Paulo), com pooling de conexões.
@@ -900,6 +901,101 @@ em nome de quem a fez.
 ao sair da conta (volta para a primeira). Bloquear uma empresa não derruba na
 hora uma análise que já estava em andamento. A auditoria da própria empresa,
 para o cliente, continua como evolução prevista na matriz.
+
+---
+
+## D-030 · Membros, convites, perfis de acesso e qualidade (Etapa 8)
+
+**Contexto.** A matriz RBAC aprovada na Etapa 1 previa duas funções sem tela:
+o cliente convidar e remover pessoas da empresa, e o admin criar contas da
+equipe e alterar o papel delas. A Etapa 8 também fecha a qualidade: testes de
+escala e de acessibilidade, páginas de erro, seed e README.
+
+**Decisão.**
+
+- **Convite por link.** O token tem 32 bytes aleatórios (256 bits) em
+  base64url. O banco guarda só o SHA-256, e o link aparece uma única vez, na
+  tela de quem convidou, com o botão de copiar. O envio por e-mail é um extra:
+  se falhar, o convite continua valendo.
+  - O convite vale 7 dias e só para o e-mail convidado (comparado com o da
+    conta).
+  - Só clientes aceitam: a equipe já vê todas as empresas.
+  - Aceitar trava o convite (`FOR UPDATE`), cria o vínculo e marca o convite
+    como usado na mesma transação. Dois cliques não criam dois vínculos.
+  - Limites: 20 convites pendentes por empresa e 30 convites por hora por
+    pessoa (contados na auditoria, como a troca de foto da D-024).
+  - A página do convite não vai para buscadores, sai com `no-referrer` e
+    mostra o e-mail mascarado.
+  - Quem ainda não tem conta cria e volta ao convite: o cadastro passou a
+    aceitar `proximo`, com a mesma proteção contra open redirect do login.
+- **Remover membro** é exclusão lógica do vínculo e vale na hora (a sessão
+  relê os vínculos). Ninguém remove a si mesmo. Os vínculos da empresa ficam
+  travados na transação, então duas remoções simultâneas não deixam a empresa
+  sem ninguém.
+- **Perfil de acesso.** A pessoa se cadastra, e o admin a promove (cliente,
+  suporte ou admin). A tela diz o que cada perfil pode fazer. Ninguém muda o
+  próprio perfil. As contas de admin ativas ficam travadas na transação: nem
+  duas alterações nem dois bloqueios ao mesmo tempo deixam a plataforma sem
+  admin ativo. A mesma trava passou a valer para o bloqueio de admins.
+- **Tela Membros:** pessoas com paginação e convites pendentes; o suporte só
+  vê. Não há busca nem exportação: uma empresa tem poucas pessoas, e a lista
+  Usuários da administração já busca e exporta todas.
+- **Escala medida, não suposta.** O teste `tests/integracao/escala.test.ts`
+  roda as funções reais do repositório com 20 mil leads e confere o plano
+  (`EXPLAIN`) do Postgres. Ele mostrou duas lacunas, fechadas com a migration
+  `0003_indices_de_escala` (só `CREATE INDEX`):
+  - ordenar por "Maior nota" lia e ordenava todos os leads da empresa; agora
+    sai de `(empresa_id, score_atual DESC NULLS LAST, id DESC)`;
+  - a exportação por cursor percorria a chave primária de todas as empresas;
+    agora usa `(empresa_id, id DESC)`.
+  O detalhe `id DESC NULLS FIRST` no índice é o que casa com o `ORDER BY id
+  DESC` do Postgres. Sem ele, o plano ignorava o índice.
+- **Busca:** o planejador começa pelo índice da empresa e procura o trecho só
+  nos leads dela, então o custo acompanha o tamanho da empresa. Os índices de
+  trigramas valem para a tabela toda.
+- **Acessibilidade verificada em todas as telas** (E2E, no computador e no
+  celular). O verificador fica em `tests/e2e/apoio.ts`, sem dependência nova,
+  e confere:
+  - ids repetidos;
+  - campos sem rótulo;
+  - botões e links sem nome;
+  - imagens sem `alt`;
+  - um único `h1` e sem pular nível de título;
+  - um único `main`;
+  - o idioma da página.
+
+  Um teste confirma que ele acusa uma página malfeita. O teclado também é
+  testado: "Pular para o conteúdo" é o primeiro item do Tab.
+- **Erros e 404 com a marca:** `error.tsx` (usando `retry`, a API desta
+  versão do Next.js) mostra o código do erro (digest), que é o mesmo do log,
+  sem a mensagem técnica. No painel, o "não encontrado" mantém o menu.
+- **Sem `loading.tsx` no painel.** Com ele, a resposta começa antes de a
+  página rodar, e o `notFound()` das páginas protegidas passaria a responder
+  200 em vez de 404. As consultas das telas são rápidas (medidas acima).
+- **Seed:** segunda empresa (Horizonte Contábil), para demonstrar o isolamento,
+  e segunda pessoa na Norte Digital, para a tela Membros. Continua só
+  inserindo, idempotente.
+
+**Alternativas.**
+
+- **Convite só por e-mail:** sem domínio próprio, o Resend ainda não entrega
+  para qualquer endereço. O link na tela funciona já (inclusive por WhatsApp).
+- **Admin criar a conta com senha provisória:** a senha passaria por outra
+  pessoa. O cadastro seguido de promoção não expõe senha.
+- **axe-core:** a verificação mais completa do mercado, mas é dependência
+  nova. Fica como sugestão; o verificador próprio cobre os erros mais comuns.
+- **Índice GIN composto (empresa + trigramas), com `btree_gin`:** busca ainda
+  mais rápida em empresas enormes, mas exige outra extensão; fica para quando
+  uma empresa passar de centenas de milhares de leads (D-014).
+
+**Consequências.**
+
+- A migration 0003 precisa chegar às branches `preview` e `production` do
+  Neon (checklist da Etapa 9); sem ela, tudo funciona, só mais devagar.
+- A tabela `leads` tem agora 8 índices; cada inserção custa um pouco mais, o
+  que é irrelevante no volume de um formulário.
+- Os e-mails `.example` dos testes E2E e as contas de equipe criadas por eles
+  (bloqueadas ao fim de cada teste) ficam no banco de desenvolvimento.
 
 ---
 
