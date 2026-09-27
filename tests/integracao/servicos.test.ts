@@ -6,7 +6,7 @@ import type { BancoDeDados } from "@/db/tipos";
 import { ErroConflito, ErroNaoEncontrado, ErroProibido, ErroValidacao } from "@/lib/erros";
 import type { DadosDoOnboarding } from "@/lib/validacao/empresa";
 import type { Papel } from "@/server/auth/permissoes";
-import { listarEmpresasDoUsuario } from "@/server/repositories/usuarios";
+import { listarEmpresasDoUsuario, temEmpresaBloqueada } from "@/server/repositories/usuarios";
 import type { ContextoDoUsuario } from "@/server/services/contexto";
 import { atualizarPerfilDoNegocio, criarEmpresaNoOnboarding } from "@/server/services/empresas";
 import { atualizarMeuNome } from "@/server/services/perfil";
@@ -104,6 +104,22 @@ describe("onboarding", () => {
     await expect(
       criarEmpresaNoOnboarding(db, contexto, dadosDeOnboarding("segunda")),
     ).rejects.toThrow(ErroConflito);
+  });
+
+  it("cliente de empresa bloqueada não cria outra para escapar do bloqueio", async () => {
+    const { contexto, empresa } = await clienteComEmpresa();
+    await db.update(empresas).set({ status: "bloqueada" }).where(eq(empresas.id, empresa.id));
+    // Bloqueada, a empresa sai dos vínculos ativos: a sessão vê o cliente "sem empresa".
+    const semEmpresa = { ...contexto, ator: { papel: "cliente" as const, empresaIds: [] } };
+
+    expect(await listarEmpresasDoUsuario(db, contexto.usuarioId)).toEqual([]);
+    expect(await temEmpresaBloqueada(db, contexto.usuarioId)).toBe(true);
+    await expect(
+      criarEmpresaNoOnboarding(db, semEmpresa, dadosDeOnboarding(`fuga-${sequencia}`)),
+    ).rejects.toThrow(ErroConflito);
+
+    await db.update(empresas).set({ status: "ativa" }).where(eq(empresas.id, empresa.id));
+    expect(await temEmpresaBloqueada(db, contexto.usuarioId)).toBe(false);
   });
 
   it("contas da equipe Brasa não criam empresas pelo onboarding", async () => {

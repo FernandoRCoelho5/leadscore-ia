@@ -5,11 +5,13 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { db } from "@/db";
+import { ErroNaoAutenticado } from "@/lib/erros";
 import { enderecoDaFoto } from "@/server/armazenamento/fotos";
 import { obterEmpresa } from "@/server/repositories/empresas";
 import {
   listarEmpresasDoUsuario,
   obterUsuarioAtivo,
+  temEmpresaBloqueada,
   type VinculoDeEmpresa,
 } from "@/server/repositories/usuarios";
 
@@ -40,6 +42,8 @@ export type Sessao = {
   empresaAtiva: VinculoDeEmpresa | null;
   /** A empresa ativa foi aberta pela equipe Brasa (não é um vínculo de membro). */
   acessoDaEquipe: boolean;
+  /** Cliente sem empresa ativa porque a dele foi bloqueada pela equipe Brasa. */
+  empresaBloqueada: boolean;
   ator: Ator;
 };
 
@@ -73,6 +77,10 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
     }
   }
 
+  // Só o cliente sem nenhuma empresa ativa paga esta consulta a mais.
+  const empresaBloqueada =
+    papel === "cliente" && vinculos.length === 0 && (await temEmpresaBloqueada(db, usuario.id));
+
   return {
     usuario: {
       id: usuario.id,
@@ -84,9 +92,19 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
     vinculos,
     empresaAtiva,
     acessoDaEquipe,
+    empresaBloqueada,
     ator: { papel, empresaIds: vinculos.map((v) => v.empresaId) },
   };
 });
+
+/** Nas rotas de API: sem sessão, 401 no formato padronizado (API não redireciona). */
+export async function exigirSessaoNaApi(): Promise<Sessao> {
+  const sessao = await obterSessao();
+  if (!sessao) {
+    throw new ErroNaoAutenticado();
+  }
+  return sessao;
+}
 
 /** Exige login; sem sessão, manda para a tela de login. */
 export async function exigirSessao(): Promise<Sessao> {
@@ -99,12 +117,13 @@ export async function exigirSessao(): Promise<Sessao> {
 
 /**
  * Exige login e, para clientes, uma empresa: quem acabou de se cadastrar
- * ainda não tem empresa e vai para o onboarding.
+ * ainda não tem empresa e vai para o onboarding; quem teve a empresa
+ * bloqueada vai para o aviso do bloqueio.
  */
 export async function exigirSessaoComEmpresa(): Promise<Sessao> {
   const sessao = await exigirSessao();
   if (sessao.papel === "cliente" && !sessao.empresaAtiva) {
-    redirect("/onboarding");
+    redirect(sessao.empresaBloqueada ? "/empresa-bloqueada" : "/onboarding");
   }
   return sessao;
 }

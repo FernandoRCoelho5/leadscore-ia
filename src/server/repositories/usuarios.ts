@@ -94,6 +94,28 @@ export async function listarEmpresasDoUsuario(
     .orderBy(asc(membrosEmpresa.createdAt));
 }
 
+/**
+ * O usuário é membro de alguma empresa bloqueada? A lista acima só traz as
+ * ativas; sem esta conferência, o cliente de uma empresa bloqueada cairia no
+ * onboarding e poderia criar outra empresa para escapar do bloqueio.
+ */
+export async function temEmpresaBloqueada(db: BancoDeDados, usuarioId: string): Promise<boolean> {
+  const [vinculo] = await db
+    .select({ empresaId: empresas.id })
+    .from(membrosEmpresa)
+    .innerJoin(empresas, eq(empresas.id, membrosEmpresa.empresaId))
+    .where(
+      and(
+        eq(membrosEmpresa.usuarioId, usuarioId),
+        isNull(membrosEmpresa.deletedAt),
+        isNull(empresas.deletedAt),
+        eq(empresas.status, "bloqueada"),
+      ),
+    )
+    .limit(1);
+  return vinculo !== undefined;
+}
+
 export async function criarVinculo(
   db: BancoDeDados,
   usuarioId: string,
