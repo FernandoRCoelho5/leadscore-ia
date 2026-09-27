@@ -195,6 +195,16 @@ export async function problemasDeAcessibilidade(page: Page): Promise<string[]> {
         `rolagem lateral: página com ${raiz.scrollWidth}px em ${raiz.clientWidth}px (${culpados.join("; ")})`,
       );
     }
+    // Tabela mais larga que o espaço dela: a moldura (overflow hidden) corta
+    // colunas sem aviso, e o que some da tela some para todo mundo.
+    for (const tabela of document.querySelectorAll("table")) {
+      const espaco = tabela.parentElement?.clientWidth ?? raiz.clientWidth;
+      if (visivel(tabela) && tabela.getBoundingClientRect().width > espaco + 1) {
+        problemas.push(
+          `tabela mais larga que o espaço: ${Math.round(tabela.getBoundingClientRect().width)}px em ${espaco}px (${descrever(tabela)})`,
+        );
+      }
+    }
     for (const dialogo of document.querySelectorAll("dialog[open]")) {
       if (dialogo.scrollWidth > dialogo.clientWidth + 1) {
         problemas.push(`conteúdo mais largo que o diálogo: ${descrever(dialogo)}`);

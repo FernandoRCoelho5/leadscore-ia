@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import {
+  unico,
   cadastrar,
   clienteComEmpresa,
   consultar,
@@ -15,10 +16,34 @@ import {
  * E2E_COM_BANCO=1.
  */
 
+/**
+ * Texto do tamanho máximo que o banco aceita, com um sufixo único: as listas
+ * precisam truncar sem criar rolagem lateral, seja qual for o conteúdo.
+ */
+function longo(prefixo: string, tamanho: number) {
+  const sufixo = unico("").slice(-12);
+  return (
+    `${prefixo} ${"Extraordinariamente".repeat(10)}`.slice(0, tamanho - sufixo.length) + sufixo
+  );
+}
+
 async function conferir(page: Page, caminho: string) {
   await page.goto(caminho);
-  expect(await problemasDeAcessibilidade(page), `problemas em ${caminho}`).toEqual([]);
+  const { width } = page.viewportSize() ?? { width: 0 };
+  expect(await problemasDeAcessibilidade(page), `problemas em ${caminho} (${width}px)`).toEqual([]);
 }
+
+/**
+ * Larguras nos limites dos pontos de quebra (o padrão do Playwright, 1280 px,
+ * é o xl): lg (1024, já com o menu lateral e o espaço mais apertado), md (768,
+ * tabela sem menu) e celular. Com textos no tamanho máximo, é onde as tabelas
+ * e os cartões passam da tela.
+ */
+const LARGURAS_MENORES = [
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+  { width: 390, height: 844 },
+];
 
 test("o verificador acusa os problemas de uma página malfeita", async ({ page }) => {
   await page.setContent(`
@@ -89,6 +114,17 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
      VALUES (gen_random_uuid(), $1, 'Lead Acessível', $2, true, 'concluida', 80, 'quente')`,
     [empresaId, emailUnico("lead-a11y")],
   );
+  // Um lead com tudo no tamanho máximo, ainda sem análise (o selo mais largo).
+  await consultar(
+    `INSERT INTO leads (id, empresa_id, nome, email, empresa_nome, consentimento_lgpd)
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, true)`,
+    [
+      empresaId,
+      longo("Lead", 120),
+      `${longo("contato", 60).toLowerCase()}@teste.brasa.example`,
+      longo("Empresa do lead", 160),
+    ],
+  );
 
   for (const caminho of ["/painel", "/leads", "/membros", "/configuracoes", "/perfil"]) {
     await conferir(page, caminho);
@@ -101,9 +137,11 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
   await page.waitForURL(/\/leads\/[0-9a-f-]+$/);
   expect(await problemasDeAcessibilidade(page), "problemas no detalhe do lead").toEqual([]);
 
-  await page.setViewportSize({ width: 390, height: 844 });
-  for (const caminho of ["/painel", "/leads", "/membros"]) {
-    await conferir(page, caminho);
+  for (const tamanho of LARGURAS_MENORES) {
+    await page.setViewportSize(tamanho);
+    for (const caminho of ["/painel", "/leads", "/membros"]) {
+      await conferir(page, caminho);
+    }
   }
 });
 
@@ -115,11 +153,35 @@ test("telas da administração não têm problemas de acessibilidade", async ({ 
   const email = emailUnico("admin-a11y");
   await cadastrar(page, "Ana Acessível", email);
   await consultar("UPDATE usuarios SET papel_plataforma = 'admin' WHERE email = $1", [email]);
+  // Nomes no tamanho máximo, para conferir o truncamento nas tabelas.
+  await consultar("INSERT INTO empresas (id, nome, slug) VALUES (gen_random_uuid(), $1, $2)", [
+    longo("Empresa", 120),
+    longo("slug", 60)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-"),
+  ]);
+  await consultar("INSERT INTO usuarios (id, nome, email) VALUES (gen_random_uuid(), $1, $2)", [
+    longo("Pessoa", 120),
+    `${longo("pessoa", 60).toLowerCase()}@teste.brasa.example`,
+  ]);
+
+  const listas = [
+    `/admin/empresas?busca=${encodeURIComponent("Empresa Extraordinariamente")}`,
+    `/admin/usuarios?busca=${encodeURIComponent("Pessoa Extraordinariamente")}`,
+    "/admin/auditoria",
+  ];
 
   try {
-    for (const caminho of ["/painel", "/admin/empresas", "/admin/usuarios", "/admin/auditoria"]) {
+    for (const caminho of ["/painel", ...listas]) {
       await conferir(page, caminho);
     }
+    for (const tamanho of LARGURAS_MENORES) {
+      await page.setViewportSize(tamanho);
+      for (const caminho of listas) {
+        await conferir(page, caminho);
+      }
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
     // Com um diálogo aberto, o conteúdo dele também é conferido.
     await page.goto("/admin/empresas");
     await page
