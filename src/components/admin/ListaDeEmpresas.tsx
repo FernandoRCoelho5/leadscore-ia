@@ -10,9 +10,11 @@ import type { EmpresaNaLista } from "@/server/repositories/empresas";
 import { GerenciarEmpresa } from "./GerenciarEmpresa";
 
 /**
- * Empresas clientes da página atual: tabela no computador e cartões no
- * celular (sem rolagem lateral). "Abrir" leva a equipe para dentro da empresa
- * (acesso auditado); "Gerenciar" (limite e bloqueio) é só do admin.
+ * Empresas clientes da página atual: tabela nas telas largas e cartões no
+ * celular e no tablet (sem rolagem lateral; as seis colunas precisam de uns
+ * 960 px, e com o menu lateral só as telas xl têm isso). "Abrir" leva a equipe
+ * para dentro da empresa (acesso auditado); "Gerenciar" (limite e bloqueio) é
+ * só do admin.
  */
 
 function Situacao({ empresa }: { empresa: EmpresaNaLista }) {
@@ -58,12 +60,13 @@ function Acoes({
     <div className={`flex items-center gap-2 ${emLinha ? "flex-nowrap justify-end" : "flex-wrap"}`}>
       {aberta ? (
         <span className="inline-flex h-controle items-center px-3 text-sm font-medium text-texto-suave">
-          Aberta agora
+          Aberta
+          <span className="sr-only"> agora</span>
         </span>
       ) : (
         <form action={abrirEmpresaAcao}>
           <input type="hidden" name="empresaId" value={empresa.id} />
-          <button type="submit" className={classesDeBotao("contorno")}>
+          <button type="submit" className={classesDeBotao("contorno", true)}>
             <LogIn aria-hidden="true" className="size-4" />
             Abrir
             <span className="sr-only"> {empresa.nome}</span>
@@ -97,8 +100,8 @@ export function ListaDeEmpresas({
 }) {
   return (
     <>
-      {/* Celular: cartões. */}
-      <ul className="flex flex-col gap-2 md:hidden">
+      {/* Celular e tablet: cartões (duas colunas no tablet). */}
+      <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:hidden">
         {empresas.map((empresa) => (
           <li key={empresa.id} className="rounded-lg border border-borda bg-superficie p-4">
             <div className="flex items-start justify-between gap-3">
@@ -133,28 +136,34 @@ export function ListaDeEmpresas({
         ))}
       </ul>
 
-      {/* Computador: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie md:block">
-        <table className="w-full text-left text-sm">
+      {/* Telas largas: tabela. */}
+      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
+        {/* table-fixed: as colunas de tamanho previsível têm largura definida e o
+            nome fica com o resto, truncado (em layout automático, max-width na
+            célula não segura texto sem quebra e a tabela passa da tela). */}
+        <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">Empresas clientes</caption>
           <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Empresa
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-32 px-4 py-3 font-medium">
                 Situação
               </th>
-              <th scope="col" className="px-4 py-3 text-right font-medium whitespace-nowrap">
+              <th scope="col" className="w-32 px-4 py-3 text-right font-medium whitespace-nowrap">
                 Leads no mês
               </th>
-              <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
+              <th scope="col" className="w-36 px-4 py-3 font-medium whitespace-nowrap">
                 Análises no mês
               </th>
-              <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
+              <th scope="col" className="w-28 px-4 py-3 font-medium whitespace-nowrap">
                 Criada em
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th
+                scope="col"
+                className={`${podeAdministrar ? "w-64" : "w-32"} px-4 py-3 font-medium`}
+              >
                 <span className="sr-only">Ações</span>
               </th>
             </tr>
@@ -162,7 +171,7 @@ export function ListaDeEmpresas({
           <tbody className="divide-y divide-borda">
             {empresas.map((empresa) => (
               <tr key={empresa.id}>
-                <td className="max-w-72 px-4 py-3">
+                <td className="px-4 py-3">
                   <span className="block truncate font-semibold">{empresa.nome}</span>
                   <span className="block truncate text-texto-suave">/f/{empresa.slug}</span>
                 </td>
@@ -178,7 +187,7 @@ export function ListaDeEmpresas({
                 <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
                   {formatarData(empresa.createdAt)}
                 </td>
-                <td className="w-px px-4 py-3 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap">
                   <Acoes
                     empresa={empresa}
                     aberta={empresa.id === empresaAbertaId}

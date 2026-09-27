@@ -75,6 +75,7 @@ export function GerenciarEmpresa({
   return (
     <Dialogo
       rotuloDoGatilho="Gerenciar"
+      gatilhoCompacto
       complementoDoGatilho={empresa.nome}
       iconeDoGatilho={<Settings2 aria-hidden="true" className="size-4" />}
       titulo="Gerenciar empresa"

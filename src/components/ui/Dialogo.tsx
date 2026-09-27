@@ -14,6 +14,7 @@ export function Dialogo({
   rotuloDoGatilho,
   complementoDoGatilho,
   iconeDoGatilho,
+  gatilhoCompacto = false,
   titulo,
   descricao,
   aoFechar,
@@ -23,6 +24,8 @@ export function Dialogo({
   /** Texto só para leitores de tela, quando há um gatilho por linha ("Gerenciar" + "Agência X"). */
   complementoDoGatilho?: string;
   iconeDoGatilho?: ReactNode;
+  /** Botão com menos espaço nas laterais (nas linhas das tabelas). */
+  gatilhoCompacto?: boolean;
   titulo: string;
   descricao?: ReactNode;
   /** Chamado ao fechar (ex.: limpar avisos para a próxima abertura). */
@@ -37,7 +40,7 @@ export function Dialogo({
       <button
         type="button"
         onClick={() => refDialogo.current?.showModal()}
-        className={classesDeBotao("contorno")}
+        className={classesDeBotao("contorno", gatilhoCompacto)}
       >
         {iconeDoGatilho}
         {rotuloDoGatilho}

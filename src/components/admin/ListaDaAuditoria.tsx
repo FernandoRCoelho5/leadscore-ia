@@ -4,7 +4,8 @@ import type { EventoNaLista } from "@/server/repositories/auditoria";
 
 /**
  * Eventos da auditoria da página atual, do mais recente para o mais antigo:
- * tabela no computador e cartões no celular. O código técnico da ação fica
+ * tabela nas telas largas e cartões no celular e no tablet (ver
+ * ListaDeEmpresas). O código técnico da ação fica
  * ao lado do texto, para quem cruza com os logs.
  */
 
@@ -32,8 +33,8 @@ function Acao({ evento }: { evento: EventoNaLista }) {
 export function ListaDaAuditoria({ eventos }: { eventos: EventoNaLista[] }) {
   return (
     <>
-      {/* Celular: cartões. */}
-      <ul className="flex flex-col gap-2 md:hidden">
+      {/* Celular e tablet: cartões. */}
+      <ul className="flex flex-col gap-2 xl:hidden">
         {eventos.map((evento) => {
           const detalhes = resumirDetalhes(evento.detalhes);
           return (
@@ -51,7 +52,7 @@ export function ListaDaAuditoria({ eventos }: { eventos: EventoNaLista[] }) {
                 <Quem evento={evento} />
               </div>
               {evento.empresaNome && (
-                <p className="mt-2">
+                <p className="mt-2 break-words">
                   <span className="text-texto-suave">Empresa: </span>
                   {evento.empresaNome}
                 </p>
@@ -62,25 +63,26 @@ export function ListaDaAuditoria({ eventos }: { eventos: EventoNaLista[] }) {
         })}
       </ul>
 
-      {/* Computador: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie md:block">
-        <table className="w-full text-left text-sm">
+      {/* Telas largas: tabela. */}
+      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
+        {/* table-fixed: ver ListaDeEmpresas. */}
+        <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">Eventos da auditoria</caption>
           <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
             <tr>
-              <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
+              <th scope="col" className="w-40 px-4 py-3 font-medium whitespace-nowrap">
                 Quando
               </th>
               <th scope="col" className="px-4 py-3 font-medium">
                 Ação
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-56 px-4 py-3 font-medium">
                 Quem
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-44 px-4 py-3 font-medium">
                 Empresa
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-48 px-4 py-3 font-medium">
                 Detalhes
               </th>
             </tr>
@@ -94,17 +96,17 @@ export function ListaDaAuditoria({ eventos }: { eventos: EventoNaLista[] }) {
                 <td className="px-4 py-3">
                   <Acao evento={evento} />
                 </td>
-                <td className="max-w-56 px-4 py-3">
+                <td className="px-4 py-3">
                   <Quem evento={evento} />
                 </td>
-                <td className="max-w-48 px-4 py-3">
+                <td className="px-4 py-3">
                   {evento.empresaNome ? (
                     <span className="block truncate">{evento.empresaNome}</span>
                   ) : (
                     <span className="text-texto-suave">Plataforma</span>
                   )}
                 </td>
-                <td className="max-w-64 px-4 py-3 break-words text-texto-suave">
+                <td className="px-4 py-3 break-words text-texto-suave">
                   {resumirDetalhes(evento.detalhes) || "—"}
                 </td>
               </tr>

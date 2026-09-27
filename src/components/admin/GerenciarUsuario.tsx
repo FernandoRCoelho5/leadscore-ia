@@ -69,6 +69,7 @@ export function GerenciarUsuario({
   return (
     <Dialogo
       rotuloDoGatilho="Gerenciar"
+      gatilhoCompacto
       complementoDoGatilho={usuario.nome}
       iconeDoGatilho={<Settings2 aria-hidden="true" className="size-4" />}
       titulo="Gerenciar usuário"

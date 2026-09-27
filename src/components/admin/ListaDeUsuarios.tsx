@@ -7,7 +7,8 @@ import type { UsuarioNaLista } from "@/server/repositories/usuarios";
 import { GerenciarUsuario } from "./GerenciarUsuario";
 
 /**
- * Usuários da página atual: tabela no computador e cartões no celular. A
+ * Usuários da página atual: tabela nas telas largas e cartões no celular e
+ * no tablet (ver ListaDeEmpresas). A
  * lista não traz fotos (só as iniciais): a rota da foto é conferida por
  * pessoa, e uma página com 100 fotos seriam 100 pedidos a mais.
  */
@@ -59,8 +60,8 @@ export function ListaDeUsuarios({
 
   return (
     <>
-      {/* Celular: cartões. */}
-      <ul className="flex flex-col gap-2 md:hidden">
+      {/* Celular e tablet: cartões (duas colunas no tablet). */}
+      <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:hidden">
         {usuarios.map((usuario) => (
           <li key={usuario.id} className="rounded-lg border border-borda bg-superficie p-4">
             <Pessoa usuario={usuario} />
@@ -69,7 +70,7 @@ export function ListaDeUsuarios({
               <Situacao usuario={usuario} />
             </div>
             {usuario.empresas && (
-              <p className="mt-2 text-sm">
+              <p className="mt-2 text-sm break-words">
                 <span className="text-texto-suave">Empresas: </span>
                 {usuario.empresas}
               </p>
@@ -80,29 +81,30 @@ export function ListaDeUsuarios({
         ))}
       </ul>
 
-      {/* Computador: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie md:block">
-        <table className="w-full text-left text-sm">
+      {/* Telas largas: tabela. */}
+      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
+        {/* table-fixed: ver ListaDeEmpresas. */}
+        <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">Usuários da plataforma</caption>
           <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Usuário
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-32 px-4 py-3 font-medium">
                 Perfil
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-48 px-4 py-3 font-medium">
                 Empresas
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-32 px-4 py-3 font-medium">
                 Situação
               </th>
-              <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
+              <th scope="col" className="w-28 px-4 py-3 font-medium whitespace-nowrap">
                 Criado em
               </th>
               {podeGerir && (
-                <th scope="col" className="px-4 py-3 font-medium">
+                <th scope="col" className="w-40 px-4 py-3 font-medium">
                   <span className="sr-only">Ações</span>
                 </th>
               )}
@@ -111,13 +113,13 @@ export function ListaDeUsuarios({
           <tbody className="divide-y divide-borda">
             {usuarios.map((usuario) => (
               <tr key={usuario.id}>
-                <td className="max-w-72 px-4 py-3">
+                <td className="px-4 py-3">
                   <Pessoa usuario={usuario} />
                 </td>
                 <td className="px-4 py-3">
                   <SeloDoPapel papel={usuario.papelPlataforma ?? "cliente"} />
                 </td>
-                <td className="max-w-56 px-4 py-3">
+                <td className="px-4 py-3">
                   {usuario.empresas ? (
                     <span className="line-clamp-2">{usuario.empresas}</span>
                   ) : (
@@ -131,7 +133,7 @@ export function ListaDeUsuarios({
                   {formatarData(usuario.createdAt)}
                 </td>
                 {podeGerir && (
-                  <td className="w-px px-4 py-3 whitespace-nowrap">
+                  <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex justify-end">
                       {podeAgirSobre(usuario) ? (
                         acoes(usuario)
