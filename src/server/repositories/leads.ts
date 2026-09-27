@@ -16,6 +16,7 @@ import {
   deslocamento,
   esquemaPaginacao,
   montarPagina,
+  TAMANHO_DO_LOTE_DE_EXPORTACAO,
   type Pagina,
   type Paginacao,
 } from "@/lib/paginacao";
@@ -245,9 +246,6 @@ export async function reservarLeadParaAnalise(
     .returning();
   return lead;
 }
-
-/** Tamanho de cada lote lido do banco na exportação (memória constante). */
-export const TAMANHO_DO_LOTE_DE_EXPORTACAO = 500;
 
 /**
  * Leads para exportar em CSV, em lotes, do mais novo para o mais antigo.

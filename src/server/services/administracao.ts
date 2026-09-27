@@ -8,6 +8,7 @@ import { TAMANHO_MAXIMO_PAGINA, type Pagina, type Paginacao } from "@/lib/pagina
 import { autorizar } from "@/server/auth/permissoes";
 import {
   listarAuditoria,
+  lotesDaAuditoriaParaExportar,
   registrarAuditoria,
   type EventoNaLista,
   type FiltrosDaAuditoria,
@@ -205,9 +206,26 @@ export async function registrarExportacaoDaAdministracao(
 }
 
 /**
- * Percorre todas as páginas de uma lista (para o CSV). As listas da
- * administração são pequenas (centenas de linhas); a de leads, que pode ser
- * grande, usa cursor (ver `lotesDeLeadsParaExportar`).
+ * Exporta a auditoria com os filtros da tela. A própria exportação vira um
+ * evento, antes de o arquivo começar a ser gerado.
+ */
+export async function exportarAuditoria(
+  db: BancoDeDados,
+  contexto: ContextoDoUsuario,
+  filtros: FiltrosDaAuditoria,
+): Promise<AsyncGenerator<EventoNaLista[]>> {
+  await registrarExportacaoDaAdministracao(db, contexto, "auditoria", {
+    acao: filtros.acao ?? null,
+    de: filtros.desde?.toISOString() ?? null,
+    ate: filtros.ate?.toISOString() ?? null,
+  });
+  return lotesDaAuditoriaParaExportar(db, filtros);
+}
+
+/**
+ * Percorre todas as páginas de uma lista (para o CSV). As listas de empresas
+ * e de usuários são pequenas (centenas de linhas); as que crescem sem limite,
+ * leads e auditoria, usam cursor (ver `lotesDeLeadsParaExportar`).
  */
 export async function* todasAsPaginas<Item>(
   buscarPagina: (paginacao: Paginacao) => Promise<Pagina<Item>>,
