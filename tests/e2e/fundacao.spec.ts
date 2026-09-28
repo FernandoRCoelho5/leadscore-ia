@@ -21,7 +21,7 @@ test.describe("página inicial", () => {
 
     expect(resposta?.status()).toBe(200);
     await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
-    await expect(page).toHaveTitle("LeadScore IA");
+    await expect(page).toHaveTitle("Brasa");
     expect(violacoes).toEqual([]);
   });
 

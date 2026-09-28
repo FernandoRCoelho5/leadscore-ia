@@ -14,7 +14,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["tests/unit/**/*.test.ts", "tests/integracao/**/*.test.ts"],
+    include: ["tests/unit/**/*.test.{ts,tsx}", "tests/integracao/**/*.test.ts"],
     // Os testes de integração sobem um Postgres em memória (PGlite) por arquivo.
     hookTimeout: 30_000,
     // Valores fictícios para que src/env.ts possa ser importado nos testes.

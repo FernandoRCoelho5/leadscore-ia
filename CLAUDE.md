@@ -1,6 +1,9 @@
 @AGENTS.md
 
-# LeadScore IA
+# Brasa
+
+Produto antes chamado LeadScore IA; o repositório e os nomes técnicos
+continuam `leadscore-ia`.
 
 ## Contexto
 App Next.js (App Router, TypeScript) que capta leads, analisa com Claude API
@@ -27,6 +30,7 @@ e salva no Neon Postgres via Drizzle ORM.
 - quando criar formulários de crud pensar em filtro, paginação e exportação de dados.
 - No layout colocar Menu sempre lateral esquerdo 
 - Utilizar menu topo com avatar e o submenu para alterar o perfil (nome, foto e senha) e sair da aplicação
+- Identidade visual Brasa (`docs/identidade-visual.md`): usar os tokens semânticos (ex.: `bg-superficie`, `text-texto-suave`), nunca hex; componentes `Logo` e `BadgeClassificacao`; ícones da `lucide-react`.
 
 ## Comandos
 - dev: `npm run dev`
