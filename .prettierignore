@@ -1,0 +1,17 @@
+# gerados ou de terceiros
+node_modules
+.next
+out
+build
+coverage
+playwright-report
+test-results
+blob-report
+next-env.d.ts
+package-lock.json
+
+# migrations geradas pelo drizzle-kit (não reformatar SQL revisado)
+drizzle
+
+# documentação: mantida como escrita
+*.md

@@ -315,6 +315,85 @@ Branches do Neon: `main` (produção), desenvolvimento e `e2e`.
 a entrega acadêmica, mas a venda exige o plano Pro (US$ 20 por mês por membro).
 O checklist de produção fica na Etapa 9.
 
+## D-016 · Content Security Policy com nonce
+
+**Contexto.** A CSP é a principal defesa do navegador contra XSS: diz de onde
+scripts e estilos podem vir. O Next.js injeta scripts inline, então uma CSP
+restritiva precisa de um mecanismo para autorizá-los.
+
+**Decisão.** O `src/proxy.ts` gera um nonce aleatório a cada requisição e monta a
+CSP; o Next.js aplica o nonce nos próprios scripts. Em produção:
+`script-src 'self' 'nonce-…' 'strict-dynamic'`, `style-src-elem 'self' 'nonce-…'`,
+`style-src-attr 'unsafe-inline'`, `img-src`/`font-src`/`connect-src 'self'`,
+`object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+`frame-ancestors 'none'` e `upgrade-insecure-requests` (só em HTTPS). O layout
+raiz chama `connection()` para que toda página seja renderizada por requisição.
+Os demais cabeçalhos (HSTS, nosniff, Referrer-Policy, Permissions-Policy,
+X-Frame-Options, COOP) ficam no `next.config.ts`, e a API responde com
+`Cache-Control: no-store`.
+
+Atributos `style="..."` são liberados (`style-src-attr`) porque o `next/image` e
+as bibliotecas de gráfico os usam. Eles não executam código, e vazar dados por
+CSS exigiria carregar recursos externos, que `img-src`, `font-src` e
+`connect-src 'self'` bloqueiam. Tags `<style>` e scripts continuam exigindo o nonce.
+
+**Alternativas.** CSP sem nonce com `'unsafe-inline'`: anula a proteção contra
+XSS. Hashes (Subresource Integrity, experimental no Next.js): permitiria páginas
+estáticas, mas ainda é experimental. Hashes específicos com `'unsafe-hashes'`
+para os estilos: quebraria a cada estilo dinâmico de bibliotecas.
+
+**Consequências.** Nenhuma página é gerada estaticamente no build, o que é
+aceitável porque o painel já é dinâmico por usuário. Scripts de terceiros (ex.:
+Turnstile) exigirão incluir o domínio na CSP. Na Etapa 6, `frame-ancestors`
+será aberto apenas para `/f/[slug]`. Um teste E2E falha se qualquer violação de
+CSP aparecer no console.
+
+## D-017 · Formato único de erro e requestId
+
+**Contexto.** Rotas e Server Actions precisam responder erros de forma
+previsível para a interface, sem vazar detalhes internos (pilha, SQL, nomes de
+tabelas).
+
+**Decisão.** Serviços lançam erros de domínio (`src/lib/erros.ts`: validação,
+não autenticado, proibido, não encontrado, conflito, limite excedido).
+`comTratamentoDeErros()` (Route Handlers) e `executarAcao()` (Server Actions)
+convertem qualquer erro em
+`{ erro: { codigo, mensagem, detalhes?, requestId } }`. Erros inesperados viram
+`INTERNO` com mensagem genérica; o detalhe vai para o log estruturado em JSON,
+que oculta senhas, tokens e dados pessoais. O `requestId` volta no cabeçalho
+`x-request-id` e liga a resposta à linha do log. Recursos de outra empresa
+respondem 404, e não 403, para não revelar que existem.
+
+**Alternativas.** Deixar cada rota tratar os próprios erros: formatos
+divergentes e risco de vazar `error.message` do banco. Usar a página de erro
+padrão do Next.js na API: responde HTML em vez de JSON.
+
+**Consequências.** Nenhuma rota precisa de `try/catch` próprio. Rotas de API
+inexistentes também respondem 404 no mesmo formato.
+
+## D-018 · Cadeia de suprimentos (dependências e CI)
+
+**Contexto.** Dependências e automações de CI são uma porta de entrada comum
+para ataques (OWASP A06 e A08).
+
+**Decisão.**
+
+- O CI roda em todo PR: formatação, lint, tipos, testes com cobertura mínima de
+  80%, build, E2E e `npm audit` (falha em vulnerabilidade alta ou crítica).
+- As actions do GitHub são fixadas pelo SHA do commit; o workflow tem só
+  permissão de leitura e não guarda credenciais do checkout.
+- `npm ci` instala exatamente o que está no `package-lock.json`.
+- O npm 11 bloqueia scripts de instalação não aprovados. O script do
+  `unrs-resolver` (dependência do ESLint) **não** foi aprovado: ele só baixa um
+  binário alternativo, e o binário nativo já vem instalado.
+- O Dependabot abre PRs semanais de atualização.
+
+**Alternativas.** Actions por tag (`@v7`): mais simples, mas a tag pode ser
+movida para código malicioso.
+
+**Consequências.** Atualizar uma action exige atualizar o SHA (o Dependabot faz
+isso automaticamente).
+
 ---
 
 ## Fontes consultadas (24/09/2026)
