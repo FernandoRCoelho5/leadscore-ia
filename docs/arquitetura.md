@@ -94,8 +94,8 @@ erDiagram
   EMPRESAS ||--o{ LEADS : capta
   LEADS ||--o{ ANALISES : "histórico"
   EMPRESAS ||--o{ USO_MENSAL : consome
-  USUARIOS ||--o{ SESSOES : abre
-  USUARIOS ||--o{ CONTAS : autentica
+  USUARIOS ||--o{ SESSOES : "abre (Etapa 4)"
+  USUARIOS ||--o{ CONTAS : "autentica (Etapa 4)"
   USUARIOS ||--o{ AUDITORIA : executa
   EMPRESAS ||--o{ AUDITORIA : registra
 
@@ -150,7 +150,6 @@ erDiagram
     enum status_analise
     smallint score_atual
     enum classificacao_atual
-    uuid analise_atual_id FK
     timestamptz anonimizado_em
   }
   ANALISES {
@@ -195,8 +194,8 @@ erDiagram
 | `usuarios` | Pessoas que acessam o painel. `nome`, `email` (único), `email_verificado`, `imagem_url`, `papel_plataforma` (`admin`, `suporte` ou nulo), `bloqueado_em`. |
 | `membros_empresa` | Vínculo **N:N** entre usuários e empresas. `papel` (hoje só `cliente`; o enum permite `gestor`/`vendedor` no futuro). |
 | `convites` | Convite por link para entrar numa empresa. Guarda só o **hash** do token, `expira_em`, `aceito_em`, `criado_por`. |
-| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. |
-| `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`, `analise_atual_id`) e `anonimizado_em`. |
+| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. **Criadas na Etapa 4**, com as colunas exatas que o Better Auth exige. |
+| `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`) e `anonimizado_em`. A análise atual completa é a mais recente de `analises`, obtida pelo índice `(lead_id, created_at DESC)`. |
 | `analises` | Histórico de análises; **nunca é atualizada** (reanálise = nova linha). `score` (CHECK 0 a 100), `classificacao`, `justificativa`, `resposta_sugerida`, `modelo`, `prompt_version`, `perfil_versao`, `tokens_entrada`, `tokens_saida`, `tempo_resposta_ms`, `tentativas`, `mock`, `solicitada_por` (nulo = automática). |
 | `uso_mensal` | Consumo de análises por empresa e mês (`competencia`). Um único `UPDATE ... WHERE analises < limite` confere e consome o limite de forma atômica. |
 | `auditoria` | Ações sensíveis, somente inserção. `ator_id`, `empresa_id`, `acao` (ex.: `lead.anonimizado`, `lead.exportado`, `lead.visto_por_suporte`, `empresa.limite_alterado`), `recurso_tipo`, `recurso_id`, `detalhes` (jsonb **sem** dados pessoais), `ip_hash`. |
@@ -209,7 +208,7 @@ erDiagram
 | `leads` | `(empresa_id, created_at DESC) WHERE deleted_at IS NULL` | Listagem padrão e período |
 | `leads` | `(empresa_id, classificacao_atual, created_at DESC) WHERE deleted_at IS NULL` | Filtro por classificação |
 | `leads` | `(empresa_id, status, created_at DESC) WHERE deleted_at IS NULL` | Filtro por status do funil |
-| `leads` | GIN com `pg_trgm` em nome, e-mail e empresa | Busca `ILIKE '%termo%'` |
+| `leads` | Três índices GIN com `pg_trgm` (nome, e-mail e empresa); o Postgres combina os três na busca | Busca `ILIKE '%termo%'` |
 | `analises` | `(lead_id, created_at DESC)` | Histórico do lead |
 | `auditoria` | `(empresa_id, created_at DESC)` | Consulta de auditoria |
 | `empresas` | `slug` único parcial | Formulário público |
