@@ -59,6 +59,52 @@ test.describe("página inicial", () => {
   });
 });
 
+test.describe("formulário público (/f/...)", () => {
+  test("só ele pode ir em iframe, e só em sites HTTPS", async ({ request }) => {
+    // Endereço inexistente: a regra vale para todo o /f/, sem precisar de banco.
+    const formulario = await request.get("/f/endereco-que-nao-existe");
+    const login = await request.get("/login");
+
+    expect(formulario.status()).toBe(404);
+    expect(formulario.headers()["content-security-policy"]).toContain(
+      "frame-ancestors 'self' https:",
+    );
+    expect(formulario.headers()["x-frame-options"]).toBeUndefined();
+    expect(login.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(login.headers()["x-frame-options"]).toBe("DENY");
+  });
+
+  test("endereço inexistente mostra a página própria, sem violação da CSP", async ({ page }) => {
+    const violacoes: string[] = [];
+    page.on("console", (mensagem) => {
+      if (mensagem.type() === "error" && /Content Security Policy/i.test(mensagem.text())) {
+        violacoes.push(mensagem.text());
+      }
+    });
+
+    await page.goto("/f/endereco-que-nao-existe");
+
+    await expect(page.getByRole("heading", { name: "Formulário não encontrado" })).toBeVisible();
+    await expect(page).toHaveTitle("Formulário não encontrado · Brasa");
+    expect(violacoes).toEqual([]);
+  });
+
+  test("a API recusa JSON de outra origem e corpo que não é JSON", async ({ request }) => {
+    const deOutraOrigem = await request.post("/api/publico/qualquer/leads", {
+      headers: { origin: "https://golpe.example" },
+      data: { nome: "x" },
+    });
+    const semJson = await request.post("/api/publico/qualquer/leads", {
+      headers: { "content-type": "text/plain" },
+      data: "nome=x",
+    });
+
+    expect(deOutraOrigem.status()).toBe(403);
+    expect(semJson.status()).toBe(400);
+    expect((await semJson.json()).erro.codigo).toBe("VALIDACAO");
+  });
+});
+
 test("páginas cujo caminho começa com 'api' também recebem a CSP", async ({ request }) => {
   const resposta = await request.get("/apiario");
 

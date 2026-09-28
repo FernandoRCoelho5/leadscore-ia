@@ -55,12 +55,12 @@ componente de cliente, o build falha.
 src/
   app/
     (publico)/        login, cadastro, redefinir-senha, politica-de-privacidade
-    f/[slug]/         formulário público de captação
+    f/[slug]/         formulário público de captação (incorporável em iframe, D-028)
     onboarding/       cadastro da empresa e do perfil do negócio
     (painel)/         layout: menu lateral por perfil + topo com avatar
       painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
-    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads, leads/exportar
+    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028), leads/exportar
   server/
     services/         casos de uso (criarLead, analisarLead, anonimizarLead...)
     repositories/     consultas Drizzle (empresaId obrigatório, sem deletados, paginadas)
@@ -69,6 +69,7 @@ src/
     armazenamento/    fotos no Vercel Blob privado (D-024)
     ia/               motor.ts (contrato), claude.ts, mock.ts, prompt.ts, schema.ts (D-027)
     http/             executarAcao, agendarAnalise (after())
+    seguranca/        limitador de taxa, hash do IP, carimbo do formulário (D-028)
   lib/
     validacao/        schemas Zod compartilhados entre cliente e servidor
     email/  rate-limit/  armazenamento/
@@ -262,9 +263,11 @@ sequenceDiagram
   participant S as Serviços
   participant DB as Neon Postgres
   participant IA as Claude API
-  L->>API: envia o formulário
-  API->>S: rate limit, anti-spam e validação Zod
-  S->>DB: grava o lead (status_analise = pendente)
+  L->>API: envia o formulário (JSON)
+  API->>S: origem, tipo e tamanho do corpo
+  S->>S: campo-armadilha, validação Zod e carimbo assinado
+  S->>DB: limites por IP e por formulário (limites_taxa)
+  S->>DB: grava o lead com consentimento e hash do IP (pendente)
   API-->>L: confirmação imediata
   Note over API,S: after(): executa depois da resposta
   S->>DB: reserva o lead (processando, UPDATE condicional)

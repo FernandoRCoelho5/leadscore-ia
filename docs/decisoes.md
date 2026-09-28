@@ -748,6 +748,81 @@ acertou 10 de 12 (26/09/2026); o motor simulado serve para demonstração e
 testes, não mede a qualidade da IA. Pendente: a mesma avaliação com a Claude
 API quando a conta tiver créditos (previsão 04/10/2026), antes do deploy.
 
+## D-028 · Captação pública: formulário, anti-spam e iframe
+
+**Contexto.** A Etapa 6 abre o formulário `/f/[slug]` para qualquer visitante,
+sem login. Cada envio grava dados pessoais e pode gerar custo de IA; o
+formulário também precisa funcionar dentro do site do cliente.
+
+**Decisão.**
+
+- **Caminho do envio:** a página `/f/[slug]` (Server Component) mostra só o
+  nome da empresa. O formulário envia JSON para `POST /api/publico/[slug]/leads`
+  (Route Handler, como previsto na arquitetura), que responde no formato único
+  de erro (D-017). A lógica fica no serviço `captarLead`.
+- **Proteções da rota:** só aceita `application/json` (um formulário HTML de
+  outro site não consegue postar, e um `fetch` de outra origem com JSON é
+  barrado pelo navegador, porque não respondemos ao CORS); recusa com 403 uma
+  origem diferente da do app quando o navegador a informa; corpo de até 16 KB.
+- **Anti-spam, nesta ordem:**
+  1. **Campo-armadilha** (`website`), fora da tela e escondido dos leitores de
+     tela. Preenchido: responde 201, mas não grava nada.
+  2. **Validação** com o mesmo schema Zod do navegador
+     (`src/lib/validacao/lead.ts`).
+  3. **Carimbo assinado:** a página leva um campo oculto com o horário de
+     abertura e um HMAC ligado à empresa. Sem carimbo válido, ou com mais de
+     24 horas: 400, pedindo para recarregar. Enviado em menos de 3 segundos:
+     201 sem gravar. Robôs que postam direto na API precisam abrir a página
+     antes e esperar.
+  4. **Limites (janela fixa no Postgres, D-009):** 20 envios por hora por IP
+     em todos os formulários, 5 a cada 10 minutos por IP no mesmo formulário e
+     300 por hora por formulário. O limite do formulário é conferido por
+     último, para um único visitante abusivo não bloquear o formulário de
+     todos. Estourou: 429 com `Retry-After`.
+  5. **Limite mensal de análises** (D-008), que continua valendo.
+- **Resposta igual para robô e pessoa:** o descarte silencioso não ensina o que
+  foi detectado; cada descarte vai para o log (sem dados pessoais) para
+  monitoramento.
+- **IP:** lido do `x-forwarded-for`, que na Vercel é preenchido pela própria
+  plataforma (o valor enviado pelo navegador é substituído). Guardado só como
+  HMAC (`leads.ip_hash` e as chaves de `limites_taxa`).
+- **Chaves:** o HMAC do IP e o do carimbo usam chaves próprias, derivadas do
+  `BETTER_AUTH_SECRET` por HKDF (uma por finalidade). Não há segredo novo para
+  configurar, e uma assinatura de uma finalidade não vale para outra.
+- **LGPD:** caixa de consentimento obrigatória e desmarcada, com o texto
+  versionado (`v1`) e o horário gravados no lead. Acima dela, "Como seus dados
+  são usados" explica quem recebe os dados, o uso de IA (Anthropic, nos EUA,
+  sem nome, e-mail e telefone), que a nota não decide o atendimento sozinha e
+  os direitos do titular.
+- **Iframe:** só o `/f/...` pode ser exibido em iframe, e só por sites HTTPS
+  (`frame-ancestors 'self' https:`); o resto do app segue com
+  `frame-ancestors 'none'` e `X-Frame-Options: DENY`. A tela Empresa mostra o
+  link, os botões de abrir e copiar e o código do iframe.
+- **Segmento** vira uma lista fixa (Indústria, Comércio, Serviços...), para os
+  relatórios serem comparáveis.
+
+**Alternativas.** Server Action no formulário: mais simples, mas a regra do
+projeto reserva as actions para o painel autenticado, e a rota deixa um
+endereço estável e com erros padronizados para integrações futuras. Cloudflare
+Turnstile ou reCAPTCHA: mais proteção, mas script de terceiro, ajuste da CSP e
+atrito para o visitante. A D-009 previa o Turnstile preparado e desligado; ele
+não foi implementado e só entra se o spam passar pelas camadas acima (seria
+mais uma verificação no serviço, antes dos limites). Liberar o
+iframe só para domínios cadastrados pela empresa: mais restrito, mas exige
+coluna nova e tela de configuração; fica como evolução. Segredo próprio para o
+HMAC do IP: mais uma variável para configurar em cada ambiente, sem ganho de
+segurança sobre a derivação por HKDF.
+
+**Consequências.** Trocar o `BETTER_AUTH_SECRET` muda os hashes de IP (os
+limites recomeçam, e leads antigos não se comparam com os novos pelo IP) e
+invalida os carimbos das páginas abertas. Em outra hospedagem, atrás de outro
+proxy, a leitura do IP precisa ser revista. Uma linha por IP em `limites_taxa`,
+reaproveitada e nunca apagada: se a tabela crescer demais, uma limpeza exigirá
+decisão própria (exceção como a D-006). A análise roda no `after()` da própria
+requisição; o tempo máximo da função na Vercel entra no checklist da Etapa 9.
+O formulário não envia e-mail de aviso à empresa; o novo lead aparece no
+painel (Etapa 7).
+
 ---
 
 ## Fontes consultadas (24/09/2026)
@@ -763,3 +838,4 @@ API quando a conta tiver créditos (previsão 04/10/2026), antes do deploy.
 - [Claude API: saída estruturada](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) (consultada em 26/09/2026, D-027)
 - [Claude API: prompt caching e tamanho mínimo por modelo](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) (consultada em 26/09/2026, D-027)
 - [Preços da Claude API](https://platform.claude.com/docs/en/about-claude/pricing) (consultada em 26/09/2026, D-027)
+- Guia do `after` do Next.js 16.3, em `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md` (consultado em 26/09/2026, D-028)
