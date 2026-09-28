@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import { validarEnv } from "@/env";
 
 const URL_VALIDA = "postgresql://usuario:senha@exemplo.neon.tech/banco?sslmode=require";
+const AUTH = {
+  BETTER_AUTH_SECRET: "segredo-de-teste-com-pelo-menos-32-caracteres",
+  BETTER_AUTH_URL: "http://localhost:3000",
+};
 
 describe("validarEnv", () => {
   it("aceita a configuração mínima e aplica os padrões", () => {
-    const env = validarEnv({ DATABASE_URL: URL_VALIDA });
+    const env = validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA });
 
     expect(env.DATABASE_URL).toBe(URL_VALIDA);
     expect(env.IA_MODO).toBe("mock");
@@ -14,42 +18,100 @@ describe("validarEnv", () => {
   });
 
   it("aceita os protocolos postgres:// e postgresql://", () => {
-    expect(() => validarEnv({ DATABASE_URL: "postgres://u:s@host/db" })).not.toThrow();
-    expect(() => validarEnv({ DATABASE_URL: "postgresql://u:s@host/db" })).not.toThrow();
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: "postgres://u:s@host/db" })).not.toThrow();
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: "postgresql://u:s@host/db" })).not.toThrow();
   });
 
   it("trata valor vazio ou só com espaços como ausente", () => {
-    expect(() => validarEnv({ DATABASE_URL: "   " })).toThrow("DATABASE_URL: obrigatória");
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: "   " })).toThrow("DATABASE_URL: obrigatória");
   });
 
   it("rejeita URL que não é do Postgres", () => {
-    expect(() => validarEnv({ DATABASE_URL: "https://exemplo.com" })).toThrow(
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: "https://exemplo.com" })).toThrow(
       "DATABASE_URL: deve ser uma URL do Postgres",
     );
   });
 
   it("exige a chave da Anthropic quando IA_MODO=real", () => {
-    expect(() => validarEnv({ DATABASE_URL: URL_VALIDA, IA_MODO: "real" })).toThrow(
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, IA_MODO: "real" })).toThrow(
       'ANTHROPIC_API_KEY: obrigatória quando IA_MODO="real"',
     );
     expect(() =>
-      validarEnv({ DATABASE_URL: URL_VALIDA, IA_MODO: "real", ANTHROPIC_API_KEY: "chave" }),
+      validarEnv({
+        ...AUTH,
+        DATABASE_URL: URL_VALIDA,
+        IA_MODO: "real",
+        ANTHROPIC_API_KEY: "chave",
+      }),
     ).not.toThrow();
   });
 
   it("rejeita modo de IA desconhecido sem cobrar a chave por engano", () => {
-    expect(() => validarEnv({ DATABASE_URL: URL_VALIDA, IA_MODO: "turbo" })).toThrow(
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, IA_MODO: "turbo" })).toThrow(
       'IA_MODO: deve ser "mock" ou "real"',
     );
-    expect(() => validarEnv({ DATABASE_URL: URL_VALIDA, IA_MODO: "turbo" })).not.toThrow(
+    expect(() => validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, IA_MODO: "turbo" })).not.toThrow(
       "ANTHROPIC_API_KEY",
     );
   });
 
+  it("exige um segredo de autenticação com pelo menos 32 caracteres", () => {
+    expect(() =>
+      validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, BETTER_AUTH_SECRET: "curto" }),
+    ).toThrow("BETTER_AUTH_SECRET: deve ter pelo menos 32 caracteres");
+    expect(() =>
+      validarEnv({ DATABASE_URL: URL_VALIDA, BETTER_AUTH_URL: AUTH.BETTER_AUTH_URL }),
+    ).toThrow("BETTER_AUTH_SECRET: obrigatória");
+  });
+
   it("lista todos os problemas de uma vez", () => {
-    expect(() => validarEnv({ IA_MODO: "real" })).toThrow(
+    expect(() => validarEnv({ ...AUTH, IA_MODO: "real" })).toThrow(
       /DATABASE_URL: obrigatória[\s\S]*ANTHROPIC_API_KEY/,
     );
+  });
+
+  it("exige o BETTER_AUTH_URL fora dos previews da Vercel (local e produção)", () => {
+    const semUrl = { DATABASE_URL: URL_VALIDA, BETTER_AUTH_SECRET: AUTH.BETTER_AUTH_SECRET };
+    const mensagem = "BETTER_AUTH_URL: obrigatória";
+
+    expect(() => validarEnv(semUrl)).toThrow(mensagem);
+    // Em produção, a VERCEL_URL não substitui o endereço oficial.
+    expect(() =>
+      validarEnv({ ...semUrl, VERCEL_ENV: "production", VERCEL_URL: "brasa-abc.vercel.app" }),
+    ).toThrow(mensagem);
+    // Preview sem a VERCEL_URL (variáveis de sistema desligadas) também falha.
+    expect(() => validarEnv({ ...semUrl, VERCEL_ENV: "preview" })).toThrow(mensagem);
+  });
+
+  it("no preview sem BETTER_AUTH_URL, usa o endereço do deploy e confia só nos hosts dele", () => {
+    const env = validarEnv({
+      DATABASE_URL: URL_VALIDA,
+      BETTER_AUTH_SECRET: AUTH.BETTER_AUTH_SECRET,
+      VERCEL_ENV: "preview",
+      VERCEL_URL: "brasa-abc123-fdev2.vercel.app",
+      VERCEL_BRANCH_URL: "brasa-git-feat-auth-fdev2.vercel.app",
+    });
+
+    expect(env.URL_DO_APP).toBe("https://brasa-abc123-fdev2.vercel.app");
+    expect(env.ORIGENS_CONFIAVEIS).toEqual([
+      "https://brasa-abc123-fdev2.vercel.app",
+      "https://brasa-git-feat-auth-fdev2.vercel.app",
+    ]);
+  });
+
+  it("com BETTER_AUTH_URL, ela é o endereço do app e a origem confiável", () => {
+    const env = validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, VERCEL_ENV: "production" });
+
+    expect(env.URL_DO_APP).toBe("http://localhost:3000");
+    expect(env.ORIGENS_CONFIAVEIS).toEqual(["http://localhost:3000"]);
+  });
+
+  it("recusa VERCEL_URL que não seja só um nome de host", () => {
+    for (const valor of ["https://brasa.vercel.app", "brasa.vercel.app/caminho", "localhost"]) {
+      expect(() => validarEnv({ ...AUTH, DATABASE_URL: URL_VALIDA, VERCEL_URL: valor })).toThrow(
+        "VERCEL_URL: deve ser só o nome do host",
+      );
+    }
   });
 
   it("nunca inclui o valor das variáveis na mensagem de erro", () => {

@@ -21,6 +21,8 @@ export default defineConfig({
     command: `npm run build && npx next start -p ${PORTA}`,
     url: `${URL_BASE}/api/saude`,
     reuseExistingServer: !NO_CI,
+    // O Better Auth só aceita pedidos vindos do endereço configurado (proteção contra CSRF).
+    env: { BETTER_AUTH_URL: URL_BASE },
     timeout: 240_000,
   },
 });

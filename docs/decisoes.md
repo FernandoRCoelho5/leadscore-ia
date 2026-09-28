@@ -231,6 +231,7 @@ e-mails; a foto do perfil exige armazenamento de arquivos.
 backup. SendGrid ou Postmark: equivalentes, sem vantagem no volume atual.
 
 **Consequências.** Duas contas e dois segredos novos, adotados nas Etapas 4 e 9.
+O Blob foi adotado na Etapa 4 como store **privado**; detalhes em D-024.
 
 ## D-012 · LGPD por anonimização
 
@@ -309,7 +310,8 @@ no futuro.
 **Contexto.** Deploy na Vercel e banco no Neon, com usuários no Brasil.
 
 **Decisão.** Vercel na região `gru1` e Neon na `sa-east-1`, ambas em São Paulo.
-Branches do Neon: `main` (produção), desenvolvimento e `e2e`.
+Branches do Neon: `production` (a principal, exclusiva da Vercel),
+desenvolvimento e `e2e` (D-025).
 
 **Consequências.** O plano Hobby da Vercel não permite uso comercial: serve para
 a entrega acadêmica, mas a venda exige o plano Pro (US$ 20 por mês por membro).
@@ -478,6 +480,203 @@ cores fora da marca por engano.
 marca é uma alteração num lugar só, validada pelo teste de contraste. Nenhuma
 página é estática (já era assim por causa da CSP com nonce, D-016).
 
+## D-023 · Autenticação, sessão e RBAC na prática
+
+**Contexto.** A Etapa 4 implementou o que D-004, D-005 e D-006 definiram, e
+algumas escolhas de implementação precisam ficar registradas para a revisão e
+a arguição.
+
+**Decisão.**
+
+- **Onde cada coisa acontece.** Cadastro, login e senha usam o cliente do
+  Better Auth, que chama as rotas `/api/auth/*`. Elas têm o limite de
+  tentativas da biblioteca, guardado no banco: 5 logins por minuto por IP e
+  5 cadastros a cada 10 minutos. O limite vale para várias instâncias
+  serverless. As demais ações (perfil, empresa, tema, sair) são Server
+  Actions.
+- **Sessão validada a cada requisição.** O cookie é assinado com o
+  `BETTER_AUTH_SECRET`, é `httpOnly`, `SameSite=Lax` e `Secure` em produção,
+  e vale 7 dias, renovado a cada dia de uso. Além disso, o usuário é relido do
+  banco a cada requisição: um bloqueio ou uma exclusão derruba a sessão na
+  hora. O `proxy.ts` só faz uma checagem rápida do cookie; a proteção real
+  está no servidor (`exigirSessao`, `exigirPermissao` e `autorizar`).
+- **RBAC.** Página sem permissão responde 404, e empresa fora do escopo
+  também responde 404; nos dois casos não se revela que o recurso existe. As
+  ações usam a empresa ativa lida da sessão, nunca um ID vindo do navegador
+  (proteção contra IDOR). A empresa ativa fica num cookie `httpOnly` e é
+  sempre conferida contra os vínculos do usuário.
+- **Dados de autenticação.**
+  - Senha com scrypt.
+  - Tokens OAuth cifrados com AES-256-GCM (hoje não usados).
+  - Tokens de verificação guardados só como hash.
+  - O token de sessão no banco não basta para forjar o cookie, porque o
+    cookie é assinado.
+  - IP e navegador ficam na tabela de sessões. A base legal é o legítimo
+    interesse (segurança e limite de tentativas), com retenção de no máximo
+    7 dias, porque a sessão é apagada no logout ou ao expirar. Isso entra na
+    política de privacidade (Etapa 9).
+- **Rotas da biblioteca desligadas:** atualizar usuário, excluir usuário e
+  trocar e-mail. Essas operações passam pelos nossos serviços.
+- **Menus sem JavaScript próprio.** O menu do celular e o menu da conta usam o
+  atributo `popover` do HTML, e as ações (tema, sair) são formulários com
+  Server Actions.
+- **Risco aceito: enumeração de e-mail no cadastro.** A mensagem "já existe
+  uma conta com este e-mail" é o comportamento esperado por quem se cadastra.
+  O "esqueci a senha" não revela se o e-mail existe, e o limite de cadastros
+  por IP dificulta a varredura.
+
+**Alternativas.** Login por Server Action: chamadas internas não passam pelo
+limite de tentativas da biblioteca. Sessão sem reler o usuário: um bloqueio
+só valeria quando a sessão expirasse. Bibliotecas de componentes para os
+menus: mais uma dependência para algo que o HTML já faz.
+
+**Consequências.** Cada requisição autenticada faz uma consulta a mais
+(usuário e vínculos), feita uma única vez por requisição graças ao `cache` do
+React. Os testes E2E variam o IP fictício (`x-forwarded-for`) para não esbarrar
+no limite de tentativas; um teste específico confirma que a sexta tentativa
+seguida é recusada com 429.
+
+## D-024 · Foto de perfil no Vercel Blob privado
+
+**Contexto.** O "Alterar perfil" inclui a foto (D-011). A foto é um dado
+pessoal (LGPD): num store público, qualquer pessoa com o endereço a veria, sem
+como revogar. Um arquivo enviado também pode ser perigoso: HTML ou SVG com a
+extensão `.png`, ou uma foto com a localização (GPS) da câmera nos metadados.
+
+**Decisão.**
+
+- **Store privado** (`brasa`, região `gru1`): nenhuma foto tem endereço
+  público. A rota `GET /api/usuarios/[id]/foto` confere a sessão e a
+  permissão ao lado da leitura do arquivo, como recomenda a documentação da
+  Vercel. Sem sessão, responde 401. Sem permissão, sem foto ou com usuário
+  inexistente, responde 404 nos três casos, para não revelar quem existe.
+- **Quem vê a foto:** a própria pessoa, admin e suporte, e colegas de uma
+  empresa em comum (`podeVerPerfil`).
+- **Validação no servidor:** até 2 MB e só JPEG, PNG ou WebP, identificados
+  pelos primeiros bytes do arquivo (a assinatura), nunca pela extensão nem
+  pelo tipo que o navegador informa. O navegador faz a mesma conferência para
+  responder na hora.
+- **No navegador:** a foto é reduzida para até 512 px e regravada em WebP (ou
+  JPEG). A regravação descarta os metadados, como a localização, e o envio
+  fica com poucos KB.
+- **Resposta da rota:** o tipo é o que o próprio app gravou (pela extensão do
+  caminho), com `nosniff`, `Content-Security-Policy: default-src 'none';
+  sandbox` e sem cache (`no-store`, como toda a `/api`).
+- **Caminho:** `{ambiente}/usuarios/{usuarioId}/{uuid}.{ext}`, em que o
+  ambiente é o `VERCEL_ENV` (`production`, `preview`) ou `local`. O banco
+  guarda o caminho em `usuarios.imagem_url`. Só um caminho nesse formato, na
+  pasta do próprio usuário e do ambiente atual, é lido ou apagado. Assim, a
+  branch de desenvolvimento (cópia da produção) nunca lê nem apaga fotos de
+  produção, e um valor estranho no banco (URL externa, `../`) é ignorado.
+- **Troca:** grava o arquivo novo, aponta o banco para ele numa transação
+  (linha travada com `FOR UPDATE`, com auditoria) e só então apaga o antigo.
+  Se o banco falhar, o arquivo novo é apagado. Remover a foto apaga o arquivo
+  (minimização, LGPD). O arquivo não é um registro do banco, então a regra de
+  exclusão lógica não se aplica a ele.
+- **Limite:** 10 trocas por hora por usuário, contadas na auditoria, contra
+  abuso e custo.
+- **Envio por Server Action:** o limite de corpo das actions passou de 1 MB
+  para 2,5 MB (foto de até 2 MB mais os bytes do multipart).
+- **Credencial do Blob:** localmente, `BLOB_READ_WRITE_TOKEN`; na Vercel, o
+  SDK usa OIDC com o `BLOB_STORE_ID` (token de curta duração, renovado
+  sozinho). Sem nenhum dos dois, o envio responde "indisponível" (503) e o
+  avatar mostra as iniciais.
+
+**Alternativas.** Store público com nome aleatório: mais barato de servir, mas
+a foto ficaria acessível a quem tivesse o link, sem como revogar. Envio direto
+do navegador para o Blob (client upload): economiza tráfego da função, mas
+exige uma rota de token e um webhook; com fotos de poucos KB, não compensa.
+Redimensionar no servidor com `sharp`: dependência nativa a mais, que
+precisaria de aprovação; o ajuste no navegador resolve o caso comum.
+
+**Consequências.** Cada exibição da foto passa por uma função (leitura do Blob
+mais transferência); com fotos de poucos KB, o custo é baixo. O servidor não
+decodifica a imagem: um arquivo com assinatura válida e conteúdo inválido é
+guardado, mas nunca é executado (tipo fixo, `nosniff` e `sandbox`). Quem enviar
+direto para a action, sem passar pela tela, pode mandar uma imagem com
+metadados; ela só é vista por quem já tem permissão.
+
+**Aprovação (26/09/2026).** Aprovados pelo usuário: apagar do Blob os arquivos
+de foto trocados ou removidos (minimização, LGPD); o limite de 2,5 MB nas
+Server Actions; e não usar o `BLOB_WEBHOOK_PUBLIC_KEY` criado pela integração
+da Vercel (o app não recebe webhooks do Blob).
+
+## D-025 · Branch `e2e` do Neon e preparação das migrations
+
+**Contexto.** A branch principal do Neon se chama `production` e é exclusiva
+da Vercel. Os testes E2E do CI usam a branch `e2e`, criada como "schema only"
+a partir de `production`. Ela tem as tabelas, mas não os dados, nem os
+registros de `drizzle.__drizzle_migrations`. O `drizzle-kit migrate` acharia
+que nada foi aplicado e falharia com "já existe" logo na primeira migration.
+Apagar e recriar as tabelas é proibido pelas regras do projeto.
+
+**Decisão.** O script `npm run db:preparar-e2e` roda no CI antes dos E2E (e só
+com `E2E_COM_BANCO=1`):
+
+- se a tabela de controle está vazia, confere no catálogo do Postgres os
+  objetos que cada migration cria (tabelas, índices, tipos, extensões,
+  restrições e colunas) e registra as migrations já presentes (a "linha de
+  base"), com o mesmo hash e a mesma data que o Drizzle gravaria;
+- aplica as migrations mais novas, do mesmo jeito que o migrator do Drizzle;
+- faz tudo numa transação com trava (`pg_advisory_xact_lock`), então duas
+  execuções do CI ao mesmo tempo esperam a vez;
+- para sem alterar nada se o banco estiver inconsistente (migration pela
+  metade, fora de ordem ou impossível de conferir).
+
+A branch `e2e` não tem exclusão automática. Os testes só inserem dados, com
+e-mails únicos do domínio reservado `.example`.
+
+**Alternativas.** Recriar a branch a cada execução pela API do Neon: exigiria
+no CI uma chave com poder de apagar branches. Branch `e2e` com dados: levaria
+dados de produção (LGPD) para o ambiente de testes. `drizzle-kit push`:
+proibido (D-010).
+
+**Consequências.** Depois da primeira execução, a tabela de controle fica
+preenchida e o CI só aplica as migrations novas de cada PR. O
+`drizzle-kit migrate` continua funcionando na branch. Uma migration futura que
+só altere dados (sem criar objetos) não pode ser conferida por esse método;
+isso só importa numa nova cópia "schema only", e o script avisa em vez de
+adivinhar.
+
+## D-026 · Um banco por ambiente e o endereço do app nos previews
+
+**Contexto.** Com o projeto conectado à Vercel, cada PR gera um deploy de
+preview. Dados reais não podem ir parar em testes (LGPD), e a URL do preview
+muda a cada deploy, então ela não cabe num `BETTER_AUTH_URL` fixo.
+
+**Decisão.**
+
+| Ambiente | Onde roda | Branch do Neon | Dados |
+|---|---|---|---|
+| Desenvolvimento | Máquina local (`.env.local`) | desenvolvimento, cópia de `production` | Cópia com dados; o que um teste manual cria recebe `deleted_at` ao final |
+| E2E | CI (GitHub Actions, segredo `DATABASE_URL_E2E`) | `e2e`, cópia só do schema | Só o que os testes criam (D-025) |
+| Preview | Deploys de preview da Vercel | `preview`, cópia só do schema | Só o que for criado no próprio preview |
+| Produção | Vercel (Production) | `production` | Reais |
+
+- **Segredos separados por ambiente:** `BETTER_AUTH_SECRET` diferente em
+  Production e Preview (uma sessão de um não vale no outro) e chave da
+  Anthropic da Vercel separada da chave local.
+- **Endereço do app:** `BETTER_AUTH_URL` obrigatório em produção e localmente.
+  No preview, sem ele, o app usa `https://` + `VERCEL_URL` (o endereço do
+  próprio deploy), e as origens confiáveis do Better Auth são só os hosts
+  exatos do deploy e da branch (`VERCEL_URL` e `VERCEL_BRANCH_URL`). Os dois
+  valores são conferidos como nomes de host.
+- **Previews protegidos** pelo login da Vercel (Deployment Protection).
+- **Fotos:** uma pasta por ambiente no mesmo store (D-024).
+
+**Alternativas.** Previews no banco de produção: um PR em teste mexeria em
+dados reais. `baseURL` dinâmico com `allowedHosts: ["*.vercel.app"]`, como
+sugere a documentação do Better Auth: aceitaria como origem qualquer
+subdomínio `vercel.app`, inclusive de outros projetos. Um `BETTER_AUTH_URL`
+fixo no Preview: quebraria a cada novo deploy.
+
+**Consequências.** Migrations novas também precisam chegar à branch
+`preview`, que é "schema only" como a `e2e`. A preparação de D-025 vale para
+ela e entra no checklist de deploy da Etapa 9. Os dados do teste manual da foto
+(usuário `foto-teste-0926` e empresa `teste-foto-0926`, na branch de
+desenvolvimento) receberam `deleted_at` em 26/09/2026, com registro na
+auditoria, sem apagar nada.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
@@ -488,3 +687,5 @@ página é estática (já era assim por causa da CSP com nonce, D-016).
 - [Preços do Upstash Redis](https://upstash.com/docs/redis/overall/pricing)
 - [Preços do Vercel Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 - [Preços do Resend](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
+- [Vercel Blob: armazenamento privado](https://vercel.com/docs/vercel-blob/private-storage) (consultada em 26/09/2026, D-024)
+- [Better Auth: opções `baseURL` e `trustedOrigins`](https://www.better-auth.com/docs/reference/options) (consultada em 26/09/2026, D-026)

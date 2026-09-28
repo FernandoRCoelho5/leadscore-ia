@@ -50,3 +50,6 @@ next-env.d.ts
 /test-results/
 /blob-report/
 /playwright/.cache/
+
+# Artefatos locais da ferramenta de navegador (Playwright MCP)
+/.playwright-mcp/

@@ -29,6 +29,13 @@ const cabecalhosDeSeguranca = [
 const nextConfig: NextConfig = {
   // Não anuncia "X-Powered-By: Next.js" (menos informação para quem ataca).
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // Padrão: 1 MB. A foto de perfil aceita até 2 MB (FOTO_TAMANHO_MAXIMO);
+      // a folga cobre os bytes extras do multipart/form-data.
+      bodySizeLimit: "2.5mb",
+    },
+  },
   async headers() {
     return [
       { source: "/:path*", headers: cabecalhosDeSeguranca },

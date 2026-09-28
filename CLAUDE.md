@@ -8,6 +8,10 @@ continuam `leadscore-ia`.
 ## Contexto
 App Next.js (App Router, TypeScript) que capta leads, analisa com Claude API
 e salva no Neon Postgres via Drizzle ORM.
+Branches do Neon (D-026): `production` (a principal, exclusiva da Vercel), uma de
+desenvolvimento (a do `.env.local`), `e2e` (só schema, usada pelo CI) e `preview`
+(só schema, usada pelos deploys de preview da Vercel).
+Fotos de perfil no Vercel Blob privado (store `brasa`), entregues por rota autenticada.
 
 ## Regras
 - TypeScript estrito, sem `any`.
@@ -35,3 +39,4 @@ e salva no Neon Postgres via Drizzle ORM.
 ## Comandos
 - dev: `npm run dev`
 - migrations: `npx drizzle-kit generate`, revisar o SQL gerado (sem `DROP`/`TRUNCATE`) e aplicar com `npx drizzle-kit migrate`. Não usar `drizzle-kit push`.
+- banco E2E: `E2E_COM_BANCO=1 npm run db:preparar-e2e` (o CI já roda antes dos E2E; D-025).

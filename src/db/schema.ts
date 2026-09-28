@@ -29,8 +29,9 @@ import { uuidv7 } from "../lib/uuid";
  * - chaves estrangeiras com ON DELETE RESTRICT, nunca CASCADE;
  * - unicidade entre registros ativos com índices parciais (WHERE deleted_at IS NULL).
  *
- * As tabelas técnicas da autenticação (sessoes, contas, verificacoes) entram na
- * Etapa 4, com as colunas exigidas pelo Better Auth.
+ * Exceção autorizada (D-006): nas tabelas técnicas da autenticação `sessoes` e
+ * `verificacoes`, o Better Auth apaga fisicamente sessões encerradas e tokens
+ * usados. Elas não guardam dados de negócio.
  */
 
 // ---------------------------------------------------------------------------
@@ -302,6 +303,87 @@ export const limitesTaxa = pgTable(
     ...colunasDeTempo(),
   },
   (t) => [uniqueIndex("limites_taxa_chave_unica").on(t.chave)],
+);
+
+// ---------------------------------------------------------------------------
+// Autenticação (Better Auth). Colunas exigidas pela biblioteca, com nomes em
+// português; o mapeamento fica em src/server/auth/auth.ts.
+// ---------------------------------------------------------------------------
+
+/** Sessões de login. Apagadas pela biblioteca no logout e ao expirar (D-006). */
+export const sessoes = pgTable(
+  "sessoes",
+  {
+    id: chavePrimaria(),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "restrict" }),
+    /** Valor do cookie de sessão (a biblioteca o assina antes de enviar ao navegador). */
+    token: varchar("token", { length: 255 }).notNull(),
+    expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+    enderecoIp: varchar("endereco_ip", { length: 64 }),
+    agenteUsuario: text("agente_usuario"),
+    ...colunasDeTempo(),
+  },
+  (t) => [
+    uniqueIndex("sessoes_token_unico").on(t.token),
+    index("sessoes_usuario_idx").on(t.usuarioId),
+  ],
+);
+
+/** Formas de login do usuário. Na conta "credential", `senha` guarda só o hash (scrypt). */
+export const contas = pgTable(
+  "contas",
+  {
+    id: chavePrimaria(),
+    usuarioId: uuid("usuario_id")
+      .notNull()
+      .references(() => usuarios.id, { onDelete: "restrict" }),
+    idNoProvedor: varchar("id_no_provedor", { length: 255 }).notNull(),
+    provedor: varchar("provedor", { length: 40 }).notNull(),
+    senha: text("senha"),
+    // Usados só com login social (OAuth), hoje desligado.
+    tokenDeAcesso: text("token_de_acesso"),
+    tokenDeAtualizacao: text("token_de_atualizacao"),
+    tokenDeId: text("token_de_id"),
+    tokenDeAcessoExpiraEm: timestamp("token_de_acesso_expira_em", { withTimezone: true }),
+    tokenDeAtualizacaoExpiraEm: timestamp("token_de_atualizacao_expira_em", {
+      withTimezone: true,
+    }),
+    escopo: text("escopo"),
+    ...colunasDeTempo(),
+  },
+  (t) => [
+    uniqueIndex("contas_provedor_unico").on(t.provedor, t.idNoProvedor),
+    index("contas_usuario_idx").on(t.usuarioId),
+  ],
+);
+
+/** Tokens de curta duração (ex.: redefinição de senha). Apagados após o uso (D-006). */
+export const verificacoes = pgTable(
+  "verificacoes",
+  {
+    id: chavePrimaria(),
+    identificador: varchar("identificador", { length: 255 }).notNull(),
+    valor: text("valor").notNull(),
+    expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+    ...colunasDeTempo(),
+  },
+  (t) => [index("verificacoes_identificador_idx").on(t.identificador)],
+);
+
+/** Limite de tentativas nas rotas de login (rate limit do Better Auth). */
+export const limitesTaxaAuth = pgTable(
+  "limites_taxa_auth",
+  {
+    id: chavePrimaria(),
+    chave: varchar("chave", { length: 255 }).notNull(),
+    contador: integer("contador").notNull(),
+    /** Horário do último pedido, em milissegundos (formato exigido pela biblioteca). */
+    ultimoPedido: bigint("ultimo_pedido", { mode: "number" }).notNull(),
+    ...colunasDeTempo(),
+  },
+  (t) => [uniqueIndex("limites_taxa_auth_chave_unica").on(t.chave)],
 );
 
 // ---------------------------------------------------------------------------

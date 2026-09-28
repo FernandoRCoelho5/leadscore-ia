@@ -1,9 +1,14 @@
+import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Proxy (no Next.js 16, substitui o antigo middleware.ts): roda antes de cada
- * página. Hoje ele aplica a Content Security Policy (CSP) com um nonce novo a
- * cada requisição; na Etapa 4 passa também a exigir sessão nas rotas do painel.
+ * página. Faz duas coisas:
+ *
+ * 1. Manda para o login quem abre uma área logada sem cookie de sessão. É só
+ *    uma checagem rápida (o cookie não é validado aqui): a proteção de verdade
+ *    está no servidor, em cada página e ação (src/server/auth/sessao.ts).
+ * 2. Aplica a Content Security Policy (CSP) com um nonce novo a cada requisição.
  *
  * O nonce é um valor aleatório que o Next.js coloca nos próprios <script>.
  * O navegador só executa scripts com esse valor, então um script injetado por
@@ -45,7 +50,21 @@ export function montarCsp(nonce: string, { desenvolvimento, https }: OpcoesDeCsp
   return diretivas.join("; ");
 }
 
+/** Prefixos das áreas que exigem login. */
+const AREAS_LOGADAS = ["/painel", "/leads", "/configuracoes", "/perfil", "/admin", "/onboarding"];
+
+export function exigeLogin(caminho: string): boolean {
+  return AREAS_LOGADAS.some((area) => caminho === area || caminho.startsWith(`${area}/`));
+}
+
 export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (exigeLogin(pathname) && !getSessionCookie(request)) {
+    const login = new URL("/login", request.url);
+    login.searchParams.set("proximo", pathname);
+    return NextResponse.redirect(login);
+  }
+
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const csp = montarCsp(nonce, {
     desenvolvimento: process.env.NODE_ENV === "development",

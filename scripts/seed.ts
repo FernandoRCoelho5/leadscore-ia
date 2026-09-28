@@ -1,15 +1,26 @@
 import "./carregarEnv";
 
+import { randomBytes } from "node:crypto";
+
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db, encerrarBanco } from "../src/db";
 import { env } from "../src/env";
-import { analises, empresas, leads, type Classificacao, type StatusLead } from "../src/db/schema";
+import {
+  analises,
+  empresas,
+  leads,
+  usuarios,
+  type Classificacao,
+  type StatusLead,
+} from "../src/db/schema";
+import { auth } from "../src/server/auth/auth";
 import { consumirAnalise } from "../src/server/repositories/usoMensal";
+import { criarVinculo } from "../src/server/repositories/usuarios";
 
 /**
- * Seed básico: uma empresa de demonstração (agência B2B) com leads quentes,
- * mornos, frios e um pendente, para desenvolver e apresentar o painel.
+ * Seed de demonstração: uma empresa (agência B2B) com leads quentes, mornos,
+ * frios e um pendente, e um usuário de cada perfil (admin, suporte, cliente).
  *
  * Regras: só INSERE dados, nunca apaga nem altera. Se a empresa de
  * demonstração já existir, não faz nada (pode rodar quantas vezes quiser).
@@ -240,15 +251,16 @@ const LEADS: LeadDeDemonstracao[] = [
   },
 ];
 
-async function principal(): Promise<void> {
+/** Cria a empresa de demonstração com os leads (se ainda não existir) e devolve o id dela. */
+async function semearEmpresaDemo(): Promise<string> {
   const [existente] = await db
     .select({ id: empresas.id })
     .from(empresas)
     .where(and(eq(empresas.slug, SLUG_DEMO), isNull(empresas.deletedAt)))
     .limit(1);
   if (existente) {
-    console.log(`A empresa de demonstração "${SLUG_DEMO}" já existe. Nada foi inserido.`);
-    return;
+    console.log(`A empresa de demonstração "${SLUG_DEMO}" já existe: empresa e leads mantidos.`);
+    return existente.id;
   }
 
   const agora = Date.now();
@@ -318,15 +330,86 @@ async function principal(): Promise<void> {
       comAnalise += 1;
     }
 
-    return { empresa: empresa.nome, leads: LEADS.length, comAnalise };
+    return { id: empresa.id, empresa: empresa.nome, leads: LEADS.length, comAnalise };
   });
+
+  console.log(
+    `Empresa "${resumo.empresa}" (slug "${SLUG_DEMO}") criada com ${resumo.leads} leads, ` +
+      `${resumo.comAnalise} com análise de demonstração.`,
+  );
+  return resumo.id;
+}
+
+type UsuarioDeDemonstracao = {
+  email: string;
+  nome: string;
+  papel: "admin" | "suporte" | "cliente";
+};
+
+const USUARIOS: UsuarioDeDemonstracao[] = [
+  { email: "admin@demo.brasa.example", nome: "Ana Admin", papel: "admin" },
+  { email: "suporte@demo.brasa.example", nome: "Sérgio Suporte", papel: "suporte" },
+  { email: "cliente@demo.brasa.example", nome: "Carlos Cliente", papel: "cliente" },
+];
+
+/**
+ * Cria um usuário de cada perfil (se ainda não existir). As contas passam
+ * pela API do Better Auth (hash da senha e auditoria). As senhas são
+ * aleatórias e aparecem só uma vez no terminal: nunca ficam no código.
+ */
+async function semearUsuarios(empresaDemoId: string): Promise<void> {
+  // Senha única opcional (SEED_SENHA_DEMO no .env.local); sem ela, uma aleatória por usuário.
+  const senhaDefinida = process.env.SEED_SENHA_DEMO?.trim() || undefined;
+  if (senhaDefinida !== undefined && senhaDefinida.length < 10) {
+    throw new Error("SEED_SENHA_DEMO precisa ter pelo menos 10 caracteres.");
+  }
+  const criados: { email: string; papel: string; senha: string }[] = [];
+
+  for (const dados of USUARIOS) {
+    const [existente] = await db
+      .select({ id: usuarios.id })
+      .from(usuarios)
+      .where(eq(usuarios.email, dados.email))
+      .limit(1);
+    if (existente) {
+      console.log(`Usuário ${dados.email} já existe: mantido.`);
+      continue;
+    }
+
+    const senha = senhaDefinida ?? randomBytes(12).toString("base64url");
+    const { user } = await auth.api.signUpEmail({
+      body: { name: dados.nome, email: dados.email, password: senha },
+    });
+
+    if (dados.papel === "cliente") {
+      await criarVinculo(db, user.id, empresaDemoId);
+    } else {
+      await db
+        .update(usuarios)
+        .set({ papelPlataforma: dados.papel })
+        .where(eq(usuarios.id, user.id));
+    }
+    criados.push({ email: dados.email, papel: dados.papel, senha });
+  }
+
+  if (criados.length > 0) {
+    console.log("\nUsuários de demonstração criados (anote: as senhas não aparecem de novo):");
+    for (const { email, papel, senha } of criados) {
+      // Com SEED_SENHA_DEMO, a senha não é exibida: está no próprio .env.local.
+      const exibida = senhaDefinida ? "a definida em SEED_SENHA_DEMO (.env.local)" : senha;
+      console.log(`  ${papel.padEnd(8)} ${email}  senha: ${exibida}`);
+    }
+    console.log("");
+  }
+}
+
+async function principal(): Promise<void> {
+  const empresaDemoId = await semearEmpresaDemo();
+  await semearUsuarios(empresaDemoId);
 
   // Só o nome do banco (parte final da URL), nunca a URL com credenciais.
   const banco = new URL(env.DATABASE_URL).pathname.slice(1);
-  console.log(
-    `Seed aplicado no banco "${banco}": empresa "${resumo.empresa}" (slug "${SLUG_DEMO}"), ` +
-      `${resumo.leads} leads, ${resumo.comAnalise} com análise de demonstração.`,
-  );
+  console.log(`Seed concluído no banco "${banco}".`);
 }
 
 principal()
