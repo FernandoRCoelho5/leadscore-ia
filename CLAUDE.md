@@ -1,10 +1,17 @@
 @AGENTS.md
 
-# LeadScore IA
+# Brasa
+
+Produto antes chamado LeadScore IA; o repositório e os nomes técnicos
+continuam `leadscore-ia`.
 
 ## Contexto
 App Next.js (App Router, TypeScript) que capta leads, analisa com Claude API
 e salva no Neon Postgres via Drizzle ORM.
+Branches do Neon (D-026): `production` (a principal, exclusiva da Vercel), uma de
+desenvolvimento (a do `.env.local`), `e2e` (só schema, usada pelo CI) e `preview`
+(só schema, usada pelos deploys de preview da Vercel).
+Fotos de perfil no Vercel Blob privado (store `brasa`), entregues por rota autenticada.
 
 ## Regras
 - TypeScript estrito, sem `any`.
@@ -27,7 +34,10 @@ e salva no Neon Postgres via Drizzle ORM.
 - quando criar formulários de crud pensar em filtro, paginação e exportação de dados.
 - No layout colocar Menu sempre lateral esquerdo 
 - Utilizar menu topo com avatar e o submenu para alterar o perfil (nome, foto e senha) e sair da aplicação
+- Identidade visual Brasa (`docs/identidade-visual.md`): usar os tokens semânticos (ex.: `bg-superficie`, `text-texto-suave`), nunca hex; componentes `Logo` e `BadgeClassificacao`; ícones da `lucide-react`.
 
 ## Comandos
 - dev: `npm run dev`
 - migrations: `npx drizzle-kit generate`, revisar o SQL gerado (sem `DROP`/`TRUNCATE`) e aplicar com `npx drizzle-kit migrate`. Não usar `drizzle-kit push`.
+- banco E2E: `E2E_COM_BANCO=1 npm run db:preparar-e2e` (o CI já roda antes dos E2E; D-025).
+- deploy: o build da Vercel aplica as migrations (`db:implantar`, D-031); primeiro admin com `npm run admin:promover -- <e-mail>`. Guia em `docs/implantacao.md`.

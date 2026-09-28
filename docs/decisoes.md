@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Decisões de produto e de arquitetura do LeadScore IA, com contexto, decisão,
+Decisões de produto e de arquitetura da Brasa (antes LeadScore IA), com contexto, decisão,
 alternativas consideradas e consequências. A descrição técnica completa está em
 [arquitetura.md](arquitetura.md).
 
@@ -231,6 +231,7 @@ e-mails; a foto do perfil exige armazenamento de arquivos.
 backup. SendGrid ou Postmark: equivalentes, sem vantagem no volume atual.
 
 **Consequências.** Duas contas e dois segredos novos, adotados nas Etapas 4 e 9.
+O Blob foi adotado na Etapa 4 como store **privado**; detalhes em D-024.
 
 ## D-012 · LGPD por anonimização
 
@@ -291,8 +292,9 @@ pode diferir do Neon em extensões; os testes E2E cobrem essa diferença.
   [arquitetura.md](arquitetura.md#índices-planejados)).
 - Paginação no servidor com no máximo 100 itens por página (offset). Se uma
   empresa passar de cerca de 100 mil leads, a paginação migra para cursor.
-- Exportação CSV em streaming, em lotes de 1.000 registros por cursor, com teto
-  de linhas; nada é carregado inteiro na memória.
+- Exportação CSV em streaming, em lotes de 500 registros por cursor; nada é
+  carregado inteiro na memória. (Revisto na D-029: sem teto de linhas, porque a
+  memória fica constante; o teto previsto aqui não foi necessário.)
 - Indicadores calculados no SQL (`GROUP BY`), nunca em memória; cache por
   empresa só se as medições mostrarem necessidade.
 - Aplicação e banco na mesma região (São Paulo), com pooling de conexões.
@@ -309,11 +311,789 @@ no futuro.
 **Contexto.** Deploy na Vercel e banco no Neon, com usuários no Brasil.
 
 **Decisão.** Vercel na região `gru1` e Neon na `sa-east-1`, ambas em São Paulo.
-Branches do Neon: `main` (produção), desenvolvimento e `e2e`.
+Branches do Neon: `production` (a principal, exclusiva da Vercel),
+desenvolvimento e `e2e` (D-025).
 
 **Consequências.** O plano Hobby da Vercel não permite uso comercial: serve para
 a entrega acadêmica, mas a venda exige o plano Pro (US$ 20 por mês por membro).
 O checklist de produção fica na Etapa 9.
+
+## D-016 · Content Security Policy com nonce
+
+**Contexto.** A CSP é a principal defesa do navegador contra XSS: diz de onde
+scripts e estilos podem vir. O Next.js injeta scripts inline, então uma CSP
+restritiva precisa de um mecanismo para autorizá-los.
+
+**Decisão.** O `src/proxy.ts` gera um nonce aleatório a cada requisição e monta a
+CSP; o Next.js aplica o nonce nos próprios scripts. Em produção:
+`script-src 'self' 'nonce-…' 'strict-dynamic'`, `style-src-elem 'self' 'nonce-…'`,
+`style-src-attr 'unsafe-inline'`, `img-src`/`font-src`/`connect-src 'self'`,
+`object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+`frame-ancestors 'none'` e `upgrade-insecure-requests` (só em HTTPS). O layout
+raiz chama `connection()` para que toda página seja renderizada por requisição.
+Os demais cabeçalhos (HSTS, nosniff, Referrer-Policy, Permissions-Policy,
+X-Frame-Options, COOP) ficam no `next.config.ts`, e a API responde com
+`Cache-Control: no-store`.
+
+Atributos `style="..."` são liberados (`style-src-attr`) porque o `next/image` e
+as bibliotecas de gráfico os usam. Eles não executam código, e vazar dados por
+CSS exigiria carregar recursos externos, que `img-src`, `font-src` e
+`connect-src 'self'` bloqueiam. Tags `<style>` e scripts continuam exigindo o nonce.
+
+**Alternativas.** CSP sem nonce com `'unsafe-inline'`: anula a proteção contra
+XSS. Hashes (Subresource Integrity, experimental no Next.js): permitiria páginas
+estáticas, mas ainda é experimental. Hashes específicos com `'unsafe-hashes'`
+para os estilos: quebraria a cada estilo dinâmico de bibliotecas.
+
+**Consequências.** Nenhuma página é gerada estaticamente no build, o que é
+aceitável porque o painel já é dinâmico por usuário. Scripts de terceiros (ex.:
+Turnstile) exigirão incluir o domínio na CSP. Na Etapa 6, `frame-ancestors`
+será aberto apenas para `/f/[slug]`. Um teste E2E falha se qualquer violação de
+CSP aparecer no console.
+
+## D-017 · Formato único de erro e requestId
+
+**Contexto.** Rotas e Server Actions precisam responder erros de forma
+previsível para a interface, sem vazar detalhes internos (pilha, SQL, nomes de
+tabelas).
+
+**Decisão.** Serviços lançam erros de domínio (`src/lib/erros.ts`: validação,
+não autenticado, proibido, não encontrado, conflito, limite excedido).
+`comTratamentoDeErros()` (Route Handlers) e `executarAcao()` (Server Actions)
+convertem qualquer erro em
+`{ erro: { codigo, mensagem, detalhes?, requestId } }`. Erros inesperados viram
+`INTERNO` com mensagem genérica; o detalhe vai para o log estruturado em JSON,
+que oculta senhas, tokens e dados pessoais. O `requestId` volta no cabeçalho
+`x-request-id` e liga a resposta à linha do log. Recursos de outra empresa
+respondem 404, e não 403, para não revelar que existem.
+
+**Alternativas.** Deixar cada rota tratar os próprios erros: formatos
+divergentes e risco de vazar `error.message` do banco. Usar a página de erro
+padrão do Next.js na API: responde HTML em vez de JSON.
+
+**Consequências.** Nenhuma rota precisa de `try/catch` próprio. Rotas de API
+inexistentes também respondem 404 no mesmo formato.
+
+## D-018 · Cadeia de suprimentos (dependências e CI)
+
+**Contexto.** Dependências e automações de CI são uma porta de entrada comum
+para ataques (OWASP A06 e A08).
+
+**Decisão.**
+
+- O CI roda em todo PR: formatação, lint, tipos, testes com cobertura mínima de
+  80%, build, E2E e `npm audit` (falha em vulnerabilidade alta ou crítica).
+- As actions do GitHub são fixadas pelo SHA do commit; o workflow tem só
+  permissão de leitura e não guarda credenciais do checkout.
+- `npm ci` instala exatamente o que está no `package-lock.json`.
+- O npm 11 bloqueia scripts de instalação não aprovados. O script do
+  `unrs-resolver` (dependência do ESLint) **não** foi aprovado: ele só baixa um
+  binário alternativo, e o binário nativo já vem instalado.
+- O Dependabot abre PRs semanais de atualização.
+
+**Alternativas.** Actions por tag (`@v7`): mais simples, mas a tag pode ser
+movida para código malicioso.
+
+**Consequências.** Atualizar uma action exige atualizar o SHA (o Dependabot faz
+isso automaticamente).
+
+## D-019 · Driver do banco e repositórios com a conexão por parâmetro
+
+**Contexto.** Algumas operações precisam ser atômicas (gravar a análise e
+atualizar a cópia no lead; criar a empresa e o vínculo do usuário), e os
+repositórios precisam ser testados sem tocar no banco real.
+
+**Decisão.** Em produção, o `Pool` do `@neondatabase/serverless` (WebSocket),
+que suporta transações (`db.transaction`). O Node 24 já tem `WebSocket` nativo,
+sem dependência extra. Os repositórios recebem a conexão como primeiro
+parâmetro, com o tipo comum `BancoDeDados`; nos testes, recebem um PGlite com as
+mesmas migrations. Em desenvolvimento, o pool fica no `globalThis` para não
+abrir um novo a cada recarga do Next.js. IDs malformados respondem "não
+encontrado" em vez de erro do banco.
+
+**Alternativas.** Driver HTTP do Neon (`neon()`): um pouco mais rápido por
+consulta, mas sem transações interativas (só lotes). Repositórios importando a
+conexão global: mais simples, porém impossíveis de testar sem banco real.
+
+**Consequências.** Toda função de repositório tem a forma
+`funcao(db, empresaId, ...)`, o que também deixa explícito o escopo da empresa.
+
+## D-020 · Regras de dados verificadas pelo ESLint
+
+**Contexto.** As regras "não apagar registros" e "não montar SQL com texto
+concatenado" dependiam só de disciplina.
+
+**Decisão.** O ESLint acusa erro em `db.delete`, `tx.delete` (exclusão física)
+e `sql.raw` (SQL sem escape) em `src/` e `scripts/`. Consultas usam o query
+builder do Drizzle ou o template `sql` (valores sempre parametrizados). Buscas
+com `ILIKE` escapam os curingas `%` e `_` digitados pelo usuário.
+
+**Alternativas.** Revisão manual de código: sujeita a esquecimento.
+
+**Consequências.** O CI reprova um PR que tente excluir fisicamente ou usar
+`sql.raw`. Se algum dia for indispensável, a exceção precisa ser explícita e
+justificada no código.
+
+## D-021 · Vulnerabilidade moderada aceita no drizzle-kit
+
+**Contexto.** O `npm audit` aponta uma vulnerabilidade moderada no `esbuild`
+0.18, usado internamente pelo `drizzle-kit` (GHSA-67mh-4wv8-2f99). A falha
+afeta apenas o servidor de desenvolvimento do esbuild (`esbuild serve`).
+
+**Decisão.** Aceitar o risco: o `drizzle-kit` usa o esbuild só para ler
+arquivos TypeScript, nunca como servidor; é dependência de desenvolvimento e
+não vai para produção. A correção sugerida pelo npm rebaixaria o `drizzle-kit`
+para uma versão muito antiga. O CI continua falhando em vulnerabilidades altas
+ou críticas.
+
+**Consequências.** Reavaliar quando o `drizzle-kit` 1.0 estável sair.
+
+## D-022 · Identidade visual Brasa no código
+
+**Contexto.** O produto passou a se chamar Brasa (antes LeadScore IA), com
+paleta, tipografia e logotipo próprios (`docs/identidade-visual.md`). A
+identidade precisa ser aplicada de forma consistente, acessível e fácil de
+manter, nos temas claro e escuro.
+
+**Decisão.**
+
+- **Tokens em duas camadas no Tailwind v4:** escalas da marca no `@theme` e
+  tokens semânticos (`fundo`, `texto`, `primaria`, `quente-fundo`...) no
+  `@theme inline`, que mudam de valor por tema. A paleta padrão do Tailwind foi
+  removida: só as cores da marca existem.
+- **Tema por cookie, aplicado no servidor** (`data-tema` no `<html>`): claro
+  (padrão), escuro ou sistema. Sem "piscada" e sem script inline, que a CSP
+  bloquearia.
+- **Contraste verificado por teste automatizado:** 28 pares nos dois temas; o
+  CI reprova mudanças de cor que quebrem a WCAG AA.
+- **Logotipo em SVG** com o nome em curvas; componente `Logo` embutido.
+  Ícones do app gerados pelo script `npm run marca:icones`.
+- **Ícones de interface:** `lucide-react` (MIT), uma só família.
+- **Nomes técnicos preservados:** o repositório, o pacote e os identificadores
+  do código continuam `leadscore-ia`.
+
+**Alternativas.** Tema pela preferência do sistema, só com CSS: não permite
+escolha manual. Tema escolhido com JavaScript no navegador: causa "piscada" na
+carga e exige script inline. Manter a paleta padrão do Tailwind: facilita usar
+cores fora da marca por engano.
+
+**Consequências.** Componentes usam só tokens semânticos; trocar uma cor da
+marca é uma alteração num lugar só, validada pelo teste de contraste. Nenhuma
+página é estática (já era assim por causa da CSP com nonce, D-016).
+
+## D-023 · Autenticação, sessão e RBAC na prática
+
+**Contexto.** A Etapa 4 implementou o que D-004, D-005 e D-006 definiram, e
+algumas escolhas de implementação precisam ficar registradas para a revisão e
+a arguição.
+
+**Decisão.**
+
+- **Onde cada coisa acontece.** Cadastro, login e senha usam o cliente do
+  Better Auth, que chama as rotas `/api/auth/*`. Elas têm o limite de
+  tentativas da biblioteca, guardado no banco: 5 logins por minuto por IP e
+  5 cadastros a cada 10 minutos. O limite vale para várias instâncias
+  serverless. As demais ações (perfil, empresa, tema, sair) são Server
+  Actions.
+- **Sessão validada a cada requisição.** O cookie é assinado com o
+  `BETTER_AUTH_SECRET`, é `httpOnly`, `SameSite=Lax` e `Secure` em produção,
+  e vale 7 dias, renovado a cada dia de uso. Além disso, o usuário é relido do
+  banco a cada requisição: um bloqueio ou uma exclusão derruba a sessão na
+  hora. O `proxy.ts` só faz uma checagem rápida do cookie; a proteção real
+  está no servidor (`exigirSessao`, `exigirPermissao` e `autorizar`).
+- **RBAC.** Página sem permissão responde 404, e empresa fora do escopo
+  também responde 404; nos dois casos não se revela que o recurso existe. As
+  ações usam a empresa ativa lida da sessão, nunca um ID vindo do navegador
+  (proteção contra IDOR). A empresa ativa fica num cookie `httpOnly` e é
+  sempre conferida contra os vínculos do usuário.
+- **Dados de autenticação.**
+  - Senha com scrypt.
+  - Tokens OAuth cifrados com AES-256-GCM (hoje não usados).
+  - Tokens de verificação guardados só como hash.
+  - O token de sessão no banco não basta para forjar o cookie, porque o
+    cookie é assinado.
+  - IP e navegador ficam na tabela de sessões. A base legal é o legítimo
+    interesse (segurança e limite de tentativas), com retenção de no máximo
+    7 dias, porque a sessão é apagada no logout ou ao expirar. Isso entra na
+    política de privacidade (Etapa 9).
+- **Rotas da biblioteca desligadas:** atualizar usuário, excluir usuário e
+  trocar e-mail. Essas operações passam pelos nossos serviços.
+- **Menus sem JavaScript próprio.** O menu do celular e o menu da conta usam o
+  atributo `popover` do HTML, e as ações (tema, sair) são formulários com
+  Server Actions.
+- **Risco aceito: enumeração de e-mail no cadastro.** A mensagem "já existe
+  uma conta com este e-mail" é o comportamento esperado por quem se cadastra.
+  O "esqueci a senha" não revela se o e-mail existe, e o limite de cadastros
+  por IP dificulta a varredura.
+
+**Alternativas.** Login por Server Action: chamadas internas não passam pelo
+limite de tentativas da biblioteca. Sessão sem reler o usuário: um bloqueio
+só valeria quando a sessão expirasse. Bibliotecas de componentes para os
+menus: mais uma dependência para algo que o HTML já faz.
+
+**Consequências.** Cada requisição autenticada faz uma consulta a mais
+(usuário e vínculos), feita uma única vez por requisição graças ao `cache` do
+React. Os testes E2E variam o IP fictício (`x-forwarded-for`) para não esbarrar
+no limite de tentativas; um teste específico confirma que a sexta tentativa
+seguida é recusada com 429.
+
+## D-024 · Foto de perfil no Vercel Blob privado
+
+**Contexto.** O "Alterar perfil" inclui a foto (D-011). A foto é um dado
+pessoal (LGPD): num store público, qualquer pessoa com o endereço a veria, sem
+como revogar. Um arquivo enviado também pode ser perigoso: HTML ou SVG com a
+extensão `.png`, ou uma foto com a localização (GPS) da câmera nos metadados.
+
+**Decisão.**
+
+- **Store privado** (`brasa`, região `gru1`): nenhuma foto tem endereço
+  público. A rota `GET /api/usuarios/[id]/foto` confere a sessão e a
+  permissão ao lado da leitura do arquivo, como recomenda a documentação da
+  Vercel. Sem sessão, responde 401. Sem permissão, sem foto ou com usuário
+  inexistente, responde 404 nos três casos, para não revelar quem existe.
+- **Quem vê a foto:** a própria pessoa, admin e suporte, e colegas de uma
+  empresa em comum (`podeVerPerfil`).
+- **Validação no servidor:** até 2 MB e só JPEG, PNG ou WebP, identificados
+  pelos primeiros bytes do arquivo (a assinatura), nunca pela extensão nem
+  pelo tipo que o navegador informa. O navegador faz a mesma conferência para
+  responder na hora.
+- **No navegador:** a foto é reduzida para até 512 px e regravada em WebP (ou
+  JPEG). A regravação descarta os metadados, como a localização, e o envio
+  fica com poucos KB.
+- **Resposta da rota:** o tipo é o que o próprio app gravou (pela extensão do
+  caminho), com `nosniff`, `Content-Security-Policy: default-src 'none';
+  sandbox` e sem cache (`no-store`, como toda a `/api`).
+- **Caminho:** `{ambiente}/usuarios/{usuarioId}/{uuid}.{ext}`, em que o
+  ambiente é o `VERCEL_ENV` (`production`, `preview`) ou `local`. O banco
+  guarda o caminho em `usuarios.imagem_url`. Só um caminho nesse formato, na
+  pasta do próprio usuário e do ambiente atual, é lido ou apagado. Assim, a
+  branch de desenvolvimento (cópia da produção) nunca lê nem apaga fotos de
+  produção, e um valor estranho no banco (URL externa, `../`) é ignorado.
+- **Troca:** grava o arquivo novo, aponta o banco para ele numa transação
+  (linha travada com `FOR UPDATE`, com auditoria) e só então apaga o antigo.
+  Se o banco falhar, o arquivo novo é apagado. Remover a foto apaga o arquivo
+  (minimização, LGPD). O arquivo não é um registro do banco, então a regra de
+  exclusão lógica não se aplica a ele.
+- **Limite:** 10 trocas por hora por usuário, contadas na auditoria, contra
+  abuso e custo.
+- **Envio por Server Action:** o limite de corpo das actions passou de 1 MB
+  para 2,5 MB (foto de até 2 MB mais os bytes do multipart).
+- **Credencial do Blob:** localmente, `BLOB_READ_WRITE_TOKEN`; na Vercel, o
+  SDK usa OIDC com o `BLOB_STORE_ID` (token de curta duração, renovado
+  sozinho). Sem nenhum dos dois, o envio responde "indisponível" (503) e o
+  avatar mostra as iniciais.
+
+**Alternativas.** Store público com nome aleatório: mais barato de servir, mas
+a foto ficaria acessível a quem tivesse o link, sem como revogar. Envio direto
+do navegador para o Blob (client upload): economiza tráfego da função, mas
+exige uma rota de token e um webhook; com fotos de poucos KB, não compensa.
+Redimensionar no servidor com `sharp`: dependência nativa a mais, que
+precisaria de aprovação; o ajuste no navegador resolve o caso comum.
+
+**Consequências.** Cada exibição da foto passa por uma função (leitura do Blob
+mais transferência); com fotos de poucos KB, o custo é baixo. O servidor não
+decodifica a imagem: um arquivo com assinatura válida e conteúdo inválido é
+guardado, mas nunca é executado (tipo fixo, `nosniff` e `sandbox`). Quem enviar
+direto para a action, sem passar pela tela, pode mandar uma imagem com
+metadados; ela só é vista por quem já tem permissão.
+
+**Aprovação (26/09/2026).** Aprovados pelo usuário: apagar do Blob os arquivos
+de foto trocados ou removidos (minimização, LGPD); o limite de 2,5 MB nas
+Server Actions; e não usar o `BLOB_WEBHOOK_PUBLIC_KEY` criado pela integração
+da Vercel (o app não recebe webhooks do Blob).
+
+## D-025 · Branch `e2e` do Neon e preparação das migrations
+
+**Contexto.** A branch principal do Neon se chama `production` e é exclusiva
+da Vercel. Os testes E2E do CI usam a branch `e2e`, criada como "schema only"
+a partir de `production`. Ela tem as tabelas, mas não os dados, nem os
+registros de `drizzle.__drizzle_migrations`. O `drizzle-kit migrate` acharia
+que nada foi aplicado e falharia com "já existe" logo na primeira migration.
+Apagar e recriar as tabelas é proibido pelas regras do projeto.
+
+**Decisão.** O script `npm run db:preparar-e2e` roda no CI antes dos E2E (e só
+com `E2E_COM_BANCO=1`):
+
+- se a tabela de controle está vazia, confere no catálogo do Postgres os
+  objetos que cada migration cria (tabelas, índices, tipos, extensões,
+  restrições e colunas) e registra as migrations já presentes (a "linha de
+  base"), com o mesmo hash e a mesma data que o Drizzle gravaria;
+- aplica as migrations mais novas, do mesmo jeito que o migrator do Drizzle;
+- faz tudo numa transação com trava (`pg_advisory_xact_lock`), então duas
+  execuções do CI ao mesmo tempo esperam a vez;
+- para sem alterar nada se o banco estiver inconsistente (migration pela
+  metade, fora de ordem ou impossível de conferir).
+
+A branch `e2e` não tem exclusão automática. Os testes só inserem dados, com
+e-mails únicos do domínio reservado `.example`.
+
+**Alternativas.** Recriar a branch a cada execução pela API do Neon: exigiria
+no CI uma chave com poder de apagar branches. Branch `e2e` com dados: levaria
+dados de produção (LGPD) para o ambiente de testes. `drizzle-kit push`:
+proibido (D-010).
+
+**Consequências.** Depois da primeira execução, a tabela de controle fica
+preenchida e o CI só aplica as migrations novas de cada PR. O
+`drizzle-kit migrate` continua funcionando na branch. Uma migration futura que
+só altere dados (sem criar objetos) não pode ser conferida por esse método;
+isso só importa numa nova cópia "schema only", e o script avisa em vez de
+adivinhar.
+
+## D-026 · Um banco por ambiente e o endereço do app nos previews
+
+**Contexto.** Com o projeto conectado à Vercel, cada PR gera um deploy de
+preview. Dados reais não podem ir parar em testes (LGPD), e a URL do preview
+muda a cada deploy, então ela não cabe num `BETTER_AUTH_URL` fixo.
+
+**Decisão.**
+
+| Ambiente | Onde roda | Branch do Neon | Dados |
+|---|---|---|---|
+| Desenvolvimento | Máquina local (`.env.local`) | desenvolvimento, cópia de `production` | Cópia com dados; o que um teste manual cria recebe `deleted_at` ao final |
+| E2E | CI (GitHub Actions, segredo `DATABASE_URL_E2E`) | `e2e`, cópia só do schema | Só o que os testes criam (D-025) |
+| Preview | Deploys de preview da Vercel | `preview`, cópia só do schema | Só o que for criado no próprio preview |
+| Produção | Vercel (Production) | `production` | Reais |
+
+- **Segredos separados por ambiente:** `BETTER_AUTH_SECRET` diferente em
+  Production e Preview (uma sessão de um não vale no outro) e chave da
+  Anthropic da Vercel separada da chave local.
+- **Endereço do app:** `BETTER_AUTH_URL` obrigatório em produção e localmente.
+  No preview, sem ele, o app usa `https://` + `VERCEL_URL` (o endereço do
+  próprio deploy), e as origens confiáveis do Better Auth são só os hosts
+  exatos do deploy e da branch (`VERCEL_URL` e `VERCEL_BRANCH_URL`). Os dois
+  valores são conferidos como nomes de host.
+- **Previews protegidos** pelo login da Vercel (Deployment Protection).
+- **Fotos:** uma pasta por ambiente no mesmo store (D-024).
+
+**Alternativas.** Previews no banco de produção: um PR em teste mexeria em
+dados reais. `baseURL` dinâmico com `allowedHosts: ["*.vercel.app"]`, como
+sugere a documentação do Better Auth: aceitaria como origem qualquer
+subdomínio `vercel.app`, inclusive de outros projetos. Um `BETTER_AUTH_URL`
+fixo no Preview: quebraria a cada novo deploy.
+
+**Consequências.** Migrations novas também precisam chegar à branch
+`preview`, que é "schema only" como a `e2e`. A preparação de D-025 vale para
+ela e entra no checklist de deploy da Etapa 9. Os dados do teste manual da foto
+(usuário `foto-teste-0926` e empresa `teste-foto-0926`, na branch de
+desenvolvimento) receberam `deleted_at` em 26/09/2026, com registro na
+auditoria, sem apagar nada.
+
+## D-027 · Motor de IA: saída estruturada, dados mínimos e custo controlado
+
+**Contexto.** A Etapa 5 liga a Claude API à análise dos leads. Os riscos são
+concretos: resposta fora do formato, custo sem controle, texto do formulário
+público tentando manipular a IA (prompt injection), dados pessoais enviados a
+um terceiro (LGPD), a mesma análise rodando duas vezes e, durante o
+desenvolvimento, a chave da Anthropic sem créditos.
+
+**Decisão.**
+
+- **SDK e modelo:** SDK oficial `@anthropic-ai/sdk` (aprovado em 26/09/2026)
+  com `claude-haiku-4-5-20251001`, `temperature: 0` (mesma entrada, mesma
+  nota), `max_tokens: 1024`, timeout de 30 s e até 2 novas tentativas do
+  próprio SDK para 429, 5xx e falhas de rede.
+- **Formato garantido duas vezes:** saída estruturada da API
+  (`output_config.format` com `zodOutputFormat`) e, antes de salvar, validação
+  do JSON com o mesmo schema Zod (`src/server/ia/schema.ts`). Se o JSON vier
+  fora do schema, há uma nova tentativa; `stop_reason` `refusal` e
+  `max_tokens` viram erros próprios (`ErroDaIA`).
+- **A IA dá a nota; o app dá a etiqueta:** a resposta tem `score` (0 a 100),
+  `justificativa` e `respostaSugerida`. A classificação sai da nota por uma
+  regra fixa: 70 ou mais é quente, de 40 a 69 é morno, abaixo de 40 é frio.
+- **Dois motores, um contrato** (`MotorDeAnalise`): o real (Claude API) e o
+  simulado, por regras de palavras-chave, sem custo e sem rede. `IA_MODO`
+  escolhe (`mock` é o padrão e o do CI); cada análise grava se veio do mock.
+- **Prompt versionado:** `VERSAO_DO_PROMPT` (hoje `v1`) e a `perfil_versao` da
+  empresa ficam em cada análise, para comparar resultados antes e depois de
+  mudar o texto.
+- **Minimização (LGPD):** a IA recebe o perfil do negócio e, do lead, só
+  empresa, segmento, mensagem e origem. Nome, e-mail e telefone não vão; os
+  que estiverem escritos na mensagem viram `[e-mail]` e `[telefone]`. Cada
+  campo tem tamanho máximo (160 ou 2000 caracteres), com o corte avisado.
+- **Prompt injection:** o texto do visitante vai dentro de `<lead>`, com `<` e
+  `>` neutralizados; o prompt de sistema manda tratá-lo como dado, nunca como
+  instrução. A IA não tem ferramentas nem acesso ao banco e a saída é presa ao
+  schema: o pior caso é uma nota errada num lead, nunca uma ação.
+- **Concorrência e custo:** o lead é reservado (`processando`) por um `UPDATE`
+  condicional, e dois pedidos simultâneos não o analisam duas vezes; uma
+  reserva travada é liberada após 5 minutos. O limite mensal é consumido de
+  forma atômica (D-008). Se a IA falhar, a análise volta para o saldo do mês,
+  o lead fica `falhou` e os tokens cobrados mesmo assim continuam em
+  `uso_mensal`.
+- **Quem dispara:** a captação (Etapa 6) chama `agendarAnalise`, que usa
+  `after()` (D-007). A reanálise é a Server Action `reanalisarLeadAcao`, com a
+  empresa tirada da sessão e a permissão `leads:editar` (cliente na própria
+  empresa e admin; o suporte não). A auditoria registra quem pediu
+  (`lead.reanalisado`), sem a nota nem o texto.
+- **Logs sem conteúdo:** só ids, classificação, modelo, tokens e o motivo da
+  falha; nunca a mensagem do lead nem o texto gerado.
+- **Sem prompt caching:** o prompt de sistema tem centenas de tokens, abaixo do
+  mínimo de 4096 que o Haiku 4.5 exige para usar cache.
+- **Avaliação:** `npm run ia:avaliar` roda 12 leads fictícios com a
+  classificação esperada (inclusive spam, pedido de emprego e uma tentativa de
+  prompt injection) e mostra acertos, tokens e custo. Com a Claude API exige
+  `--confirmar`, porque gasta créditos.
+
+**Alternativas.** `messages.parse()` do SDK: valida sozinho, mas não deixa
+conferir o `stop_reason` nem somar os tokens de uma resposta inválida antes da
+exceção. Forçar o JSON por *tool use*: funciona, mas a saída estruturada é o
+recurso feito para isso. Deixar a IA escolher a classificação: poderia
+contradizer a nota ("quente" com 35). Mandar nome e e-mail do lead: não mudam
+a nota e aumentam a exposição de dados pessoais. Fila externa: ver D-007.
+
+**Consequências.** Mudar o prompt exige subir a versão. O custo estimado é de
+menos de meio centavo de dólar por análise (Haiku 4.5: US$ 1 por milhão de
+tokens de entrada e US$ 5 por milhão de saída), cerca de US$ 0,40 por empresa
+no limite padrão de 100 análises por mês. Com o motor simulado, a avaliação
+acertou 10 de 12 (26/09/2026); o motor simulado serve para demonstração e
+testes, não mede a qualidade da IA. Pendente: a mesma avaliação com a Claude
+API quando a conta tiver créditos (previsão 04/10/2026), antes do deploy.
+
+## D-028 · Captação pública: formulário, anti-spam e iframe
+
+**Contexto.** A Etapa 6 abre o formulário `/f/[slug]` para qualquer visitante,
+sem login. Cada envio grava dados pessoais e pode gerar custo de IA; o
+formulário também precisa funcionar dentro do site do cliente.
+
+**Decisão.**
+
+- **Caminho do envio:** a página `/f/[slug]` (Server Component) mostra só o
+  nome da empresa. O formulário envia JSON para `POST /api/publico/[slug]/leads`
+  (Route Handler, como previsto na arquitetura), que responde no formato único
+  de erro (D-017). A lógica fica no serviço `captarLead`.
+- **Proteções da rota:** só aceita `application/json` (um formulário HTML de
+  outro site não consegue postar, e um `fetch` de outra origem com JSON é
+  barrado pelo navegador, porque não respondemos ao CORS); recusa com 403 uma
+  origem diferente da do app quando o navegador a informa; corpo de até 16 KB.
+- **Anti-spam, nesta ordem:**
+  1. **Campo-armadilha** (`website`), fora da tela e escondido dos leitores de
+     tela. Preenchido: responde 201, mas não grava nada.
+  2. **Validação** com o mesmo schema Zod do navegador
+     (`src/lib/validacao/lead.ts`).
+  3. **Carimbo assinado:** a página leva um campo oculto com o horário de
+     abertura e um HMAC ligado à empresa. Sem carimbo válido, ou com mais de
+     24 horas: 400, pedindo para recarregar. Enviado em menos de 3 segundos:
+     201 sem gravar. Robôs que postam direto na API precisam abrir a página
+     antes e esperar.
+  4. **Limites (janela fixa no Postgres, D-009):** 20 envios por hora por IP
+     em todos os formulários, 5 a cada 10 minutos por IP no mesmo formulário e
+     300 por hora por formulário. O limite do formulário é conferido por
+     último, para um único visitante abusivo não bloquear o formulário de
+     todos. Estourou: 429 com `Retry-After`.
+  5. **Limite mensal de análises** (D-008), que continua valendo.
+- **Resposta igual para robô e pessoa:** o descarte silencioso não ensina o que
+  foi detectado; cada descarte vai para o log (sem dados pessoais) para
+  monitoramento.
+- **IP:** lido do `x-forwarded-for`, que na Vercel é preenchido pela própria
+  plataforma (o valor enviado pelo navegador é substituído). Guardado só como
+  HMAC (`leads.ip_hash` e as chaves de `limites_taxa`).
+- **Chaves:** o HMAC do IP e o do carimbo usam chaves próprias, derivadas do
+  `BETTER_AUTH_SECRET` por HKDF (uma por finalidade). Não há segredo novo para
+  configurar, e uma assinatura de uma finalidade não vale para outra.
+- **LGPD:** caixa de consentimento obrigatória e desmarcada, com o texto
+  versionado (`v1`) e o horário gravados no lead. Acima dela, "Como seus dados
+  são usados" explica quem recebe os dados, o uso de IA (Anthropic, nos EUA,
+  sem nome, e-mail e telefone), que a nota não decide o atendimento sozinha e
+  os direitos do titular.
+- **Iframe:** só o `/f/...` pode ser exibido em iframe, e só por sites HTTPS
+  (`frame-ancestors 'self' https:`); o resto do app segue com
+  `frame-ancestors 'none'` e `X-Frame-Options: DENY`. A tela Empresa mostra o
+  link, os botões de abrir e copiar e o código do iframe.
+- **Segmento** vira uma lista fixa (Indústria, Comércio, Serviços...), para os
+  relatórios serem comparáveis.
+
+**Alternativas.** Server Action no formulário: mais simples, mas a regra do
+projeto reserva as actions para o painel autenticado, e a rota deixa um
+endereço estável e com erros padronizados para integrações futuras. Cloudflare
+Turnstile ou reCAPTCHA: mais proteção, mas script de terceiro, ajuste da CSP e
+atrito para o visitante. A D-009 previa o Turnstile preparado e desligado; ele
+não foi implementado e só entra se o spam passar pelas camadas acima (seria
+mais uma verificação no serviço, antes dos limites). Liberar o
+iframe só para domínios cadastrados pela empresa: mais restrito, mas exige
+coluna nova e tela de configuração; fica como evolução. Segredo próprio para o
+HMAC do IP: mais uma variável para configurar em cada ambiente, sem ganho de
+segurança sobre a derivação por HKDF.
+
+**Consequências.** Trocar o `BETTER_AUTH_SECRET` muda os hashes de IP (os
+limites recomeçam, e leads antigos não se comparam com os novos pelo IP) e
+invalida os carimbos das páginas abertas. Em outra hospedagem, atrás de outro
+proxy, a leitura do IP precisa ser revista. Uma linha por IP em `limites_taxa`,
+reaproveitada e nunca apagada: se a tabela crescer demais, uma limpeza exigirá
+decisão própria (exceção como a D-006). A análise roda no `after()` da própria
+requisição; o tempo máximo da função na Vercel entra no checklist da Etapa 9.
+O formulário não envia e-mail de aviso à empresa; o novo lead aparece no
+painel (Etapa 7).
+
+---
+
+## D-029 · Painel: listas, exportação, indicadores e administração
+
+**Contexto.** A Etapa 7 entrega o painel: leads (lista, detalhe, andamento,
+exclusão e anonimização), visão geral com indicadores e a administração da
+equipe Brasa (empresas, usuários e auditoria). As listas precisam de filtro,
+paginação e exportação (regra do projeto), sem perder desempenho quando os
+dados crescerem, e a equipe precisa ver os dados de um cliente sem que isso
+vire um acesso sem rastro.
+
+**Decisão.**
+
+- **Filtros na URL:** cada lista é um formulário GET comum
+  (`FormularioDeFiltros`). A lista filtrada pode ir para os favoritos, ser
+  compartilhada e funciona sem JavaScript. A URL é editável por qualquer um:
+  os schemas de `src/lib/validacao/filtros.ts` descartam o valor inválido (volta
+  ao padrão) em vez de quebrar a página, e a ação da auditoria só aceita
+  códigos do catálogo. Datas "de/até" são dias de São Paulo; "até" inclui o
+  dia inteiro.
+- **Paginação no servidor** (D-014): no máximo 100 itens por página, com o
+  total sempre visível. A tela usa OFFSET (o usuário pula páginas).
+- **Exportação CSV** com os mesmos filtros da tela, em streaming
+  (`respostaCsv`): cada lote lido do banco é enviado na hora e a memória fica
+  constante. As tabelas que crescem sem limite (leads e auditoria) são lidas
+  por cursor (id menor que o último; os ids são UUID v7), e não por OFFSET;
+  empresas e usuários, que são centenas, percorrem as páginas. Formato do
+  Excel brasileiro: ponto e vírgula, BOM UTF-8, CRLF. Texto que começa com
+  `= + - @` ganha um apóstrofo (injeção de fórmula). Toda exportação vai para
+  a auditoria antes de o arquivo começar, sem o texto da busca.
+- **Leads:** o suporte só lê; excluir é lógico (`deleted_at`); anonimizar
+  (LGPD, D-012) exige digitar `ANONIMIZAR` e apaga contato, mensagem e os
+  textos das análises, mantendo nota, classificação e datas para as
+  estatísticas. Nas actions, a empresa vem sempre da sessão, nunca do
+  navegador (IDOR).
+- **Indicadores sem biblioteca de gráficos:** blocos de número e barras
+  horizontais em HTML e CSS, com rótulo, valor e percentual escritos (skill
+  dataviz). A cor nunca é a única informação; o âmbar do "morno" ganha
+  contorno escuro por contraste.
+- **Equipe dentro da empresa de um cliente:** admin e suporte abrem a empresa
+  pela lista de Empresas (`abrirEmpresaAcao`). O acesso é conferido no
+  serviço, vira o evento `empresa.acessada` e grava a empresa em foco num
+  cookie de 8 horas, apagado ao sair da conta. Enquanto isso, o topo mostra
+  "Sair da empresa" o tempo todo. Cada lead aberto pela equipe gera
+  `lead.visualizado`. O papel vem do banco a cada requisição, nunca do cookie:
+  um cliente que forjar o cookie continua só nas empresas dele.
+- **Bloqueio de empresa:** o formulário público para de receber leads e os
+  clientes da empresa vão para a página `/empresa-bloqueada`. A empresa
+  bloqueada sai dos vínculos ativos. Por isso a sessão confere se o cliente
+  tem empresa bloqueada, e o onboarding recusa criar outra: sem isso, o
+  cliente cairia no onboarding e escaparia do bloqueio com uma empresa nova.
+- **Administração:** o suporte lista e exporta; bloquear empresa, mudar o
+  limite de análises e bloquear usuário são só do admin (nunca a própria
+  conta), sempre com auditoria. O bloqueio de empresa e o de usuário pedem
+  confirmação com as consequências escritas; desbloquear não pede, porque não
+  tira nada de ninguém.
+- **Catálogo da auditoria** (`src/lib/auditoria.ts`): cada ação tem código,
+  grupo e texto. `registrarAuditoria` só aceita códigos do catálogo. O tipo já
+  achou uma inconsistência num teste antigo (`lead.exportado`, que não existia).
+
+**Alternativas.** Filtros em estado do React: sem URL compartilhável e sem
+funcionar sem JavaScript. Biblioteca de gráficos (Recharts, Chart.js): peso no
+navegador e aprovação de dependência para desenhar poucas barras. Gerar o CSV
+inteiro em memória: simples, mas estoura com dezenas de milhares de linhas.
+Paginação por cursor também na tela: mais rápida em páginas distantes, mas sem
+"ir para a página 7" nem total; fica para quando alguma lista passar de
+centenas de milhares de linhas. Impersonação (a equipe "entra como" o
+cliente): mostra exatamente o que o cliente vê, mas as ações sairiam em nome
+do cliente e confundiriam a auditoria. Com a empresa em foco, cada ação sai
+em nome de quem a fez.
+
+**Consequências.** A auditoria cresce a cada login; o filtro por ação usa o
+índice por data (`auditoria_criado_idx`) e, se ficar lento, entra um índice
+`(acao, created_at)`. O cliente com várias empresas perde a empresa escolhida
+ao sair da conta (volta para a primeira). Bloquear uma empresa não derruba na
+hora uma análise que já estava em andamento. A auditoria da própria empresa,
+para o cliente, continua como evolução prevista na matriz.
+
+---
+
+## D-030 · Membros, convites, perfis de acesso e qualidade (Etapa 8)
+
+**Contexto.** A matriz RBAC aprovada na Etapa 1 previa duas funções sem tela:
+o cliente convidar e remover pessoas da empresa, e o admin criar contas da
+equipe e alterar o papel delas. A Etapa 8 também fecha a qualidade: testes de
+escala e de acessibilidade, páginas de erro, seed e README.
+
+**Decisão.**
+
+- **Convite por link.** O token tem 32 bytes aleatórios (256 bits) em
+  base64url. O banco guarda só o SHA-256, e o link aparece uma única vez, na
+  tela de quem convidou, com o botão de copiar. O envio por e-mail é um extra:
+  se falhar, o convite continua valendo.
+  - O convite vale 7 dias e só para o e-mail convidado (comparado com o da
+    conta).
+  - Só clientes aceitam: a equipe já vê todas as empresas.
+  - Aceitar trava o convite (`FOR UPDATE`), cria o vínculo e marca o convite
+    como usado na mesma transação. Dois cliques não criam dois vínculos.
+  - Limites: 20 convites pendentes por empresa e 30 convites por hora por
+    pessoa (contados na auditoria, como a troca de foto da D-024).
+  - A página do convite não vai para buscadores, sai com `no-referrer` e
+    mostra o e-mail mascarado.
+  - Quem ainda não tem conta cria e volta ao convite: o cadastro passou a
+    aceitar `proximo`, com a mesma proteção contra open redirect do login.
+- **Remover membro** é exclusão lógica do vínculo e vale na hora (a sessão
+  relê os vínculos). Ninguém remove a si mesmo. Os vínculos da empresa ficam
+  travados na transação, então duas remoções simultâneas não deixam a empresa
+  sem ninguém.
+- **Perfil de acesso.** A pessoa se cadastra, e o admin a promove (cliente,
+  suporte ou admin). A tela diz o que cada perfil pode fazer. Ninguém muda o
+  próprio perfil. As contas de admin ativas ficam travadas na transação: nem
+  duas alterações nem dois bloqueios ao mesmo tempo deixam a plataforma sem
+  admin ativo. A mesma trava passou a valer para o bloqueio de admins.
+- **Tela Membros:** pessoas com paginação e convites pendentes; o suporte só
+  vê. Não há busca nem exportação: uma empresa tem poucas pessoas, e a lista
+  Usuários da administração já busca e exporta todas.
+- **Escala medida, não suposta.** O teste `tests/integracao/escala.test.ts`
+  roda as funções reais do repositório com 20 mil leads e confere o plano
+  (`EXPLAIN`) do Postgres. Ele mostrou duas lacunas, fechadas com a migration
+  `0003_indices_de_escala` (só `CREATE INDEX`):
+  - ordenar por "Maior nota" lia e ordenava todos os leads da empresa; agora
+    sai de `(empresa_id, score_atual DESC NULLS LAST, id DESC)`;
+  - a exportação por cursor percorria a chave primária de todas as empresas;
+    agora usa `(empresa_id, id DESC)`.
+  O detalhe `id DESC NULLS FIRST` no índice é o que casa com o `ORDER BY id
+  DESC` do Postgres. Sem ele, o plano ignorava o índice.
+- **Busca:** o planejador começa pelo índice da empresa e procura o trecho só
+  nos leads dela, então o custo acompanha o tamanho da empresa. Os índices de
+  trigramas valem para a tabela toda.
+- **Acessibilidade verificada em todas as telas** (E2E, no computador e no
+  celular). O verificador fica em `tests/e2e/apoio.ts`, sem dependência nova,
+  e confere:
+  - ids repetidos;
+  - campos sem rótulo;
+  - botões e links sem nome;
+  - imagens sem `alt`;
+  - um único `h1` e sem pular nível de título;
+  - um único `main`;
+  - o idioma da página.
+
+  Um teste confirma que ele acusa uma página malfeita. O teclado também é
+  testado: "Pular para o conteúdo" é o primeiro item do Tab.
+- **Erros e 404 com a marca:** `error.tsx` (usando `retry`, a API desta
+  versão do Next.js) mostra o código do erro (digest), que é o mesmo do log,
+  sem a mensagem técnica. No painel, o "não encontrado" mantém o menu.
+- **Sem `loading.tsx` no painel.** Com ele, a resposta começa antes de a
+  página rodar, e o `notFound()` das páginas protegidas passaria a responder
+  200 em vez de 404. As consultas das telas são rápidas (medidas acima).
+- **Seed:** segunda empresa (Horizonte Contábil), para demonstrar o isolamento,
+  e segunda pessoa na Norte Digital, para a tela Membros. Continua só
+  inserindo, idempotente.
+
+**Alternativas.**
+
+- **Convite só por e-mail:** sem domínio próprio, o Resend ainda não entrega
+  para qualquer endereço. O link na tela funciona já (inclusive por WhatsApp).
+- **Admin criar a conta com senha provisória:** a senha passaria por outra
+  pessoa. O cadastro seguido de promoção não expõe senha.
+- **axe-core:** a verificação mais completa do mercado, mas é dependência
+  nova. Fica como sugestão; o verificador próprio cobre os erros mais comuns.
+- **Índice GIN composto (empresa + trigramas), com `btree_gin`:** busca ainda
+  mais rápida em empresas enormes, mas exige outra extensão; fica para quando
+  uma empresa passar de centenas de milhares de leads (D-014).
+
+**Consequências.**
+
+- A migration 0003 precisa chegar às branches `preview` e `production` do
+  Neon (checklist da Etapa 9); sem ela, tudo funciona, só mais devagar.
+- A tabela `leads` tem agora 8 índices; cada inserção custa um pouco mais, o
+  que é irrelevante no volume de um formulário.
+- Os e-mails `.example` dos testes E2E e as contas de equipe criadas por eles
+  (bloqueadas ao fim de cada teste) ficam no banco de desenvolvimento.
+
+---
+
+## D-031 · Implantação: migrations no build, primeiro admin e produção só com dados reais (Etapa 9)
+
+**Contexto.** A produção vai receber o código pela primeira vez. Ficaram
+pendências das etapas anteriores:
+
+- as migrations precisam chegar às branches `preview` e `production` do
+  Neon (D-026, D-030);
+- o tempo máximo das funções na Vercel precisa cobrir a análise no `after()`
+  (D-028);
+- falta a política de privacidade (D-023).
+
+Além disso, a plataforma não tem como criar o primeiro admin: o cadastro
+sempre cria cliente, e só um admin promove outro.
+
+**Decisão.**
+
+- **Migrations no build da Vercel.** O `vercel.json` troca o comando de build
+  por `npm run db:implantar && npm run build`. O `db:implantar` só age nos
+  builds de `production` e `preview` (`VERCEL=1`); fora deles, não faz nada.
+  - Reaproveita a preparação do banco E2E (D-025): trava, linha de base das
+    cópias "schema only" e transação única.
+  - Usa o `DATABASE_URL` que a Vercel já tem para cada ambiente.
+  - Se falhar, o banco não muda, o build para e o deploy anterior segue no
+    ar. O código novo nunca roda com o banco antigo.
+  - As migrations só acrescentam (sem `DROP`, regra do projeto). Por isso, o
+    código anterior funciona com o banco novo, e o *Instant Rollback* da
+    Vercel é seguro.
+- **Região e tempo máximo.** Funções em `gru1`, fixado no `vercel.json`.
+  `maxDuration = 120` na rota da captação (análise no `after()`) e na página
+  do lead (a reanálise é uma Server Action). No pior caso, a Claude API faz
+  3 tentativas de 30 s, cerca de 95 s. A análise "travada" só é retomada
+  depois de 5 min, bem acima desse limite. Exige o Fluid compute ligado.
+- **Primeiro admin.** A pessoa se cadastra pelo app, e o comando
+  `npm run admin:promover -- <e-mail>` promove a conta.
+  - Só funciona enquanto não houver admin ativo. Os próximos são promovidos
+    na tela Usuários, com RBAC.
+  - Uma trava (advisory lock) impede duas promoções ao mesmo tempo.
+  - Recusa conta bloqueada.
+  - A auditoria registra a ação como do sistema (`origem: primeiro_admin`).
+  - A autorização é ter a credencial do banco.
+- **Produção só com dados reais.** O seed de demonstração recusa o banco
+  quando `VERCEL_ENV=production` ou quando há contas com e-mail real (fora de
+  `.example` e das anonimizadas). Isso cobre o `.env.local` apontando para a
+  produção por engano.
+- **Política de privacidade** em `/politica-de-privacidade`, pública, com
+  linguagem simples.
+  - Explica os papéis: a Brasa é controladora das contas e operadora dos
+    leads.
+  - Lista os dados, as finalidades com as bases legais, a IA sem dados de
+    contato, os fornecedores (com a transferência internacional para
+    Anthropic e Resend), a retenção, os direitos do art. 18, a segurança e o
+    contato.
+  - O responsável e o contato vêm de `PRIVACIDADE_RESPONSAVEL` e
+    `PRIVACIDADE_CONTATO`. O contato é obrigatório em produção: sem ele, o
+    build para.
+  - Links no cadastro, nas telas de acesso, na página inicial, no menu da
+    conta e no formulário público (em outra aba, porque ele pode estar num
+    iframe).
+- **Buscadores.** `robots.txt` e `sitemap.xml` gerados no build. Previews e
+  o ambiente local bloqueiam tudo. Em produção, só as páginas públicas:
+  áreas logadas (a mesma lista do proxy), API, convites e formulários ficam
+  de fora.
+- **Guia de implantação** em [implantacao.md](implantacao.md): variáveis por
+  ambiente, ordem dos merges, verificação depois do deploy, rollback e custos.
+
+**Alternativas.**
+
+- **GitHub Action manual para as migrations, com aprovação:** mais controle,
+  mas exige outra cópia da senha de produção (no GitHub) e alguém lembrar de
+  rodar antes de cada merge.
+- **Migrar quando o servidor sobe** (`instrumentation.ts`): várias instâncias
+  subiriam ao mesmo tempo, e cada início a frio ficaria mais lento.
+- **Promover o primeiro admin com SQL no painel do Neon:** SQL digitado à mão,
+  sem validação e sem registro na auditoria.
+- **Seed de demonstração em produção:** mais rápido de mostrar, mas seriam
+  contas com senha conhecida pela equipe num ambiente real.
+- **Contato de privacidade fixo no código:** muda quando o SaaS tiver razão
+  social e CNPJ; pela variável de ambiente, cada implantação informa o seu.
+
+**Consequências.**
+
+- Todo build de preview aplica as migrations da própria branch no banco
+  `preview`, que é compartilhado entre os PRs. Como elas só acrescentam, uma
+  branch não quebra a outra.
+- O build da Vercel precisa acessar o banco. Se o Neon estiver fora do ar, o
+  deploy falha em vez de subir com o banco desatualizado.
+- Sem domínio próprio verificado no Resend, os e-mails só chegam ao dono da
+  conta do Resend. Os convites seguem pelo link na tela.
+- Ficam para a versão comercial:
+  - domínio próprio;
+  - plano Pro da Vercel;
+  - revisão jurídica da política e termos de uso;
+  - registros de acesso por 6 meses (Marco Civil, art. 15);
+  - exclusão da conta pela própria pessoa;
+  - uma rotina que retome análises interrompidas (D-007).
 
 ---
 
@@ -325,3 +1105,10 @@ O checklist de produção fica na Etapa 9.
 - [Preços do Upstash Redis](https://upstash.com/docs/redis/overall/pricing)
 - [Preços do Vercel Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)
 - [Preços do Resend](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
+- [Vercel Blob: armazenamento privado](https://vercel.com/docs/vercel-blob/private-storage) (consultada em 26/09/2026, D-024)
+- [Better Auth: opções `baseURL` e `trustedOrigins`](https://www.better-auth.com/docs/reference/options) (consultada em 26/09/2026, D-026)
+- [Claude API: saída estruturada](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) (consultada em 26/09/2026, D-027)
+- [Claude API: prompt caching e tamanho mínimo por modelo](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) (consultada em 26/09/2026, D-027)
+- [Preços da Claude API](https://platform.claude.com/docs/en/about-claude/pricing) (consultada em 26/09/2026, D-027)
+- Guia do `after` do Next.js 16.3, em `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md` (consultado em 26/09/2026, D-028)
+- Guias `maxDuration`, `robots` e `sitemap` do Next.js 16.3, em `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/` (consultados em 27/09/2026, D-031)

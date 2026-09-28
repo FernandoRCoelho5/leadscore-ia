@@ -1,69 +1,118 @@
-import Image from "next/image";
+import { ArrowRight, Link2, MessageSquareReply, Sparkles } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
-export default function Home() {
+import { BadgeClassificacao } from "@/components/leads/BadgeClassificacao";
+import { Logo } from "@/components/marca/Logo";
+import { classesDeBotao } from "@/components/ui/Botao";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
+import { obterSessao } from "@/server/auth/sessao";
+
+const PASSOS: { icone: ReactNode; titulo: string; texto: string }[] = [
+  {
+    icone: <Link2 aria-hidden="true" />,
+    titulo: "Divulgue o formulário",
+    texto: "Um link (ou um iframe no seu site) recebe os contatos, com o consentimento da LGPD.",
+  },
+  {
+    icone: <Sparkles aria-hidden="true" />,
+    titulo: "A IA dá a nota",
+    texto:
+      "Cada lead chega com nota de 0 a 100 e a classificação, comparado ao perfil do seu negócio.",
+  },
+  {
+    icone: <MessageSquareReply aria-hidden="true" />,
+    titulo: "Atenda os quentes primeiro",
+    texto: "Com a justificativa e uma resposta sugerida, pronta para você ajustar e enviar.",
+  },
+];
+
+/**
+ * Página inicial: apresenta o produto e leva ao cadastro ou ao login. Quem já
+ * entrou vê o atalho para o painel.
+ */
+export default async function Inicio() {
+  const sessao = await obterSessao();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main id="conteudo" className="flex flex-1 flex-col items-center px-4 py-16 sm:px-6">
+      <div className="flex w-full max-w-4xl flex-col items-center gap-10 text-center">
+        <Logo className="h-10 w-auto sm:h-12" />
+
+        <div className="flex max-w-xl flex-col gap-4">
+          <h1 className="text-3xl leading-tight font-bold text-balance sm:text-4xl">
+            Seus leads mais quentes, primeiro.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-pretty text-texto-suave">
+            A Brasa analisa cada contato com inteligência artificial e mostra com quem falar
+            primeiro e o que dizer.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <ul
+          aria-label="Como a Brasa classifica os leads"
+          className="flex flex-wrap justify-center gap-2"
+        >
+          <li>
+            <BadgeClassificacao classificacao="quente" />
+          </li>
+          <li>
+            <BadgeClassificacao classificacao="morno" />
+          </li>
+          <li>
+            <BadgeClassificacao classificacao="frio" />
+          </li>
+        </ul>
+
+        <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
+          {sessao ? (
+            <Link href="/painel" className={classesDeBotao("primaria")}>
+              Ir para o painel
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/cadastro" className={classesDeBotao("primaria")}>
+                Criar conta
+                <ArrowRight aria-hidden="true" className="size-4" />
+              </Link>
+              <Link href="/login" className={classesDeBotao("contorno")}>
+                Entrar
+              </Link>
+            </>
+          )}
         </div>
-      </main>
-    </div>
+
+        <section aria-labelledby="como-funciona" className="mt-6 w-full">
+          <h2 id="como-funciona" className="text-xl font-semibold">
+            Como funciona
+          </h2>
+          <ol className="mt-6 grid gap-4 text-left sm:grid-cols-3">
+            {PASSOS.map((passo, indice) => (
+              <li
+                key={passo.titulo}
+                className="flex flex-col gap-2 rounded-lg border border-borda bg-superficie p-5"
+              >
+                <span className="flex items-center gap-2 text-marca-texto [&>svg]:size-5">
+                  {passo.icone}
+                  <span className="text-sm font-semibold">Passo {indice + 1}</span>
+                </span>
+                <h3 className="font-semibold">{passo.titulo}</h3>
+                <p className="text-sm text-texto-suave">{passo.texto}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <footer className="border-t border-borda pt-4">
+          <Link
+            href={CAMINHO_DA_POLITICA}
+            className="rounded-md px-2 py-3 text-sm text-texto-suave underline-offset-2 hover:text-texto hover:underline"
+          >
+            Política de privacidade
+          </Link>
+        </footer>
+      </div>
+    </main>
   );
 }

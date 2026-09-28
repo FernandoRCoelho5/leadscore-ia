@@ -1,0 +1,12 @@
+# Normaliza finais de linha para LF no repositório e na cópia de trabalho,
+# evitando diferenças entre Windows (desenvolvimento) e Linux (CI e Vercel).
+* text=auto eol=lf
+
+# Arquivos binários: nunca converter.
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.woff binary
+*.woff2 binary

@@ -1,4 +1,6 @@
-# Arquitetura do LeadScore IA
+# Arquitetura da Brasa
+
+> Produto antes chamado LeadScore IA; o repositório continua `leadscore-ia`.
 
 Documento de referência da arquitetura aprovada na Etapa 1 (24/09/2026).
 As justificativas de cada escolha estão em [decisoes.md](decisoes.md).
@@ -19,10 +21,11 @@ classificação (quente, morno, frio), justificativa e uma resposta sugerida.
  │ app/ (UI)           → páginas, server actions, route handlers (finos) │
  │ server/services     → regras de negócio + RBAC + auditoria            │
  │ server/repositories → Drizzle; toda função exige empresaId            │
- │ lib/ia, lib/email, lib/rate-limit, lib/armazenamento → adaptadores    │
+ │ server/email, server/armazenamento, lib/ia → adaptadores externos     │
  └──────────────┬──────────────────────────────────┬─────────────────────┘
                 ▼                                  ▼
        Neon Postgres (sa-east-1)          Claude API (Haiku 4.5) | mock
+                                          Vercel Blob privado (fotos)
 ```
 
 ### Camadas e responsabilidades
@@ -32,7 +35,7 @@ classificação (quente, morno, frio), justificativa e uma resposta sugerida.
 | Interface | `src/app`, `src/components` | Validar entrada com Zod, chamar serviços, renderizar | Acessar o banco, conter regra de negócio |
 | Serviços (casos de uso) | `src/server/services` | Verificar permissão (RBAC), aplicar regras, registrar auditoria | Conhecer detalhes de HTTP ou de interface |
 | Repositórios | `src/server/repositories` | Consultar o banco via Drizzle, sempre filtrando `empresa_id` e `deleted_at` | Decidir permissões |
-| Adaptadores | `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
+| Adaptadores | `src/server/ia`, `src/server/email`, `src/server/armazenamento`, `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
 
 Todo código de servidor importa `server-only`: se alguém o importar num
 componente de cliente, o build falha.
@@ -42,33 +45,41 @@ componente de cliente, o build falha.
 - **Server Actions**: mutações do painel autenticado (alterar status, editar
   empresa etc.). Cada action é um endpoint público, então **toda** action
   verifica sessão e permissão no serviço.
-- **Route Handlers** (`src/app/api/`): formulário público, `POST /api/analisar/[leadId]`,
-  exportação CSV em streaming e rotas da autenticação.
+- **Route Handlers** (`src/app/api/`): formulário público, exportação CSV em
+  streaming, entrega da foto de perfil e rotas da autenticação. A reanálise de
+  um lead é uma Server Action (`reanalisarLeadAcao`, D-027).
 
 ## 2. Estrutura de pastas
 
 ```
 src/
   app/
-    (publico)/        login, cadastro, redefinir-senha, politica-de-privacidade
-    f/[slug]/         formulário público de captação
+    (publico)/        login, cadastro, redefinir-senha, convite/[token] (D-030)
+    politica-de-privacidade/ texto da LGPD, com layout de leitura (D-031)
+    f/[slug]/         formulário público de captação (incorporável em iframe, D-028)
     onboarding/       cadastro da empresa e do perfil do negócio
+    empresa-bloqueada/ aviso ao cliente de empresa bloqueada (D-029)
     (painel)/         layout: menu lateral por perfil + topo com avatar
-      painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
+      painel/  leads/  leads/[id]/  membros/  configuracoes/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
-    api/              auth/[...all], publico/[slug]/leads, analisar/[leadId], leads/exportar
+    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028),
+                      leads/exportar, admin/{empresas,usuarios,auditoria}/exportar (D-029)
   server/
     services/         casos de uso (criarLead, analisarLead, anonimizarLead...)
     repositories/     consultas Drizzle (empresaId obrigatório, sem deletados, paginadas)
     auth/             sessão, permissoes.ts (matriz RBAC), autorizar()
-    auditoria/
+    email/            envio de e-mail (Resend; terminal em desenvolvimento)
+    armazenamento/    fotos no Vercel Blob privado (D-024)
+    ia/               motor.ts (contrato), claude.ts, mock.ts, prompt.ts, schema.ts (D-027)
+    http/             executarAcao, agendarAnalise (after())
+    seguranca/        limitador de taxa, hash do IP, carimbo do formulário (D-028), tokens de convite (D-030)
   lib/
-    ia/               analisarLead.ts, prompt.ts, schema.ts, mock.ts
     validacao/        schemas Zod compartilhados entre cliente e servidor
     email/  rate-limit/  armazenamento/
     csv.ts  erros.ts  paginacao.ts  logger.ts  uuid.ts
+    auditoria.ts      catálogo das ações da auditoria (código, grupo e texto, D-029)
   db/                 schema.ts, index.ts   (migrations versionadas em /drizzle)
-  components/         ui/, layout/, leads/
+  components/         ui/, layout/, leads/, painel/, admin/
   env.ts              validação das variáveis de ambiente com Zod
   proxy.ts            (Next 16: substitui o antigo middleware.ts)
 ```
@@ -150,7 +161,6 @@ erDiagram
     enum status_analise
     smallint score_atual
     enum classificacao_atual
-    uuid analise_atual_id FK
     timestamptz anonimizado_em
   }
   ANALISES {
@@ -195,8 +205,9 @@ erDiagram
 | `usuarios` | Pessoas que acessam o painel. `nome`, `email` (único), `email_verificado`, `imagem_url`, `papel_plataforma` (`admin`, `suporte` ou nulo), `bloqueado_em`. |
 | `membros_empresa` | Vínculo **N:N** entre usuários e empresas. `papel` (hoje só `cliente`; o enum permite `gestor`/`vendedor` no futuro). |
 | `convites` | Convite por link para entrar numa empresa. Guarda só o **hash** do token, `expira_em`, `aceito_em`, `criado_por`. |
-| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. |
-| `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`, `analise_atual_id`) e `anonimizado_em`. |
+| `sessoes`, `contas`, `verificacoes` | Tabelas técnicas da biblioteca de autenticação (Better Auth), com nomes em português. `contas` guarda o hash da senha. Ver a exceção da decisão D-006. Criadas na Etapa 4 (migration `0002`), com as colunas que o Better Auth exige. |
+| `limites_taxa_auth` | Contadores do limite de tentativas das rotas de login (Better Auth). `chave`, `contador`, `ultimo_pedido`. |
+| `leads` | Contatos captados. Dados de contato, `status` do funil (novo, em_contato, ganho, perdido), `consentimento_lgpd`, `consentimento_em`, `consentimento_versao_texto`, `ip_hash` (HMAC, nunca o IP puro), `status_analise` (pendente, processando, concluida, falhou, limite_atingido), cópia da análise atual (`score_atual`, `classificacao_atual`) e `anonimizado_em`. A análise atual completa é a mais recente de `analises`, obtida pelo índice `(lead_id, created_at DESC)`. |
 | `analises` | Histórico de análises; **nunca é atualizada** (reanálise = nova linha). `score` (CHECK 0 a 100), `classificacao`, `justificativa`, `resposta_sugerida`, `modelo`, `prompt_version`, `perfil_versao`, `tokens_entrada`, `tokens_saida`, `tempo_resposta_ms`, `tentativas`, `mock`, `solicitada_por` (nulo = automática). |
 | `uso_mensal` | Consumo de análises por empresa e mês (`competencia`). Um único `UPDATE ... WHERE analises < limite` confere e consome o limite de forma atômica. |
 | `auditoria` | Ações sensíveis, somente inserção. `ator_id`, `empresa_id`, `acao` (ex.: `lead.anonimizado`, `lead.exportado`, `lead.visto_por_suporte`, `empresa.limite_alterado`), `recurso_tipo`, `recurso_id`, `detalhes` (jsonb **sem** dados pessoais), `ip_hash`. |
@@ -209,7 +220,9 @@ erDiagram
 | `leads` | `(empresa_id, created_at DESC) WHERE deleted_at IS NULL` | Listagem padrão e período |
 | `leads` | `(empresa_id, classificacao_atual, created_at DESC) WHERE deleted_at IS NULL` | Filtro por classificação |
 | `leads` | `(empresa_id, status, created_at DESC) WHERE deleted_at IS NULL` | Filtro por status do funil |
-| `leads` | GIN com `pg_trgm` em nome, e-mail e empresa | Busca `ILIKE '%termo%'` |
+| `leads` | `(empresa_id, score_atual DESC NULLS LAST, id DESC) WHERE deleted_at IS NULL` | Ordenar por "Maior nota" (D-030) |
+| `leads` | `(empresa_id, id DESC) WHERE deleted_at IS NULL` | Exportação CSV por cursor (D-030) |
+| `leads` | Três índices GIN com `pg_trgm` (nome, e-mail e empresa); o Postgres combina os três na busca | Busca `ILIKE '%termo%'` |
 | `analises` | `(lead_id, created_at DESC)` | Histórico do lead |
 | `auditoria` | `(empresa_id, created_at DESC)` | Consulta de auditoria |
 | `empresas` | `slug` único parcial | Formulário público |
@@ -233,16 +246,25 @@ perfil não pode usar.
 | Empresa · editar dados e perfil do negócio | ✅ | ❌ | ✅ própria |
 | Empresa · bloquear, alterar limite mensal | ✅ | ❌ | ❌ |
 | Empresas e usuários · listar todos + CSV | ✅ | ✅ | ❌ |
+| Membros · ver | ✅ | ✅ | ✅ própria |
 | Membros · convidar (link) e remover (lógico) | ✅ | ❌ | ✅ própria |
-| Usuários da plataforma · criar, alterar papel, bloquear | ✅ | ❌ | ❌ |
+| Usuários da plataforma · alterar perfil de acesso, bloquear | ✅ | ❌ | ❌ |
 | Auditoria · consultar + CSV | ✅ | ✅ leitura | ❌ (futuro: da própria empresa) |
 | Próprio perfil (nome, foto, senha) | ✅ | ✅ | ✅ |
+| Foto e nome de outro usuário · ver | ✅ | ✅ | colegas de uma empresa em comum |
 
 Regras complementares:
 
-- O cadastro público cria apenas usuários `cliente`. Contas `admin` e
-  `suporte` nunca são criadas pelo cadastro; o primeiro `admin` vem do seed.
+- O cadastro público cria apenas usuários `cliente`. Uma conta da equipe
+  nasce no cadastro e é promovida por um `admin` (D-030); o primeiro `admin`
+  vem do seed. Ninguém muda o próprio perfil, e a plataforma nunca fica sem
+  `admin` ativo.
 - O `suporte` não altera nenhum dado de cliente.
+- A equipe só vê os leads de um cliente depois de abrir a empresa pela lista
+  de Empresas: o acesso é auditado e vale por 8 horas ou até sair da conta
+  (D-029).
+- Cliente de empresa bloqueada não usa o painel nem cria outra empresa pelo
+  onboarding (D-029).
 
 ## 5. Fluxos principais
 
@@ -255,21 +277,25 @@ sequenceDiagram
   participant S as Serviços
   participant DB as Neon Postgres
   participant IA as Claude API
-  L->>API: envia o formulário
-  API->>S: rate limit, anti-spam e validação Zod
-  S->>DB: grava o lead (status_analise = pendente)
+  L->>API: envia o formulário (JSON)
+  API->>S: origem, tipo e tamanho do corpo
+  S->>S: campo-armadilha, validação Zod e carimbo assinado
+  S->>DB: limites por IP e por formulário (limites_taxa)
+  S->>DB: grava o lead com consentimento e hash do IP (pendente)
   API-->>L: confirmação imediata
   Note over API,S: after(): executa depois da resposta
+  S->>DB: reserva o lead (processando, UPDATE condicional)
   S->>DB: consome o limite mensal (UPDATE atômico)
-  S->>IA: analisa com o perfil do negócio da empresa
-  IA-->>S: JSON
+  S->>IA: perfil do negócio + lead sem dados de contato
+  IA-->>S: JSON no formato do schema (saída estruturada)
   S->>S: valida com Zod (nova tentativa se falhar)
-  S->>DB: grava a análise e atualiza a cópia no lead
+  S->>DB: grava a análise, a cópia no lead e os tokens (transação)
 ```
 
 Se o limite mensal acabou, o lead fica com `status_analise = limite_atingido`.
-Se a IA falhar após as tentativas, fica `falhou`. Nos dois casos o lead não se
-perde e pode ser reanalisado pelo painel.
+Se a IA falhar após as tentativas, fica `falhou` e a análise consumida é
+devolvida ao limite do mês. Nos dois casos o lead não se perde e pode ser
+reanalisado pelo painel (D-027).
 
 ### Requisição no painel
 
@@ -293,7 +319,20 @@ sequenceDiagram
 
 - **Vercel**, região `gru1` (São Paulo).
 - **Neon Postgres**, região `sa-east-1` (São Paulo), conexão com pooling e SSL.
-- Branches do Neon: `main` (produção), uma branch de desenvolvimento e uma
-  branch `e2e` para os testes de ponta a ponta.
-- Claude API com o modelo `claude-haiku-4-5-20251001`; modo mock por variável
-  de ambiente.
+- Branches do Neon: `production` (a principal, exclusiva da Vercel), uma
+  branch de desenvolvimento (cópia de `production` com dados, usada no
+  `.env.local`) e a branch `e2e` (cópia só do schema, sem exclusão
+  automática), usada pelo CI e preparada pelo `npm run db:preparar-e2e`
+  (D-025), e a branch `preview` (cópia só do schema) para os deploys de
+  preview da Vercel (D-026).
+- Deploys de preview: sem `BETTER_AUTH_URL`, o app usa o endereço do próprio
+  deploy (`VERCEL_URL`) e confia só nos hosts exatos do deploy e da branch.
+- O build da Vercel aplica as migrations no banco do ambiente antes do
+  `next build` (`npm run db:implantar`, D-031). As funções que chamam a IA têm
+  `maxDuration = 120`. Passo a passo em [implantacao.md](implantacao.md).
+- **Vercel Blob** privado (store `brasa`, região `gru1`) para as fotos de
+  perfil, sem endereço público: a entrega passa por uma rota autenticada
+  (D-024).
+- Claude API com o modelo `claude-haiku-4-5-20251001`, pelo SDK oficial
+  `@anthropic-ai/sdk`; `IA_MODO=mock` (padrão, usado no CI) troca pelo motor
+  simulado, sem custo (D-027).
