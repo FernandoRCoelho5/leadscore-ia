@@ -5,10 +5,13 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { db } from "@/db";
+import { ErroNaoAutenticado } from "@/lib/erros";
 import { enderecoDaFoto } from "@/server/armazenamento/fotos";
+import { obterEmpresa } from "@/server/repositories/empresas";
 import {
   listarEmpresasDoUsuario,
   obterUsuarioAtivo,
+  temEmpresaBloqueada,
   type VinculoDeEmpresa,
 } from "@/server/repositories/usuarios";
 
@@ -32,8 +35,15 @@ export type Sessao = {
   };
   papel: Papel;
   vinculos: VinculoDeEmpresa[];
-  /** Empresa em que o usuário está trabalhando (cliente); nula para admin/suporte sem vínculo. */
+  /**
+   * Empresa em que o usuário está trabalhando: para o cliente, uma das dele;
+   * para admin e suporte, a que abriram pela lista de empresas (D-029), ou nula.
+   */
   empresaAtiva: VinculoDeEmpresa | null;
+  /** A empresa ativa foi aberta pela equipe Brasa (não é um vínculo de membro). */
+  acessoDaEquipe: boolean;
+  /** Cliente sem empresa ativa porque a dele foi bloqueada pela equipe Brasa. */
+  empresaBloqueada: boolean;
   ator: Ator;
 };
 
@@ -53,8 +63,23 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
 
   const vinculos = await listarEmpresasDoUsuario(db, usuario.id);
   const preferida = (await cookies()).get(COOKIE_EMPRESA_ATIVA)?.value;
-  const empresaAtiva = vinculos.find((v) => v.empresaId === preferida) ?? vinculos[0] ?? null;
   const papel: Papel = usuario.papelPlataforma ?? "cliente";
+  let empresaAtiva = vinculos.find((v) => v.empresaId === preferida) ?? vinculos[0] ?? null;
+  let acessoDaEquipe = false;
+
+  // A equipe (admin e suporte) pode abrir qualquer empresa não excluída; o
+  // cliente, só as dele (acima). O papel vem do banco, nunca do cookie.
+  if (papel !== "cliente" && preferida && !vinculos.some((v) => v.empresaId === preferida)) {
+    const empresa = await obterEmpresa(db, preferida);
+    if (empresa) {
+      empresaAtiva = { empresaId: empresa.id, nome: empresa.nome, slug: empresa.slug };
+      acessoDaEquipe = true;
+    }
+  }
+
+  // Só o cliente sem nenhuma empresa ativa paga esta consulta a mais.
+  const empresaBloqueada =
+    papel === "cliente" && vinculos.length === 0 && (await temEmpresaBloqueada(db, usuario.id));
 
   return {
     usuario: {
@@ -66,9 +91,20 @@ export const obterSessao = cache(async (): Promise<Sessao | null> => {
     papel,
     vinculos,
     empresaAtiva,
+    acessoDaEquipe,
+    empresaBloqueada,
     ator: { papel, empresaIds: vinculos.map((v) => v.empresaId) },
   };
 });
+
+/** Nas rotas de API: sem sessão, 401 no formato padronizado (API não redireciona). */
+export async function exigirSessaoNaApi(): Promise<Sessao> {
+  const sessao = await obterSessao();
+  if (!sessao) {
+    throw new ErroNaoAutenticado();
+  }
+  return sessao;
+}
 
 /** Exige login; sem sessão, manda para a tela de login. */
 export async function exigirSessao(): Promise<Sessao> {
@@ -81,12 +117,13 @@ export async function exigirSessao(): Promise<Sessao> {
 
 /**
  * Exige login e, para clientes, uma empresa: quem acabou de se cadastrar
- * ainda não tem empresa e vai para o onboarding.
+ * ainda não tem empresa e vai para o onboarding; quem teve a empresa
+ * bloqueada vai para o aviso do bloqueio.
  */
 export async function exigirSessaoComEmpresa(): Promise<Sessao> {
   const sessao = await exigirSessao();
   if (sessao.papel === "cliente" && !sessao.empresaAtiva) {
-    redirect("/onboarding");
+    redirect(sessao.empresaBloqueada ? "/empresa-bloqueada" : "/onboarding");
   }
   return sessao;
 }

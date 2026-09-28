@@ -42,12 +42,17 @@ describe("destinoSeguro (proteção contra open redirect)", () => {
 });
 
 describe("proxy: áreas que exigem login", () => {
-  it.each(["/painel", "/leads/abc", "/admin/empresas", "/perfil", "/onboarding", "/configuracoes"])(
-    "%s exige login",
-    (caminho) => {
-      expect(exigeLogin(caminho)).toBe(true);
-    },
-  );
+  it.each([
+    "/painel",
+    "/leads/abc",
+    "/admin/empresas",
+    "/perfil",
+    "/onboarding",
+    "/configuracoes",
+    "/empresa-bloqueada",
+  ])("%s exige login", (caminho) => {
+    expect(exigeLogin(caminho)).toBe(true);
+  });
 
   it.each(["/", "/login", "/cadastro", "/f/demo", "/painelzinho", "/leadsx"])(
     "%s é público",

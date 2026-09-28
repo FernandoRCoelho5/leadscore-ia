@@ -1,11 +1,18 @@
 import "server-only";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 
-import { empresas, type Empresa, type NovaEmpresa } from "@/db/schema";
+import { empresas, usoMensal, type Empresa, type NovaEmpresa } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
+import {
+  deslocamento,
+  esquemaPaginacao,
+  montarPagina,
+  type Pagina,
+  type Paginacao,
+} from "@/lib/paginacao";
 
-import { ehUuid } from "./utilitarios";
+import { ehUuid, padraoDeBusca } from "./utilitarios";
 
 /** Acesso a dados das empresas clientes (os "tenants" do SaaS). */
 
@@ -86,5 +93,105 @@ export async function criarEmpresa(db: BancoDeDados, dados: DadosDeNovaEmpresa):
   if (!empresa) {
     throw new Error("O banco não devolveu a empresa inserida.");
   }
+  return empresa;
+}
+
+export type FiltrosDeEmpresas = { busca?: string; situacao?: "ativa" | "bloqueada" };
+
+export type EmpresaNaLista = Empresa & { leadsNoMes: number; analisesNoMes: number };
+
+/**
+ * Lista da administração (equipe Brasa), com o uso do mês de cada empresa.
+ * A contagem de leads é uma subconsulta por linha, que usa o índice
+ * (empresa_id, created_at): barata, porque a página tem no máximo 100 linhas.
+ */
+export async function listarEmpresas(
+  db: BancoDeDados,
+  filtros: FiltrosDeEmpresas,
+  paginacao: Partial<Paginacao>,
+  inicioDoMes: Date,
+  competencia: string,
+): Promise<Pagina<EmpresaNaLista>> {
+  const pagina = esquemaPaginacao.parse(paginacao);
+  const condicoes: SQL[] = [isNull(empresas.deletedAt)];
+  const termo = filtros.busca?.trim();
+  if (termo) {
+    const busca = or(
+      ilike(empresas.nome, padraoDeBusca(termo)),
+      ilike(empresas.slug, padraoDeBusca(termo)),
+    );
+    if (busca) {
+      condicoes.push(busca);
+    }
+  }
+  if (filtros.situacao) {
+    condicoes.push(eq(empresas.status, filtros.situacao));
+  }
+  const filtro = and(...condicoes);
+
+  const [linhas, [linhaDoTotal]] = await Promise.all([
+    db
+      .select({
+        empresa: empresas,
+        // Apelido explícito (l): a subconsulta não pode confundir as colunas de
+        // "leads" com as de "empresas" (o Drizzle não qualifica colunas no SELECT).
+        leadsNoMes: sql<number>`(
+          select count(*) from leads l
+          where l.empresa_id = "empresas"."id"
+            and l.deleted_at is null
+            and l.created_at >= ${inicioDoMes.toISOString()}::timestamptz
+        )`.mapWith(Number),
+        analisesNoMes: sql<number>`coalesce(${usoMensal.analises}, 0)`.mapWith(Number),
+      })
+      .from(empresas)
+      .leftJoin(
+        usoMensal,
+        and(eq(usoMensal.empresaId, empresas.id), eq(usoMensal.competencia, competencia)),
+      )
+      .where(filtro)
+      .orderBy(asc(empresas.nome), asc(empresas.id))
+      .limit(pagina.porPagina)
+      .offset(deslocamento(pagina)),
+    db.select({ total: count() }).from(empresas).where(filtro),
+  ]);
+
+  const itens = linhas.map(({ empresa, leadsNoMes, analisesNoMes }) => ({
+    ...empresa,
+    leadsNoMes,
+    analisesNoMes,
+  }));
+  return montarPagina(itens, linhaDoTotal?.total ?? 0, pagina);
+}
+
+/** Bloqueia ou reativa a empresa (bloqueada: o formulário público para de receber leads). */
+export async function alterarSituacaoDaEmpresa(
+  db: BancoDeDados,
+  empresaId: string,
+  situacao: "ativa" | "bloqueada",
+): Promise<Empresa | undefined> {
+  if (!ehUuid(empresaId)) {
+    return undefined;
+  }
+  const [empresa] = await db
+    .update(empresas)
+    .set({ status: situacao })
+    .where(and(eq(empresas.id, empresaId), isNull(empresas.deletedAt)))
+    .returning();
+  return empresa;
+}
+
+export async function alterarLimiteDaEmpresa(
+  db: BancoDeDados,
+  empresaId: string,
+  limiteAnalisesMes: number,
+): Promise<Empresa | undefined> {
+  if (!ehUuid(empresaId)) {
+    return undefined;
+  }
+  const [empresa] = await db
+    .update(empresas)
+    .set({ limiteAnalisesMes })
+    .where(and(eq(empresas.id, empresaId), isNull(empresas.deletedAt)))
+    .returning();
   return empresa;
 }

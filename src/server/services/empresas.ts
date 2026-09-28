@@ -7,7 +7,7 @@ import type { DadosDoOnboarding, DadosDoPerfilDoNegocio } from "@/lib/validacao/
 import { autorizar } from "@/server/auth/permissoes";
 import { registrarAuditoria } from "@/server/repositories/auditoria";
 import { atualizarPerfilDaEmpresa, criarEmpresa, slugEmUso } from "@/server/repositories/empresas";
-import { criarVinculo } from "@/server/repositories/usuarios";
+import { criarVinculo, temEmpresaBloqueada } from "@/server/repositories/usuarios";
 
 import { ehViolacaoDeUnicidade, type ContextoDoUsuario } from "./contexto";
 
@@ -35,6 +35,11 @@ export async function criarEmpresaNoOnboarding(
   }
   if (contexto.ator.empresaIds.length > 0) {
     throw new ErroConflito("Você já tem uma empresa cadastrada.");
+  }
+  // A empresa bloqueada não aparece nos vínculos ativos: sem esta conferência,
+  // o cliente criaria outra empresa para escapar do bloqueio.
+  if (await temEmpresaBloqueada(db, contexto.usuarioId)) {
+    throw new ErroConflito("A sua empresa está bloqueada. Fale com a equipe Brasa.");
   }
   if (await slugEmUso(db, dados.slug)) {
     throw erroSlugEmUso();

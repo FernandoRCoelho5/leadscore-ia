@@ -9,7 +9,12 @@ import {
   exigirSessaoComEmpresa,
   obterSessao,
 } from "@/server/auth/sessao";
-import { listarEmpresasDoUsuario, obterUsuarioAtivo } from "@/server/repositories/usuarios";
+import { obterEmpresa } from "@/server/repositories/empresas";
+import {
+  listarEmpresasDoUsuario,
+  obterUsuarioAtivo,
+  temEmpresaBloqueada,
+} from "@/server/repositories/usuarios";
 
 /**
  * Sessão do servidor (src/server/auth/sessao.ts) com o Next.js, o Better Auth e
@@ -27,7 +32,9 @@ vi.mock("@/server/auth/auth", () => ({ auth: { api: { getSession: simulado.getSe
 vi.mock("@/server/repositories/usuarios", () => ({
   obterUsuarioAtivo: vi.fn(),
   listarEmpresasDoUsuario: vi.fn(),
+  temEmpresaBloqueada: vi.fn(async () => false),
 }));
+vi.mock("@/server/repositories/empresas", () => ({ obterEmpresa: vi.fn() }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers(),
   cookies: async () => ({
@@ -76,6 +83,7 @@ function logado(dados: Partial<Usuario> = {}, vinculos = [EMPRESA_A]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(temEmpresaBloqueada).mockResolvedValue(false);
   simulado.getSession.mockResolvedValue(null);
   simulado.cookies.clear();
 });
@@ -150,6 +158,45 @@ describe("obterSessao", () => {
 
     expect(await obterSessao()).toMatchObject({ papel: "admin", empresaAtiva: null });
   });
+
+  it("equipe: a empresa aberta pela lista vira a empresa ativa, marcada como acesso da equipe", async () => {
+    logado({ papelPlataforma: "suporte" }, []);
+    simulado.cookies.set(COOKIE_EMPRESA_ATIVA, EMPRESA_B.empresaId);
+    vi.mocked(obterEmpresa).mockResolvedValue({
+      id: EMPRESA_B.empresaId,
+      nome: EMPRESA_B.nome,
+      slug: EMPRESA_B.slug,
+    } as Awaited<ReturnType<typeof obterEmpresa>>);
+
+    const sessao = await obterSessao();
+
+    expect(sessao).toMatchObject({ empresaAtiva: EMPRESA_B, acessoDaEquipe: true });
+    // O escopo do ator não muda: a equipe atua em todas pelo papel, não por vínculo.
+    expect(sessao?.ator.empresaIds).toEqual([]);
+  });
+
+  it("equipe: cookie com empresa inexistente ou excluída é ignorado", async () => {
+    logado({ papelPlataforma: "admin" }, []);
+    simulado.cookies.set(COOKIE_EMPRESA_ATIVA, EMPRESA_B.empresaId);
+    vi.mocked(obterEmpresa).mockResolvedValue(undefined);
+
+    expect(await obterSessao()).toMatchObject({ empresaAtiva: null, acessoDaEquipe: false });
+  });
+
+  it("cliente: o cookie nunca abre empresa alheia, nem consulta a empresa", async () => {
+    logado({}, [EMPRESA_A]);
+    simulado.cookies.set(COOKIE_EMPRESA_ATIVA, EMPRESA_B.empresaId);
+
+    expect(await obterSessao()).toMatchObject({ empresaAtiva: EMPRESA_A, acessoDaEquipe: false });
+    expect(obterEmpresa).not.toHaveBeenCalled();
+  });
+
+  it("cliente com empresa ativa não consulta bloqueios", async () => {
+    logado();
+
+    expect((await obterSessao())?.empresaBloqueada).toBe(false);
+    expect(temEmpresaBloqueada).not.toHaveBeenCalled();
+  });
 });
 
 describe("exigirSessao e exigirSessaoComEmpresa", () => {
@@ -161,6 +208,13 @@ describe("exigirSessao e exigirSessaoComEmpresa", () => {
     logado({}, []);
 
     await expect(exigirSessaoComEmpresa()).rejects.toThrow("redirect:/onboarding");
+  });
+
+  it("cliente cuja empresa foi bloqueada vai para o aviso, não para o onboarding", async () => {
+    logado({}, []);
+    vi.mocked(temEmpresaBloqueada).mockResolvedValue(true);
+
+    await expect(exigirSessaoComEmpresa()).rejects.toThrow("redirect:/empresa-bloqueada");
   });
 
   it("suporte não precisa de empresa", async () => {

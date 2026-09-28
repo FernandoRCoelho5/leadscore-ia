@@ -825,6 +825,84 @@ painel (Etapa 7).
 
 ---
 
+## D-029 · Painel: listas, exportação, indicadores e administração
+
+**Contexto.** A Etapa 7 entrega o painel: leads (lista, detalhe, andamento,
+exclusão e anonimização), visão geral com indicadores e a administração da
+equipe Brasa (empresas, usuários e auditoria). As listas precisam de filtro,
+paginação e exportação (regra do projeto), sem perder desempenho quando os
+dados crescerem, e a equipe precisa ver os dados de um cliente sem que isso
+vire um acesso sem rastro.
+
+**Decisão.**
+
+- **Filtros na URL:** cada lista é um formulário GET comum
+  (`FormularioDeFiltros`). A lista filtrada pode ir para os favoritos, ser
+  compartilhada e funciona sem JavaScript. A URL é editável por qualquer um:
+  os schemas de `src/lib/validacao/filtros.ts` descartam o valor inválido (volta
+  ao padrão) em vez de quebrar a página, e a ação da auditoria só aceita
+  códigos do catálogo. Datas "de/até" são dias de São Paulo; "até" inclui o
+  dia inteiro.
+- **Paginação no servidor** (D-014): no máximo 100 itens por página, com o
+  total sempre visível. A tela usa OFFSET (o usuário pula páginas).
+- **Exportação CSV** com os mesmos filtros da tela, em streaming
+  (`respostaCsv`): cada lote lido do banco é enviado na hora e a memória fica
+  constante. As tabelas que crescem sem limite (leads e auditoria) são lidas
+  por cursor (id menor que o último; os ids são UUID v7), e não por OFFSET;
+  empresas e usuários, que são centenas, percorrem as páginas. Formato do
+  Excel brasileiro: ponto e vírgula, BOM UTF-8, CRLF. Texto que começa com
+  `= + - @` ganha um apóstrofo (injeção de fórmula). Toda exportação vai para
+  a auditoria antes de o arquivo começar, sem o texto da busca.
+- **Leads:** o suporte só lê; excluir é lógico (`deleted_at`); anonimizar
+  (LGPD, D-012) exige digitar `ANONIMIZAR` e apaga contato, mensagem e os
+  textos das análises, mantendo nota, classificação e datas para as
+  estatísticas. Nas actions, a empresa vem sempre da sessão, nunca do
+  navegador (IDOR).
+- **Indicadores sem biblioteca de gráficos:** blocos de número e barras
+  horizontais em HTML e CSS, com rótulo, valor e percentual escritos (skill
+  dataviz). A cor nunca é a única informação; o âmbar do "morno" ganha
+  contorno escuro por contraste.
+- **Equipe dentro da empresa de um cliente:** admin e suporte abrem a empresa
+  pela lista de Empresas (`abrirEmpresaAcao`). O acesso é conferido no
+  serviço, vira o evento `empresa.acessada` e grava a empresa em foco num
+  cookie de 8 horas, apagado ao sair da conta. Enquanto isso, o topo mostra
+  "Sair da empresa" o tempo todo. Cada lead aberto pela equipe gera
+  `lead.visualizado`. O papel vem do banco a cada requisição, nunca do cookie:
+  um cliente que forjar o cookie continua só nas empresas dele.
+- **Bloqueio de empresa:** o formulário público para de receber leads e os
+  clientes da empresa vão para a página `/empresa-bloqueada`. A empresa
+  bloqueada sai dos vínculos ativos. Por isso a sessão confere se o cliente
+  tem empresa bloqueada, e o onboarding recusa criar outra: sem isso, o
+  cliente cairia no onboarding e escaparia do bloqueio com uma empresa nova.
+- **Administração:** o suporte lista e exporta; bloquear empresa, mudar o
+  limite de análises e bloquear usuário são só do admin (nunca a própria
+  conta), sempre com auditoria. O bloqueio de empresa e o de usuário pedem
+  confirmação com as consequências escritas; desbloquear não pede, porque não
+  tira nada de ninguém.
+- **Catálogo da auditoria** (`src/lib/auditoria.ts`): cada ação tem código,
+  grupo e texto. `registrarAuditoria` só aceita códigos do catálogo. O tipo já
+  achou uma inconsistência num teste antigo (`lead.exportado`, que não existia).
+
+**Alternativas.** Filtros em estado do React: sem URL compartilhável e sem
+funcionar sem JavaScript. Biblioteca de gráficos (Recharts, Chart.js): peso no
+navegador e aprovação de dependência para desenhar poucas barras. Gerar o CSV
+inteiro em memória: simples, mas estoura com dezenas de milhares de linhas.
+Paginação por cursor também na tela: mais rápida em páginas distantes, mas sem
+"ir para a página 7" nem total; fica para quando alguma lista passar de
+centenas de milhares de linhas. Impersonação (a equipe "entra como" o
+cliente): mostra exatamente o que o cliente vê, mas as ações sairiam em nome
+do cliente e confundiriam a auditoria. Com a empresa em foco, cada ação sai
+em nome de quem a fez.
+
+**Consequências.** A auditoria cresce a cada login; o filtro por ação usa o
+índice por data (`auditoria_criado_idx`) e, se ficar lento, entra um índice
+`(acao, created_at)`. O cliente com várias empresas perde a empresa escolhida
+ao sair da conta (volta para a primeira). Bloquear uma empresa não derruba na
+hora uma análise que já estava em andamento. A auditoria da própria empresa,
+para o cliente, continua como evolução prevista na matriz.
+
+---
+
 ## Fontes consultadas (24/09/2026)
 
 - [Preços do Clerk](https://clerk.com/pricing)

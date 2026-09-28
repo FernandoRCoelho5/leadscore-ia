@@ -1,6 +1,9 @@
 import "server-only";
 
 import { unstable_rethrow } from "next/navigation";
+import type { z } from "zod";
+
+import { ErroValidacao } from "@/lib/erros";
 
 import { traduzirErro, type CorpoDeErro } from "./responder";
 
@@ -22,4 +25,16 @@ export async function executarAcao<T>(acao: () => Promise<T>): Promise<Resultado
     const { corpo } = traduzirErro(erro, requestId);
     return { ok: false, ...corpo };
   }
+}
+
+/**
+ * Valida um argumento da action: tudo o que vem do navegador é "unknown" até
+ * passar pelo schema. Inválido: erro de validação (400) com a mensagem do campo.
+ */
+export function validarEntrada<Saida>(esquema: z.ZodType<Saida>, valor: unknown): Saida {
+  const validacao = esquema.safeParse(valor);
+  if (!validacao.success) {
+    throw ErroValidacao.deZod(validacao.error);
+  }
+  return validacao.data;
 }

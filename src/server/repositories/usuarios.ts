@@ -1,11 +1,18 @@
 import "server-only";
 
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, count, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 
 import { empresas, membrosEmpresa, usuarios, type Usuario } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
+import {
+  deslocamento,
+  esquemaPaginacao,
+  montarPagina,
+  type Pagina,
+  type Paginacao,
+} from "@/lib/paginacao";
 
-import { ehUuid } from "./utilitarios";
+import { ehUuid, padraoDeBusca } from "./utilitarios";
 
 /** Acesso a dados de usuários e dos seus vínculos com empresas. */
 
@@ -87,10 +94,125 @@ export async function listarEmpresasDoUsuario(
     .orderBy(asc(membrosEmpresa.createdAt));
 }
 
+/**
+ * O usuário é membro de alguma empresa bloqueada? A lista acima só traz as
+ * ativas; sem esta conferência, o cliente de uma empresa bloqueada cairia no
+ * onboarding e poderia criar outra empresa para escapar do bloqueio.
+ */
+export async function temEmpresaBloqueada(db: BancoDeDados, usuarioId: string): Promise<boolean> {
+  const [vinculo] = await db
+    .select({ empresaId: empresas.id })
+    .from(membrosEmpresa)
+    .innerJoin(empresas, eq(empresas.id, membrosEmpresa.empresaId))
+    .where(
+      and(
+        eq(membrosEmpresa.usuarioId, usuarioId),
+        isNull(membrosEmpresa.deletedAt),
+        isNull(empresas.deletedAt),
+        eq(empresas.status, "bloqueada"),
+      ),
+    )
+    .limit(1);
+  return vinculo !== undefined;
+}
+
 export async function criarVinculo(
   db: BancoDeDados,
   usuarioId: string,
   empresaId: string,
 ): Promise<void> {
   await db.insert(membrosEmpresa).values({ usuarioId, empresaId, papel: "cliente" });
+}
+
+export type FiltrosDeUsuarios = {
+  busca?: string;
+  papel?: "admin" | "suporte" | "cliente";
+  situacao?: "ativo" | "bloqueado";
+};
+
+/** Só o que a lista mostra: nunca a foto, tokens ou dados de autenticação. */
+export type UsuarioNaLista = Pick<
+  Usuario,
+  "id" | "nome" | "email" | "papelPlataforma" | "bloqueadoEm" | "createdAt"
+> & { empresas: string | null };
+
+/** Lista da administração (equipe Brasa), com as empresas de cada usuário. */
+export async function listarUsuarios(
+  db: BancoDeDados,
+  filtros: FiltrosDeUsuarios,
+  paginacao: Partial<Paginacao>,
+): Promise<Pagina<UsuarioNaLista>> {
+  const pagina = esquemaPaginacao.parse(paginacao);
+  const condicoes: SQL[] = [isNull(usuarios.deletedAt)];
+  const termo = filtros.busca?.trim();
+  if (termo) {
+    const busca = or(
+      ilike(usuarios.nome, padraoDeBusca(termo)),
+      ilike(usuarios.email, padraoDeBusca(termo)),
+    );
+    if (busca) {
+      condicoes.push(busca);
+    }
+  }
+  if (filtros.papel === "cliente") {
+    condicoes.push(isNull(usuarios.papelPlataforma));
+  } else if (filtros.papel) {
+    condicoes.push(eq(usuarios.papelPlataforma, filtros.papel));
+  }
+  if (filtros.situacao === "ativo") {
+    condicoes.push(isNull(usuarios.bloqueadoEm));
+  } else if (filtros.situacao === "bloqueado") {
+    condicoes.push(isNotNull(usuarios.bloqueadoEm));
+  }
+  const filtro = and(...condicoes);
+
+  const [itens, [linhaDoTotal]] = await Promise.all([
+    db
+      .select({
+        id: usuarios.id,
+        nome: usuarios.nome,
+        email: usuarios.email,
+        papelPlataforma: usuarios.papelPlataforma,
+        bloqueadoEm: usuarios.bloqueadoEm,
+        createdAt: usuarios.createdAt,
+        // Apelidos explícitos (m, e): sem eles, as colunas da subconsulta e as de
+        // "usuarios" ficariam ambíguas (o Drizzle não qualifica colunas no SELECT).
+        empresas: sql<string | null>`(
+          select string_agg(e.nome, ', ' order by e.nome)
+          from membros_empresa m
+          join empresas e on e.id = m.empresa_id
+          where m.usuario_id = "usuarios"."id"
+            and m.deleted_at is null
+            and e.deleted_at is null
+        )`,
+      })
+      .from(usuarios)
+      .where(filtro)
+      .orderBy(asc(usuarios.nome), asc(usuarios.id))
+      .limit(pagina.porPagina)
+      .offset(deslocamento(pagina)),
+    db.select({ total: count() }).from(usuarios).where(filtro),
+  ]);
+  return montarPagina(itens, linhaDoTotal?.total ?? 0, pagina);
+}
+
+/**
+ * Bloqueia (ou desbloqueia) o login. O bloqueio vale na hora: a sessão relê o
+ * usuário a cada requisição e recusa quem está bloqueado.
+ */
+export async function alterarBloqueioDoUsuario(
+  db: BancoDeDados,
+  usuarioId: string,
+  bloquear: boolean,
+  agora: Date = new Date(),
+): Promise<boolean> {
+  if (!ehUuid(usuarioId)) {
+    return false;
+  }
+  const atualizados = await db
+    .update(usuarios)
+    .set({ bloqueadoEm: bloquear ? agora : null })
+    .where(and(eq(usuarios.id, usuarioId), isNull(usuarios.deletedAt)))
+    .returning({ id: usuarios.id });
+  return atualizados.length > 0;
 }

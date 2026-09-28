@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { FormularioDeCaptacao } from "@/components/captacao/FormularioDeCaptacao";
 import { BadgeClassificacao } from "@/components/leads/BadgeClassificacao";
 import { Logo } from "@/components/marca/Logo";
+import { Selecao } from "@/components/ui/Campo";
 import { codigoDeIncorporacao, enderecoDoFormulario } from "@/lib/incorporacao";
 
 describe("BadgeClassificacao", () => {
@@ -93,5 +94,36 @@ describe("codigoDeIncorporacao", () => {
     expect(codigo).toContain('src="https://app.brasa.example/f/pixel"');
     expect(codigo).toContain('title="Fale com Pixel &amp; Cia &quot;&lt;script&gt;&quot;"');
     expect(codigo).not.toContain("<script>");
+  });
+});
+
+describe("Selecao", () => {
+  it("reúne as opções com grupo em <optgroup>, na ordem em que aparecem", () => {
+    const html = renderToStaticMarkup(
+      <Selecao
+        id="acao"
+        rotulo="Ação"
+        textoVazio="Todas"
+        opcoes={[
+          { valor: "a", rotulo: "A", grupo: "Acesso" },
+          { valor: "b", rotulo: "B", grupo: "Acesso" },
+          { valor: "c", rotulo: "C", grupo: "Leads" },
+        ]}
+      />,
+    );
+
+    expect(html.match(/<optgroup/g)).toHaveLength(2);
+    expect(html).toMatch(
+      /<optgroup label="Acesso"><option value="a">A<\/option><option value="b">B<\/option><\/optgroup><optgroup label="Leads">/,
+    );
+  });
+
+  it("sem grupo, as opções ficam soltas (como antes)", () => {
+    const html = renderToStaticMarkup(
+      <Selecao id="x" rotulo="X" textoVazio="Todos" opcoes={["um", "dois"]} />,
+    );
+
+    expect(html).not.toContain("<optgroup");
+    expect(html).toContain('<option value="">Todos</option><option value="um">um</option>');
   });
 });

@@ -111,7 +111,7 @@ describe("auditoria", () => {
 
     await registrarAuditoria(db, {
       empresaId: empresa.id,
-      acao: "lead.exportado",
+      acao: "leads.exportados",
       recursoTipo: "lead",
       detalhes: { quantidade: 10 },
     });
@@ -120,6 +120,6 @@ describe("auditoria", () => {
       .select({ acao: auditoria.acao })
       .from(auditoria)
       .where(eq(auditoria.empresaId, empresa.id));
-    expect(eventos).toEqual([{ acao: "lead.exportado" }]);
+    expect(eventos).toEqual([{ acao: "leads.exportados" }]);
   });
 });

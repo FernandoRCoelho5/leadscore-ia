@@ -65,7 +65,15 @@ export function montarCsp(nonce: string, opcoes: OpcoesDeCsp): string {
 }
 
 /** Prefixos das áreas que exigem login. */
-const AREAS_LOGADAS = ["/painel", "/leads", "/configuracoes", "/perfil", "/admin", "/onboarding"];
+const AREAS_LOGADAS = [
+  "/painel",
+  "/leads",
+  "/configuracoes",
+  "/perfil",
+  "/admin",
+  "/onboarding",
+  "/empresa-bloqueada",
+];
 
 export function exigeLogin(caminho: string): boolean {
   return AREAS_LOGADAS.some((area) => caminho === area || caminho.startsWith(`${area}/`));

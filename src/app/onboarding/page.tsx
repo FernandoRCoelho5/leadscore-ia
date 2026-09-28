@@ -11,7 +11,10 @@ export const metadata: Metadata = { title: "Sua empresa" };
 
 export default async function PaginaOnboarding() {
   const sessao = await exigirSessao();
-  // Só clientes sem empresa passam por aqui.
+  // Só clientes sem empresa passam por aqui (empresa bloqueada não conta como "sem").
+  if (sessao.empresaBloqueada) {
+    redirect("/empresa-bloqueada");
+  }
   if (sessao.papel !== "cliente" || sessao.empresaAtiva) {
     redirect("/painel");
   }

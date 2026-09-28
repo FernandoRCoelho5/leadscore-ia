@@ -18,7 +18,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { definirEmpresaAtivaAcao, definirTemaAcao, sairAcao } from "@/app/acoes";
+import { definirEmpresaAtivaAcao, definirTemaAcao, sairAcao, sairDaEmpresaAcao } from "@/app/acoes";
 import { Logo } from "@/components/marca/Logo";
 import { Avatar } from "@/components/ui/Avisos";
 import { COOKIE_DO_TEMA, lerTema, type Tema } from "@/lib/tema";
@@ -262,6 +262,23 @@ function EmpresaAtiva({ sessao }: { sessao: Sessao }) {
           className="h-controle cursor-pointer rounded-md px-3 text-sm font-medium hover:bg-superficie-2"
         >
           Trocar
+        </button>
+      </form>
+    );
+  }
+  if (sessao.acessoDaEquipe && sessao.empresaAtiva) {
+    // A equipe está dentro da empresa de um cliente: sempre visível, com saída.
+    return (
+      <form action={sairDaEmpresaAcao} className="flex min-w-0 items-center gap-2">
+        <p className="min-w-0 truncate rounded-full bg-secundaria px-3 py-1 text-sm font-semibold text-texto-secundaria">
+          <span className="sr-only">Acessando como equipe Brasa: </span>
+          {sessao.empresaAtiva.nome}
+        </p>
+        <button
+          type="submit"
+          className="h-controle shrink-0 cursor-pointer rounded-md px-3 text-sm font-medium hover:bg-superficie-2"
+        >
+          Sair da empresa
         </button>
       </form>
     );

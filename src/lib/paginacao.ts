@@ -6,6 +6,8 @@ import { z } from "zod";
  */
 export const TAMANHO_MAXIMO_PAGINA = 100;
 export const TAMANHO_PADRAO_PAGINA = 20;
+/** Tamanho de cada lote lido do banco nas exportações em CSV (memória constante). */
+export const TAMANHO_DO_LOTE_DE_EXPORTACAO = 500;
 
 export const esquemaPaginacao = z.object({
   pagina: z.coerce.number().int().min(1).default(1),
