@@ -54,7 +54,8 @@ componente de cliente, o build falha.
 ```
 src/
   app/
-    (publico)/        login, cadastro, redefinir-senha, convite/[token] (D-030), politica-de-privacidade
+    (publico)/        login, cadastro, redefinir-senha, convite/[token] (D-030)
+    politica-de-privacidade/ texto da LGPD, com layout de leitura (D-031)
     f/[slug]/         formulário público de captação (incorporável em iframe, D-028)
     onboarding/       cadastro da empresa e do perfil do negócio
     empresa-bloqueada/ aviso ao cliente de empresa bloqueada (D-029)
@@ -326,6 +327,9 @@ sequenceDiagram
   preview da Vercel (D-026).
 - Deploys de preview: sem `BETTER_AUTH_URL`, o app usa o endereço do próprio
   deploy (`VERCEL_URL`) e confia só nos hosts exatos do deploy e da branch.
+- O build da Vercel aplica as migrations no banco do ambiente antes do
+  `next build` (`npm run db:implantar`, D-031). As funções que chamam a IA têm
+  `maxDuration = 120`. Passo a passo em [implantacao.md](implantacao.md).
 - **Vercel Blob** privado (store `brasa`, região `gru1`) para as fotos de
   perfil, sem endereço público: a entrega passa por uma rota autenticada
   (D-024).

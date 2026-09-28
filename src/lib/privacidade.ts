@@ -1,3 +1,6 @@
+/** Endereço da política de privacidade (LGPD), linkada no cadastro, no login e nos formulários. */
+export const CAMINHO_DA_POLITICA = "/politica-de-privacidade";
+
 /**
  * E-mail com o nome escondido ("f•••••@empresa.com.br"). A página do convite
  * mostra para qual e-mail ele vale sem expor o endereço inteiro a quem

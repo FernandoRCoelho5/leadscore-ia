@@ -9,6 +9,7 @@ import {
   Moon,
   ScrollText,
   Settings,
+  ShieldCheck,
   Sun,
   UserRound,
   Users,
@@ -22,6 +23,7 @@ import type { ReactNode } from "react";
 import { definirEmpresaAtivaAcao, definirTemaAcao, sairAcao, sairDaEmpresaAcao } from "@/app/acoes";
 import { Logo } from "@/components/marca/Logo";
 import { Avatar } from "@/components/ui/Avisos";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 import { COOKIE_DO_TEMA, lerTema, type Tema } from "@/lib/tema";
 import { pode, type Acao, type Papel } from "@/server/auth/permissoes";
 import type { Sessao } from "@/server/auth/sessao";
@@ -210,6 +212,10 @@ async function MenuDaConta({ sessao }: { sessao: Sessao }) {
         <LinkQueFechaPopover href="/perfil" className={ITEM}>
           <UserRound aria-hidden="true" />
           Alterar perfil
+        </LinkQueFechaPopover>
+        <LinkQueFechaPopover href={CAMINHO_DA_POLITICA} className={ITEM}>
+          <ShieldCheck aria-hidden="true" />
+          Política de privacidade
         </LinkQueFechaPopover>
 
         <form action={definirTemaAcao} className="px-2 py-2">

@@ -9,6 +9,14 @@ import { obterIp } from "@/server/seguranca/ip";
 import { limitadorNoBanco } from "@/server/seguranca/limitador";
 import { captarLead } from "@/server/services/captacao";
 
+/**
+ * Tempo máximo da função, em segundos. A análise roda no `after()` desta
+ * requisição e, no pior caso, a Claude API leva 3 tentativas de 30 s com as
+ * esperas entre elas (~95 s). Com Fluid compute, o limite do plano Hobby é
+ * 300 s (D-031). Precisa ser um número literal (o Next.js lê no build).
+ */
+export const maxDuration = 120;
+
 /** O formulário tem poucos campos: 16 KB sobram com folga (a mensagem tem até 2.000 caracteres). */
 const TAMANHO_MAXIMO_DO_CORPO = 16 * 1024;
 

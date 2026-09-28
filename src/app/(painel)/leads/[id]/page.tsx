@@ -25,6 +25,12 @@ import { obterDetalheDoLead, type DetalheDoLead } from "@/server/services/leads"
 
 export const metadata: Metadata = { title: "Lead" };
 
+/**
+ * Vale também para as Server Actions desta página: a reanálise chama a IA
+ * dentro da própria requisição (ver api/publico/[slug]/leads/route.ts).
+ */
+export const maxDuration = 120;
+
 /** O que dizer quando ainda não há análise concluída. */
 const SEM_ANALISE: Record<Exclude<Lead["statusAnalise"], "concluida">, string> = {
   pendente: "A análise vai começar em instantes.",

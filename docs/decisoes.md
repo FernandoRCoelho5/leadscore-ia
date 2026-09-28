@@ -999,6 +999,104 @@ escala e de acessibilidade, páginas de erro, seed e README.
 
 ---
 
+## D-031 · Implantação: migrations no build, primeiro admin e produção só com dados reais (Etapa 9)
+
+**Contexto.** A produção vai receber o código pela primeira vez. Ficaram
+pendências das etapas anteriores:
+
+- as migrations precisam chegar às branches `preview` e `production` do
+  Neon (D-026, D-030);
+- o tempo máximo das funções na Vercel precisa cobrir a análise no `after()`
+  (D-028);
+- falta a política de privacidade (D-023).
+
+Além disso, a plataforma não tem como criar o primeiro admin: o cadastro
+sempre cria cliente, e só um admin promove outro.
+
+**Decisão.**
+
+- **Migrations no build da Vercel.** O `vercel.json` troca o comando de build
+  por `npm run db:implantar && npm run build`. O `db:implantar` só age nos
+  builds de `production` e `preview` (`VERCEL=1`); fora deles, não faz nada.
+  - Reaproveita a preparação do banco E2E (D-025): trava, linha de base das
+    cópias "schema only" e transação única.
+  - Usa o `DATABASE_URL` que a Vercel já tem para cada ambiente.
+  - Se falhar, o banco não muda, o build para e o deploy anterior segue no
+    ar. O código novo nunca roda com o banco antigo.
+  - As migrations só acrescentam (sem `DROP`, regra do projeto). Por isso, o
+    código anterior funciona com o banco novo, e o *Instant Rollback* da
+    Vercel é seguro.
+- **Região e tempo máximo.** Funções em `gru1`, fixado no `vercel.json`.
+  `maxDuration = 120` na rota da captação (análise no `after()`) e na página
+  do lead (a reanálise é uma Server Action). No pior caso, a Claude API faz
+  3 tentativas de 30 s, cerca de 95 s. A análise "travada" só é retomada
+  depois de 5 min, bem acima desse limite. Exige o Fluid compute ligado.
+- **Primeiro admin.** A pessoa se cadastra pelo app, e o comando
+  `npm run admin:promover -- <e-mail>` promove a conta.
+  - Só funciona enquanto não houver admin ativo. Os próximos são promovidos
+    na tela Usuários, com RBAC.
+  - Uma trava (advisory lock) impede duas promoções ao mesmo tempo.
+  - Recusa conta bloqueada.
+  - A auditoria registra a ação como do sistema (`origem: primeiro_admin`).
+  - A autorização é ter a credencial do banco.
+- **Produção só com dados reais.** O seed de demonstração recusa o banco
+  quando `VERCEL_ENV=production` ou quando há contas com e-mail real (fora de
+  `.example` e das anonimizadas). Isso cobre o `.env.local` apontando para a
+  produção por engano.
+- **Política de privacidade** em `/politica-de-privacidade`, pública, com
+  linguagem simples.
+  - Explica os papéis: a Brasa é controladora das contas e operadora dos
+    leads.
+  - Lista os dados, as finalidades com as bases legais, a IA sem dados de
+    contato, os fornecedores (com a transferência internacional para
+    Anthropic e Resend), a retenção, os direitos do art. 18, a segurança e o
+    contato.
+  - O responsável e o contato vêm de `PRIVACIDADE_RESPONSAVEL` e
+    `PRIVACIDADE_CONTATO`. O contato é obrigatório em produção: sem ele, o
+    build para.
+  - Links no cadastro, nas telas de acesso, na página inicial, no menu da
+    conta e no formulário público (em outra aba, porque ele pode estar num
+    iframe).
+- **Buscadores.** `robots.txt` e `sitemap.xml` gerados no build. Previews e
+  o ambiente local bloqueiam tudo. Em produção, só as páginas públicas:
+  áreas logadas (a mesma lista do proxy), API, convites e formulários ficam
+  de fora.
+- **Guia de implantação** em [implantacao.md](implantacao.md): variáveis por
+  ambiente, ordem dos merges, verificação depois do deploy, rollback e custos.
+
+**Alternativas.**
+
+- **GitHub Action manual para as migrations, com aprovação:** mais controle,
+  mas exige outra cópia da senha de produção (no GitHub) e alguém lembrar de
+  rodar antes de cada merge.
+- **Migrar quando o servidor sobe** (`instrumentation.ts`): várias instâncias
+  subiriam ao mesmo tempo, e cada início a frio ficaria mais lento.
+- **Promover o primeiro admin com SQL no painel do Neon:** SQL digitado à mão,
+  sem validação e sem registro na auditoria.
+- **Seed de demonstração em produção:** mais rápido de mostrar, mas seriam
+  contas com senha conhecida pela equipe num ambiente real.
+- **Contato de privacidade fixo no código:** muda quando o SaaS tiver razão
+  social e CNPJ; pela variável de ambiente, cada implantação informa o seu.
+
+**Consequências.**
+
+- Todo build de preview aplica as migrations da própria branch no banco
+  `preview`, que é compartilhado entre os PRs. Como elas só acrescentam, uma
+  branch não quebra a outra.
+- O build da Vercel precisa acessar o banco. Se o Neon estiver fora do ar, o
+  deploy falha em vez de subir com o banco desatualizado.
+- Sem domínio próprio verificado no Resend, os e-mails só chegam ao dono da
+  conta do Resend. Os convites seguem pelo link na tela.
+- Ficam para a versão comercial:
+  - domínio próprio;
+  - plano Pro da Vercel;
+  - revisão jurídica da política e termos de uso;
+  - registros de acesso por 6 meses (Marco Civil, art. 15);
+  - exclusão da conta pela própria pessoa;
+  - uma rotina que retome análises interrompidas (D-007).
+
+---
+
 ## Fontes consultadas (24/09/2026)
 
 - [Preços do Clerk](https://clerk.com/pricing)
@@ -1013,3 +1111,4 @@ escala e de acessibilidade, páginas de erro, seed e README.
 - [Claude API: prompt caching e tamanho mínimo por modelo](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) (consultada em 26/09/2026, D-027)
 - [Preços da Claude API](https://platform.claude.com/docs/en/about-claude/pricing) (consultada em 26/09/2026, D-027)
 - Guia do `after` do Next.js 16.3, em `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/after.md` (consultado em 26/09/2026, D-028)
+- Guias `maxDuration`, `robots` e `sitemap` do Next.js 16.3, em `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/` (consultados em 27/09/2026, D-031)

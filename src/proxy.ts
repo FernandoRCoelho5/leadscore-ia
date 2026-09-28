@@ -64,8 +64,8 @@ export function montarCsp(nonce: string, opcoes: OpcoesDeCsp): string {
   return diretivas.join("; ");
 }
 
-/** Prefixos das áreas que exigem login. */
-const AREAS_LOGADAS = [
+/** Prefixos das áreas que exigem login (também ficam fora dos buscadores, em app/robots.ts). */
+export const AREAS_LOGADAS = [
   "/painel",
   "/leads",
   "/membros",

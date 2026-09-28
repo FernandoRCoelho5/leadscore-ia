@@ -1,9 +1,6 @@
 import "./carregarEnv";
 
-import { Pool } from "@neondatabase/serverless";
-import { readMigrationFiles } from "drizzle-orm/migrator";
-
-import { prepararMigrations } from "./banco/prepararMigrations";
+import { aplicarMigrations } from "./banco/aplicarMigrations";
 
 /**
  * Prepara o banco dos testes E2E (branch "e2e" do Neon, criada como "schema
@@ -22,22 +19,11 @@ async function principal(): Promise<void> {
     throw new Error("DATABASE_URL ausente.");
   }
 
-  const pool = new Pool({ connectionString: url });
-  const cliente = await pool.connect();
-  try {
-    const migrations = readMigrationFiles({ migrationsFolder: "./drizzle" });
-    const resumo = await prepararMigrations(
-      { query: (texto, parametros) => cliente.query(texto, parametros) },
-      migrations,
-    );
-    console.log(
-      `Banco E2E pronto: ${resumo.registradas} migration(s) já existente(s) registrada(s), ` +
-        `${resumo.aplicadas} aplicada(s), ${migrations.length} no total.`,
-    );
-  } finally {
-    cliente.release();
-    await pool.end();
-  }
+  const resumo = await aplicarMigrations(url);
+  console.log(
+    `Banco E2E pronto: ${resumo.registradas} migration(s) já existente(s) registrada(s), ` +
+      `${resumo.aplicadas} aplicada(s), ${resumo.total} no total.`,
+  );
 }
 
 principal().catch((erro: unknown) => {

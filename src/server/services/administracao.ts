@@ -1,5 +1,7 @@
 import "server-only";
 
+import { sql } from "drizzle-orm";
+
 import type { Empresa } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
 import { inicioDoMes } from "@/lib/datas";
@@ -28,6 +30,7 @@ import {
   alterarPapelDoUsuario,
   listarUsuarios,
   obterUsuarioAtivo,
+  obterUsuarioAtivoPorEmail,
   travarAdminsAtivos,
   type FiltrosDeUsuarios,
   type UsuarioNaLista,
@@ -222,6 +225,51 @@ export async function alterarPapelNaPlataforma(
       recursoId: usuarioId,
       detalhes: { de: anterior, para: papel },
     });
+  });
+}
+
+// Chave fixa da trava do primeiro admin (qualquer número, sempre o mesmo).
+const TRAVA_DO_PRIMEIRO_ADMIN = 20_260_927;
+
+/**
+ * Cria o primeiro admin da plataforma na implantação (D-031): promove uma
+ * conta que já se cadastrou pelo app. Só vale enquanto não houver admin ativo;
+ * depois disso, novos admins são promovidos na tela Usuários, com RBAC.
+ *
+ * Roda pelo script `admin:promover`, por quem tem a credencial do banco: essa
+ * credencial é a autorização. A auditoria registra a ação como do sistema.
+ */
+export async function promoverPrimeiroAdmin(
+  db: BancoDeDados,
+  email: string,
+): Promise<{ usuarioId: string; nome: string }> {
+  return db.transaction(async (tx) => {
+    // Sem admin, não há linha para travar: a trava impede duas promoções ao mesmo tempo.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${TRAVA_DO_PRIMEIRO_ADMIN})`);
+    if ((await travarAdminsAtivos(tx)).length > 0) {
+      throw new ErroConflito(
+        "A plataforma já tem admin ativo. Novos admins são promovidos na tela Usuários.",
+      );
+    }
+    const alvo = await obterUsuarioAtivoPorEmail(tx, email);
+    if (!alvo) {
+      throw new ErroNaoEncontrado(
+        "Nenhuma conta com este e-mail. Cadastre-se no app e rode o comando de novo.",
+      );
+    }
+    if (alvo.bloqueadoEm) {
+      throw new ErroConflito("Esta conta está bloqueada.");
+    }
+    await alterarPapelDoUsuario(tx, alvo.id, "admin");
+    await registrarAuditoria(tx, {
+      atorId: null,
+      empresaId: null,
+      acao: "usuario.papel_alterado",
+      recursoTipo: "usuario",
+      recursoId: alvo.id,
+      detalhes: { de: alvo.papelPlataforma ?? "cliente", para: "admin", origem: "primeiro_admin" },
+    });
+    return { usuarioId: alvo.id, nome: alvo.nome };
   });
 }
 

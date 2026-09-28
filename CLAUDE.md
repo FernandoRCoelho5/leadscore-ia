@@ -40,3 +40,4 @@ Fotos de perfil no Vercel Blob privado (store `brasa`), entregues por rota auten
 - dev: `npm run dev`
 - migrations: `npx drizzle-kit generate`, revisar o SQL gerado (sem `DROP`/`TRUNCATE`) e aplicar com `npx drizzle-kit migrate`. Não usar `drizzle-kit push`.
 - banco E2E: `E2E_COM_BANCO=1 npm run db:preparar-e2e` (o CI já roda antes dos E2E; D-025).
+- deploy: o build da Vercel aplica as migrations (`db:implantar`, D-031); primeiro admin com `npm run admin:promover -- <e-mail>`. Guia em `docs/implantacao.md`.

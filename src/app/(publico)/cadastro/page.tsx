@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { FormularioCadastro } from "@/components/auth/FormulariosDeAcesso";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 import { destinoSeguro } from "@/lib/validacao/auth";
 import { obterSessao } from "@/server/auth/sessao";
 
@@ -26,6 +27,16 @@ export default async function PaginaCadastro({ searchParams }: PageProps<"/cadas
       <div className="mt-6">
         <FormularioCadastro destino={volta ?? "/onboarding"} />
       </div>
+      <p className="mt-4 text-xs text-texto-suave">
+        Seus dados são tratados conforme a{" "}
+        <Link
+          href={CAMINHO_DA_POLITICA}
+          className="font-medium text-marca-texto underline underline-offset-2 hover:no-underline"
+        >
+          política de privacidade
+        </Link>
+        .
+      </p>
       <p className="mt-6 text-center text-sm text-texto-suave">
         Já tem conta?{" "}
         <Link

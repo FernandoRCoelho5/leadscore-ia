@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { BadgeClassificacao } from "@/components/leads/BadgeClassificacao";
 import { Logo } from "@/components/marca/Logo";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 import { obterSessao } from "@/server/auth/sessao";
 
 const PASSOS: { icone: ReactNode; titulo: string; texto: string }[] = [
@@ -102,6 +103,15 @@ export default async function Inicio() {
             ))}
           </ol>
         </section>
+
+        <footer className="border-t border-borda pt-4">
+          <Link
+            href={CAMINHO_DA_POLITICA}
+            className="rounded-md px-2 py-3 text-sm text-texto-suave underline-offset-2 hover:text-texto hover:underline"
+          >
+            Política de privacidade
+          </Link>
+        </footer>
       </div>
     </main>
   );

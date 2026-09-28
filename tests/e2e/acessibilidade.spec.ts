@@ -72,7 +72,14 @@ test("o verificador acusa os problemas de uma página malfeita", async ({ page }
   );
 });
 
-const PUBLICAS = ["/", "/login", "/cadastro", "/esqueci-senha", "/uma-pagina-que-nao-existe"];
+const PUBLICAS = [
+  "/",
+  "/login",
+  "/cadastro",
+  "/esqueci-senha",
+  "/politica-de-privacidade",
+  "/uma-pagina-que-nao-existe",
+];
 
 for (const [dispositivo, tamanho] of [
   ["computador", { width: 1366, height: 900 }],
