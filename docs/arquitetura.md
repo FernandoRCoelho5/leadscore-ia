@@ -35,7 +35,7 @@ classificação (quente, morno, frio), justificativa e uma resposta sugerida.
 | Interface | `src/app`, `src/components` | Validar entrada com Zod, chamar serviços, renderizar | Acessar o banco, conter regra de negócio |
 | Serviços (casos de uso) | `src/server/services` | Verificar permissão (RBAC), aplicar regras, registrar auditoria | Conhecer detalhes de HTTP ou de interface |
 | Repositórios | `src/server/repositories` | Consultar o banco via Drizzle, sempre filtrando `empresa_id` e `deleted_at` | Decidir permissões |
-| Adaptadores | `src/server/email`, `src/server/armazenamento`, `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
+| Adaptadores | `src/server/ia`, `src/server/email`, `src/server/armazenamento`, `src/lib/*` | Falar com serviços externos (IA, e-mail, arquivos, rate limit) | Conter regra de negócio |
 
 Todo código de servidor importa `server-only`: se alguém o importar num
 componente de cliente, o build falha.
@@ -45,8 +45,9 @@ componente de cliente, o build falha.
 - **Server Actions**: mutações do painel autenticado (alterar status, editar
   empresa etc.). Cada action é um endpoint público, então **toda** action
   verifica sessão e permissão no serviço.
-- **Route Handlers** (`src/app/api/`): formulário público, `POST /api/analisar/[leadId]`,
-  exportação CSV em streaming e rotas da autenticação.
+- **Route Handlers** (`src/app/api/`): formulário público, exportação CSV em
+  streaming, entrega da foto de perfil e rotas da autenticação. A reanálise de
+  um lead é uma Server Action (`reanalisarLeadAcao`, D-027).
 
 ## 2. Estrutura de pastas
 
@@ -59,15 +60,16 @@ src/
     (painel)/         layout: menu lateral por perfil + topo com avatar
       painel/  leads/  leads/[id]/  configuracoes/  usuarios/  perfil/
       admin/empresas/  admin/usuarios/  admin/auditoria/
-    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads, analisar/[leadId], leads/exportar
+    api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads, leads/exportar
   server/
     services/         casos de uso (criarLead, analisarLead, anonimizarLead...)
     repositories/     consultas Drizzle (empresaId obrigatório, sem deletados, paginadas)
     auth/             sessão, permissoes.ts (matriz RBAC), autorizar()
     email/            envio de e-mail (Resend; terminal em desenvolvimento)
     armazenamento/    fotos no Vercel Blob privado (D-024)
+    ia/               motor.ts (contrato), claude.ts, mock.ts, prompt.ts, schema.ts (D-027)
+    http/             executarAcao, agendarAnalise (after())
   lib/
-    ia/               analisarLead.ts, prompt.ts, schema.ts, mock.ts
     validacao/        schemas Zod compartilhados entre cliente e servidor
     email/  rate-limit/  armazenamento/
     csv.ts  erros.ts  paginacao.ts  logger.ts  uuid.ts
@@ -265,16 +267,18 @@ sequenceDiagram
   S->>DB: grava o lead (status_analise = pendente)
   API-->>L: confirmação imediata
   Note over API,S: after(): executa depois da resposta
+  S->>DB: reserva o lead (processando, UPDATE condicional)
   S->>DB: consome o limite mensal (UPDATE atômico)
-  S->>IA: analisa com o perfil do negócio da empresa
-  IA-->>S: JSON
+  S->>IA: perfil do negócio + lead sem dados de contato
+  IA-->>S: JSON no formato do schema (saída estruturada)
   S->>S: valida com Zod (nova tentativa se falhar)
-  S->>DB: grava a análise e atualiza a cópia no lead
+  S->>DB: grava a análise, a cópia no lead e os tokens (transação)
 ```
 
 Se o limite mensal acabou, o lead fica com `status_analise = limite_atingido`.
-Se a IA falhar após as tentativas, fica `falhou`. Nos dois casos o lead não se
-perde e pode ser reanalisado pelo painel.
+Se a IA falhar após as tentativas, fica `falhou` e a análise consumida é
+devolvida ao limite do mês. Nos dois casos o lead não se perde e pode ser
+reanalisado pelo painel (D-027).
 
 ### Requisição no painel
 
@@ -309,5 +313,6 @@ sequenceDiagram
 - **Vercel Blob** privado (store `brasa`, região `gru1`) para as fotos de
   perfil, sem endereço público: a entrega passa por uma rota autenticada
   (D-024).
-- Claude API com o modelo `claude-haiku-4-5-20251001`; modo mock por variável
-  de ambiente.
+- Claude API com o modelo `claude-haiku-4-5-20251001`, pelo SDK oficial
+  `@anthropic-ai/sdk`; `IA_MODO=mock` (padrão, usado no CI) troca pelo motor
+  simulado, sem custo (D-027).

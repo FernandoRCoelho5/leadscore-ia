@@ -677,6 +677,77 @@ ela e entra no checklist de deploy da Etapa 9. Os dados do teste manual da foto
 desenvolvimento) receberam `deleted_at` em 26/09/2026, com registro na
 auditoria, sem apagar nada.
 
+## D-027 · Motor de IA: saída estruturada, dados mínimos e custo controlado
+
+**Contexto.** A Etapa 5 liga a Claude API à análise dos leads. Os riscos são
+concretos: resposta fora do formato, custo sem controle, texto do formulário
+público tentando manipular a IA (prompt injection), dados pessoais enviados a
+um terceiro (LGPD), a mesma análise rodando duas vezes e, durante o
+desenvolvimento, a chave da Anthropic sem créditos.
+
+**Decisão.**
+
+- **SDK e modelo:** SDK oficial `@anthropic-ai/sdk` (aprovado em 26/09/2026)
+  com `claude-haiku-4-5-20251001`, `temperature: 0` (mesma entrada, mesma
+  nota), `max_tokens: 1024`, timeout de 30 s e até 2 novas tentativas do
+  próprio SDK para 429, 5xx e falhas de rede.
+- **Formato garantido duas vezes:** saída estruturada da API
+  (`output_config.format` com `zodOutputFormat`) e, antes de salvar, validação
+  do JSON com o mesmo schema Zod (`src/server/ia/schema.ts`). Se o JSON vier
+  fora do schema, há uma nova tentativa; `stop_reason` `refusal` e
+  `max_tokens` viram erros próprios (`ErroDaIA`).
+- **A IA dá a nota; o app dá a etiqueta:** a resposta tem `score` (0 a 100),
+  `justificativa` e `respostaSugerida`. A classificação sai da nota por uma
+  regra fixa: 70 ou mais é quente, de 40 a 69 é morno, abaixo de 40 é frio.
+- **Dois motores, um contrato** (`MotorDeAnalise`): o real (Claude API) e o
+  simulado, por regras de palavras-chave, sem custo e sem rede. `IA_MODO`
+  escolhe (`mock` é o padrão e o do CI); cada análise grava se veio do mock.
+- **Prompt versionado:** `VERSAO_DO_PROMPT` (hoje `v1`) e a `perfil_versao` da
+  empresa ficam em cada análise, para comparar resultados antes e depois de
+  mudar o texto.
+- **Minimização (LGPD):** a IA recebe o perfil do negócio e, do lead, só
+  empresa, segmento, mensagem e origem. Nome, e-mail e telefone não vão; os
+  que estiverem escritos na mensagem viram `[e-mail]` e `[telefone]`. Cada
+  campo tem tamanho máximo (160 ou 2000 caracteres), com o corte avisado.
+- **Prompt injection:** o texto do visitante vai dentro de `<lead>`, com `<` e
+  `>` neutralizados; o prompt de sistema manda tratá-lo como dado, nunca como
+  instrução. A IA não tem ferramentas nem acesso ao banco e a saída é presa ao
+  schema: o pior caso é uma nota errada num lead, nunca uma ação.
+- **Concorrência e custo:** o lead é reservado (`processando`) por um `UPDATE`
+  condicional, e dois pedidos simultâneos não o analisam duas vezes; uma
+  reserva travada é liberada após 5 minutos. O limite mensal é consumido de
+  forma atômica (D-008). Se a IA falhar, a análise volta para o saldo do mês,
+  o lead fica `falhou` e os tokens cobrados mesmo assim continuam em
+  `uso_mensal`.
+- **Quem dispara:** a captação (Etapa 6) chama `agendarAnalise`, que usa
+  `after()` (D-007). A reanálise é a Server Action `reanalisarLeadAcao`, com a
+  empresa tirada da sessão e a permissão `leads:editar` (cliente na própria
+  empresa e admin; o suporte não). A auditoria registra quem pediu
+  (`lead.reanalisado`), sem a nota nem o texto.
+- **Logs sem conteúdo:** só ids, classificação, modelo, tokens e o motivo da
+  falha; nunca a mensagem do lead nem o texto gerado.
+- **Sem prompt caching:** o prompt de sistema tem centenas de tokens, abaixo do
+  mínimo de 4096 que o Haiku 4.5 exige para usar cache.
+- **Avaliação:** `npm run ia:avaliar` roda 12 leads fictícios com a
+  classificação esperada (inclusive spam, pedido de emprego e uma tentativa de
+  prompt injection) e mostra acertos, tokens e custo. Com a Claude API exige
+  `--confirmar`, porque gasta créditos.
+
+**Alternativas.** `messages.parse()` do SDK: valida sozinho, mas não deixa
+conferir o `stop_reason` nem somar os tokens de uma resposta inválida antes da
+exceção. Forçar o JSON por *tool use*: funciona, mas a saída estruturada é o
+recurso feito para isso. Deixar a IA escolher a classificação: poderia
+contradizer a nota ("quente" com 35). Mandar nome e e-mail do lead: não mudam
+a nota e aumentam a exposição de dados pessoais. Fila externa: ver D-007.
+
+**Consequências.** Mudar o prompt exige subir a versão. O custo estimado é de
+menos de meio centavo de dólar por análise (Haiku 4.5: US$ 1 por milhão de
+tokens de entrada e US$ 5 por milhão de saída), cerca de US$ 0,40 por empresa
+no limite padrão de 100 análises por mês. Com o motor simulado, a avaliação
+acertou 10 de 12 (26/09/2026); o motor simulado serve para demonstração e
+testes, não mede a qualidade da IA. Pendente: a mesma avaliação com a Claude
+API quando a conta tiver créditos (previsão 04/10/2026), antes do deploy.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
@@ -689,3 +760,6 @@ auditoria, sem apagar nada.
 - [Preços do Resend](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
 - [Vercel Blob: armazenamento privado](https://vercel.com/docs/vercel-blob/private-storage) (consultada em 26/09/2026, D-024)
 - [Better Auth: opções `baseURL` e `trustedOrigins`](https://www.better-auth.com/docs/reference/options) (consultada em 26/09/2026, D-026)
+- [Claude API: saída estruturada](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) (consultada em 26/09/2026, D-027)
+- [Claude API: prompt caching e tamanho mínimo por modelo](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) (consultada em 26/09/2026, D-027)
+- [Preços da Claude API](https://platform.claude.com/docs/en/about-claude/pricing) (consultada em 26/09/2026, D-027)

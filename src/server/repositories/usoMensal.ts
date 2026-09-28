@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 
 import { usoMensal, type UsoMensal } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
@@ -48,6 +48,28 @@ export async function consumirAnalise(
     })
     .returning({ analises: usoMensal.analises });
   return consumidos.length > 0;
+}
+
+/**
+ * Devolve uma análise consumida (a IA falhou: o cliente não perde a análise
+ * por uma falha nossa). Usa a mesma competência do consumo, mesmo que o mês
+ * tenha virado no meio. Nunca deixa o contador negativo.
+ */
+export async function devolverAnalise(
+  db: BancoDeDados,
+  empresaId: string,
+  competencia: string,
+): Promise<void> {
+  await db
+    .update(usoMensal)
+    .set({ analises: sql`${usoMensal.analises} - 1`, updatedAt: new Date() })
+    .where(
+      and(
+        eq(usoMensal.empresaId, empresaId),
+        eq(usoMensal.competencia, competencia),
+        gt(usoMensal.analises, 0),
+      ),
+    );
 }
 
 /** Soma os tokens gastos por uma análise ao consumo do mês (controle de custo). */
