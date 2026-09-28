@@ -93,7 +93,7 @@ test("cliente: cadastro, onboarding, painel, perfil e saída", async ({ page }) 
 
   // Menu do cliente: sem a área de administração.
   const menu = page.getByRole("navigation", { name: "Principal" }).first();
-  await expect(menu.getByRole("link")).toHaveText(["Visão geral", "Leads", "Empresa"]);
+  await expect(menu.getByRole("link")).toHaveText(["Visão geral", "Leads", "Membros", "Empresa"]);
   await expect(menu.getByRole("link", { name: "Visão geral" })).toHaveAttribute(
     "aria-current",
     "page",

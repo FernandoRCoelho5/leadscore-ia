@@ -11,9 +11,13 @@ const VARIANTES = {
 
 type Variante = keyof typeof VARIANTES;
 
-/** Classes do botão, para elementos que precisam parecer botão (ex.: rótulo do envio de arquivo). */
-export function classesDeBotao(variante: Variante = "primaria"): string {
-  return `inline-flex h-controle cursor-pointer items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTES[variante]}`;
+/**
+ * Classes do botão, para elementos que precisam parecer botão (ex.: rótulo do
+ * envio de arquivo). `compacto`: menos espaço nas laterais, para as linhas das
+ * tabelas (a altura, que é a área de toque, não muda).
+ */
+export function classesDeBotao(variante: Variante = "primaria", compacto = false): string {
+  return `inline-flex h-controle cursor-pointer items-center justify-center gap-2 rounded-md ${compacto ? "px-3" : "px-4"} text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTES[variante]}`;
 }
 
 type PropsDoBotao = ButtonHTMLAttributes<HTMLButtonElement> & {

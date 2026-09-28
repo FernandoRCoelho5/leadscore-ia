@@ -3,6 +3,7 @@ import "server-only";
 import type { Empresa } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
 import { inicioDoMes } from "@/lib/datas";
+import type { PapelDeAcesso } from "@/lib/rotulos";
 import { ErroConflito, ErroNaoEncontrado, ErroProibido, ErroValidacao } from "@/lib/erros";
 import { TAMANHO_MAXIMO_PAGINA, type Pagina, type Paginacao } from "@/lib/paginacao";
 import { autorizar } from "@/server/auth/permissoes";
@@ -24,7 +25,10 @@ import {
 import { competenciaDe } from "@/server/repositories/usoMensal";
 import {
   alterarBloqueioDoUsuario,
+  alterarPapelDoUsuario,
   listarUsuarios,
+  obterUsuarioAtivo,
+  travarAdminsAtivos,
   type FiltrosDeUsuarios,
   type UsuarioNaLista,
 } from "@/server/repositories/usuarios";
@@ -155,6 +159,9 @@ export async function alterarBloqueioNaPlataforma(
     throw new ErroConflito("Você não pode bloquear a própria conta.");
   }
   await db.transaction(async (tx) => {
+    if (bloquear) {
+      await garantirOutroAdmin(tx, usuarioId);
+    }
     if (!(await alterarBloqueioDoUsuario(tx, usuarioId, bloquear))) {
       throw new ErroNaoEncontrado("Usuário não encontrado.");
     }
@@ -164,6 +171,56 @@ export async function alterarBloqueioNaPlataforma(
       acao: bloquear ? "usuario.bloqueado" : "usuario.desbloqueado",
       recursoTipo: "usuario",
       recursoId: usuarioId,
+    });
+  });
+}
+
+/**
+ * Se o alvo é admin ativo, exige outro admin ativo além dele. Trava as contas
+ * de admin até o fim da transação (ver `travarAdminsAtivos`).
+ */
+async function garantirOutroAdmin(tx: BancoDeDados, alvoId: string): Promise<void> {
+  const admins = await travarAdminsAtivos(tx);
+  if (admins.includes(alvoId) && admins.length <= 1) {
+    throw new ErroConflito("A plataforma precisa de pelo menos um admin ativo.");
+  }
+}
+
+/**
+ * Muda o perfil de acesso de uma conta que já existe (a pessoa se cadastra e o
+ * admin a promove). Ninguém muda o próprio perfil, e a plataforma nunca fica
+ * sem admin ativo.
+ */
+export async function alterarPapelNaPlataforma(
+  db: BancoDeDados,
+  contexto: ContextoDoUsuario,
+  usuarioId: string,
+  papel: PapelDeAcesso,
+): Promise<void> {
+  autorizar(contexto.ator, "plataforma:gerir-usuarios");
+  if (usuarioId === contexto.usuarioId) {
+    throw new ErroConflito("Você não pode alterar o próprio perfil de acesso.");
+  }
+  await db.transaction(async (tx) => {
+    const alvo = await obterUsuarioAtivo(tx, usuarioId);
+    if (!alvo) {
+      throw new ErroNaoEncontrado("Usuário não encontrado.");
+    }
+    const anterior: PapelDeAcesso = alvo.papelPlataforma ?? "cliente";
+    if (anterior === papel) {
+      return;
+    }
+    if (anterior === "admin") {
+      await garantirOutroAdmin(tx, usuarioId);
+    }
+    await alterarPapelDoUsuario(tx, usuarioId, papel === "cliente" ? null : papel);
+    await registrarAuditoria(tx, {
+      atorId: contexto.usuarioId,
+      empresaId: null,
+      acao: "usuario.papel_alterado",
+      recursoTipo: "usuario",
+      recursoId: usuarioId,
+      detalhes: { de: anterior, para: papel },
     });
   });
 }

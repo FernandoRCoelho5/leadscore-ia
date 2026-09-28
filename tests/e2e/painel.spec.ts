@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 
-import { Pool } from "@neondatabase/serverless";
-import { expect, test, type Browser, type Page } from "@playwright/test";
-import { config } from "dotenv";
+import { expect, test } from "@playwright/test";
+
+import { cadastrar, clienteComEmpresa, consultar, emailUnico, novaPagina } from "./apoio";
 
 /**
  * Painel (Etapa 7) com banco real: lista de leads, detalhe, exportação e a
@@ -11,77 +11,7 @@ import { config } from "dotenv";
  * com e-mails do domínio reservado .example; nada é apagado.
  */
 
-config({ path: ".env.local", quiet: true });
-
 test.skip(!process.env.E2E_COM_BANCO, "Defina E2E_COM_BANCO=1 para rodar os testes com banco.");
-
-const SENHA = "uma senha longa de teste";
-
-function unico(prefixo: string) {
-  return `${prefixo}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-}
-
-function emailUnico(prefixo: string) {
-  return `${unico(prefixo)}@teste.brasa.example`;
-}
-
-/** IP fictício (faixa de documentação 203.0.113.0/24) para o limitador de tentativas. */
-function ipFicticio() {
-  return `203.0.113.${1 + Math.floor(Math.random() * 254)}`;
-}
-
-async function consultar<Linha extends Record<string, unknown>>(
-  sql: string,
-  parametros: unknown[],
-): Promise<Linha[]> {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  try {
-    const { rows } = await pool.query<Linha>(sql, parametros);
-    return rows;
-  } finally {
-    await pool.end();
-  }
-}
-
-async function novaPagina(browser: Browser): Promise<Page> {
-  const contexto = await browser.newContext({
-    extraHTTPHeaders: { "x-forwarded-for": ipFicticio() },
-  });
-  return contexto.newPage();
-}
-
-async function cadastrar(page: Page, nome: string, email: string) {
-  await page.goto("/cadastro");
-  await page.getByLabel("Seu nome").fill(nome);
-  await page.getByLabel("E-mail de trabalho").fill(email);
-  await page.getByLabel("Senha", { exact: true }).fill(SENHA);
-  await page.getByRole("button", { name: "Criar conta" }).click();
-  await page.waitForURL("**/onboarding");
-}
-
-/** Cadastra um cliente com empresa e devolve o id e o nome da empresa. */
-async function clienteComEmpresa(page: Page): Promise<{ empresaId: string; nome: string }> {
-  const email = emailUnico("painel");
-  const nome = `Agência Painel ${unico("e2e").slice(-10)}`;
-  await cadastrar(page, "Paula Painel", email);
-  await page.getByLabel("Nome da empresa").fill(nome);
-  await page.getByLabel("O que a sua empresa faz").fill("Criamos sites e lojas virtuais B2B.");
-  await page.getByLabel("Cliente ideal").fill("Indústrias de médio porte do Sul Fluminense.");
-  await page.getByRole("button", { name: "Criar empresa e ir para o painel" }).click();
-  await page.waitForURL("**/painel");
-
-  const [linha] = await consultar<{ id: string }>(
-    `SELECT e.id FROM empresas e
-       JOIN membros_empresa m ON m.empresa_id = e.id
-       JOIN usuarios u ON u.id = m.usuario_id
-      WHERE u.email = $1`,
-    [email],
-  );
-  if (!linha) {
-    throw new Error("empresa do cliente não encontrada");
-  }
-  return { empresaId: linha.id, nome };
-}
 
 async function inserirLead(
   empresaId: string,
@@ -142,6 +72,8 @@ test("cliente: lista com filtros, detalhe, andamento e exportação em CSV", asy
 test("equipe: abre a empresa do cliente (auditado), ajusta o limite, bloqueia e desbloqueia", async ({
   browser,
 }) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
   const cliente = await novaPagina(browser);
   const { nome } = await clienteComEmpresa(cliente);
 
@@ -210,4 +142,31 @@ test("equipe: abre a empresa do cliente (auditado), ajusta o limite, bloqueia e 
     // A conta de admin de teste não fica utilizável depois do teste.
     await consultar("UPDATE usuarios SET bloqueado_em = now() WHERE email = $1", [emailDoAdmin]);
   }
+});
+
+test("um cliente não abre o lead de outra empresa nem pela URL (404, sem revelar que existe)", async ({
+  browser,
+}) => {
+  // Fluxo com várias pessoas e muitas idas ao servidor: no CI, longe do banco, passa de 30 s.
+  test.slow();
+  const outra = await novaPagina(browser);
+  const { empresaId: empresaDaOutra } = await clienteComEmpresa(outra);
+  await inserirLead(empresaDaOutra, "Lead Alheio", "quente", 90);
+  const [lead] = await consultar<{ id: string }>(
+    "SELECT id FROM leads WHERE empresa_id = $1 AND nome = 'Lead Alheio'",
+    [empresaDaOutra],
+  );
+
+  const intrusa = await novaPagina(browser);
+  await clienteComEmpresa(intrusa, "Ivo Intruso");
+
+  const resposta = await intrusa.goto(`/leads/${lead?.id ?? ""}`);
+  expect(resposta?.status()).toBe(404);
+  await expect(intrusa.getByRole("heading", { name: "Página não encontrada" })).toBeVisible();
+  await expect(intrusa.getByText("Lead Alheio")).toHaveCount(0);
+
+  // A exportação usa só a empresa da sessão: o lead alheio não aparece no arquivo.
+  const csv = await intrusa.request.get("/api/leads/exportar");
+  expect(csv.ok()).toBe(true);
+  expect(await csv.text()).not.toContain("Lead Alheio");
 });

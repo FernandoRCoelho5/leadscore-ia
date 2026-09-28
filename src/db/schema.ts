@@ -203,6 +203,13 @@ export const leads = pgTable(
     index("leads_empresa_status_idx")
       .on(t.empresaId, t.status, t.createdAt.desc())
       .where(naoExcluido),
+    // Ordenar por "Maior nota" (D-030): a página sai do índice, sem ordenar todos os leads.
+    index("leads_empresa_score_idx")
+      .on(t.empresaId, t.scoreAtual.desc().nullsLast(), t.id.desc().nullsFirst())
+      .where(naoExcluido),
+    // Exportação por cursor (id menor que o último lido) só com os leads da empresa.
+    // (`id DESC NULLS FIRST` é o `ORDER BY id DESC` do Postgres; sem isso o índice não casa.)
+    index("leads_empresa_id_idx").on(t.empresaId, t.id.desc().nullsFirst()).where(naoExcluido),
     // Busca por trecho (ILIKE '%termo%') com trigramas (extensão pg_trgm).
     index("leads_nome_trgm_idx").using("gin", t.nome.op("gin_trgm_ops")),
     index("leads_email_trgm_idx").using("gin", t.email.op("gin_trgm_ops")),
@@ -393,6 +400,7 @@ export const limitesTaxaAuth = pgTable(
 export type Empresa = typeof empresas.$inferSelect;
 export type NovaEmpresa = typeof empresas.$inferInsert;
 export type Usuario = typeof usuarios.$inferSelect;
+export type Convite = typeof convites.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
 export type NovoLead = typeof leads.$inferInsert;
 export type Analise = typeof analises.$inferSelect;

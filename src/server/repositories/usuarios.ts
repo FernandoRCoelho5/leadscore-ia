@@ -216,3 +216,41 @@ export async function alterarBloqueioDoUsuario(
     .returning({ id: usuarios.id });
   return atualizados.length > 0;
 }
+
+/**
+ * Trava as contas de admin ativas (não excluídas e não bloqueadas) e devolve
+ * os ids. Duas alterações ao mesmo tempo esperam uma pela outra, então dois
+ * admins não conseguem rebaixar (ou bloquear) um ao outro e deixar a
+ * plataforma sem admin. Deve ser chamada dentro de uma transação.
+ */
+export async function travarAdminsAtivos(db: BancoDeDados): Promise<string[]> {
+  const linhas = await db
+    .select({ id: usuarios.id })
+    .from(usuarios)
+    .where(
+      and(
+        eq(usuarios.papelPlataforma, "admin"),
+        isNull(usuarios.deletedAt),
+        isNull(usuarios.bloqueadoEm),
+      ),
+    )
+    .for("update");
+  return linhas.map((linha) => linha.id);
+}
+
+/** Muda o papel na plataforma (nulo = cliente). Vale na próxima requisição da pessoa. */
+export async function alterarPapelDoUsuario(
+  db: BancoDeDados,
+  usuarioId: string,
+  papel: "admin" | "suporte" | null,
+): Promise<boolean> {
+  if (!ehUuid(usuarioId)) {
+    return false;
+  }
+  const atualizados = await db
+    .update(usuarios)
+    .set({ papelPlataforma: papel })
+    .where(and(eq(usuarios.id, usuarioId), isNull(usuarios.deletedAt)))
+    .returning({ id: usuarios.id });
+  return atualizados.length > 0;
+}

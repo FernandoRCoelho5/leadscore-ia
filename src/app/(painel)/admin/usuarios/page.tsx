@@ -85,7 +85,7 @@ export default async function PaginaUsuarios({ searchParams }: PageProps<"/admin
           <ListaDeUsuarios
             usuarios={pagina.itens}
             usuarioAtualId={sessao.usuario.id}
-            podeBloquear={pode(sessao.ator, "plataforma:gerir-usuarios")}
+            podeGerir={pode(sessao.ator, "plataforma:gerir-usuarios")}
           />
           <Paginacao
             {...pagina}

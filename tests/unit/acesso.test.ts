@@ -50,6 +50,7 @@ describe("proxy: áreas que exigem login", () => {
     "/onboarding",
     "/configuracoes",
     "/empresa-bloqueada",
+    "/membros",
   ])("%s exige login", (caminho) => {
     expect(exigeLogin(caminho)).toBe(true);
   });

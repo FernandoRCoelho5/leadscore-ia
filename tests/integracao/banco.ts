@@ -13,14 +13,25 @@ import { criarEmpresa } from "@/server/repositories/empresas";
  * o Neon, então os testes também validam o SQL gerado. Nenhum banco real é
  * tocado e nada precisa ser apagado.
  */
-export async function criarBancoDeTeste(): Promise<{
+export async function criarBancoDeTeste(
+  opcoes: {
+    /** Recebe cada consulta que o Drizzle envia (para inspecionar o plano com EXPLAIN). */
+    aoConsultar?: (sql: string, parametros: unknown[]) => void;
+  } = {},
+): Promise<{
   db: BancoDeDados;
+  cliente: PGlite;
   encerrar: () => Promise<void>;
 }> {
   const cliente = new PGlite({ extensions: { pg_trgm } });
-  const db = drizzle({ client: cliente, schema });
+  const { aoConsultar } = opcoes;
+  const db = drizzle({
+    client: cliente,
+    schema,
+    ...(aoConsultar && { logger: { logQuery: aoConsultar } }),
+  });
   await migrate(db, { migrationsFolder: "./drizzle" });
-  return { db, encerrar: () => cliente.close() };
+  return { db, cliente, encerrar: () => cliente.close() };
 }
 
 let contador = 0;

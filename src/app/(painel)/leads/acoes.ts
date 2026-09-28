@@ -4,9 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { ErroNaoEncontrado } from "@/lib/erros";
 import { STATUS_DO_LEAD } from "@/lib/rotulos";
-import { contextoDa, exigirSessaoComEmpresa, type Sessao } from "@/server/auth/sessao";
+import { contextoDa, exigirEmpresaAtiva, type Sessao } from "@/server/auth/sessao";
 import { executarAcao, validarEntrada, type ResultadoDeAcao } from "@/server/http/acao";
 import { obterMotor } from "@/server/ia";
 import { reanalisarLead, type ResultadoDaAnaliseDoLead } from "@/server/services/analise";
@@ -25,12 +24,8 @@ import {
 const esquemaDoLead = z.uuid("Lead inválido.");
 
 async function empresaDaSessao(): Promise<{ sessao: Sessao; empresaId: string }> {
-  const sessao = await exigirSessaoComEmpresa();
-  const empresaId = sessao.empresaAtiva?.empresaId;
-  if (!empresaId) {
-    throw new ErroNaoEncontrado("Lead não encontrado.");
-  }
-  return { sessao, empresaId };
+  const { sessao, empresa } = await exigirEmpresaAtiva();
+  return { sessao, empresaId: empresa.empresaId };
 }
 
 function atualizarTelas(leadId: string) {

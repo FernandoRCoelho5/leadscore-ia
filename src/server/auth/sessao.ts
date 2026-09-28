@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { db } from "@/db";
-import { ErroNaoAutenticado } from "@/lib/erros";
+import { ErroNaoAutenticado, ErroNaoEncontrado } from "@/lib/erros";
 import { enderecoDaFoto } from "@/server/armazenamento/fotos";
 import { obterEmpresa } from "@/server/repositories/empresas";
 import {
@@ -126,6 +126,21 @@ export async function exigirSessaoComEmpresa(): Promise<Sessao> {
     redirect(sessao.empresaBloqueada ? "/empresa-bloqueada" : "/onboarding");
   }
   return sessao;
+}
+
+/**
+ * Nas Server Actions que atuam na empresa ativa: a empresa vem sempre da
+ * sessão, nunca do navegador (IDOR). Sem empresa ativa, "não encontrado".
+ */
+export async function exigirEmpresaAtiva(): Promise<{
+  sessao: Sessao;
+  empresa: VinculoDeEmpresa;
+}> {
+  const sessao = await exigirSessaoComEmpresa();
+  if (!sessao.empresaAtiva) {
+    throw new ErroNaoEncontrado("Nenhuma empresa selecionada.");
+  }
+  return { sessao, empresa: sessao.empresaAtiva };
 }
 
 /**

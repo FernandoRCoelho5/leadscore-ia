@@ -15,7 +15,7 @@ import { BadgeClassificacao } from "./BadgeClassificacao";
 
 function Classificacao({ lead }: { lead: Lead }) {
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <BadgeClassificacao classificacao={lead.classificacaoAtual} />
       {lead.scoreAtual !== null ? (
         <span className="text-sm font-semibold tabular-nums">
@@ -72,20 +72,23 @@ export function ListaDeLeads({
 
       {/* Computador: tabela. */}
       <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie md:block">
-        <table className="w-full text-left text-sm">
+        {/* table-fixed: as colunas de tamanho previsível têm largura definida e o
+            nome fica com o resto, truncado (em layout automático, max-width na
+            célula não segura texto sem quebra e a tabela passa da tela). */}
+        <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">Leads</caption>
           <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">
                 Lead
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-48 px-4 py-3 font-medium">
                 Classificação
               </th>
-              <th scope="col" className="px-4 py-3 font-medium">
+              <th scope="col" className="w-32 px-4 py-3 font-medium">
                 Andamento
               </th>
-              <th scope="col" className="px-4 py-3 font-medium whitespace-nowrap">
+              <th scope="col" className="w-44 px-4 py-3 font-medium whitespace-nowrap">
                 Recebido em
               </th>
             </tr>
@@ -93,7 +96,7 @@ export function ListaDeLeads({
           <tbody className="divide-y divide-borda">
             {leads.map((lead) => (
               <tr key={lead.id} className="hover:bg-superficie-2">
-                <td className="max-w-80 px-4 py-3">
+                <td className="px-4 py-3">
                   <Link
                     href={`${caminhoDoDetalhe}/${lead.id}`}
                     className="block truncate font-semibold text-texto hover:text-marca-texto hover:underline"

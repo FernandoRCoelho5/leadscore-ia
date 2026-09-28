@@ -68,6 +68,7 @@ export function montarCsp(nonce: string, opcoes: OpcoesDeCsp): string {
 const AREAS_LOGADAS = [
   "/painel",
   "/leads",
+  "/membros",
   "/configuracoes",
   "/perfil",
   "/admin",
