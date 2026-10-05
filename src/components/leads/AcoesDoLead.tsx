@@ -39,7 +39,8 @@ export function FormularioDeStatus({
     <form
       onSubmit={(evento) => {
         evento.preventDefault();
-        const status = new FormData(evento.currentTarget).get("status");
+        // "Novo" é a primeira opção da Selecao, que tem valor vazio.
+        const status = new FormData(evento.currentTarget).get("status") || "novo";
         iniciar(async () => {
           const resultado = await alterarStatusAcao(leadId, status);
           setAviso(

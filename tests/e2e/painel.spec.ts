@@ -54,6 +54,17 @@ test("cliente: lista com filtros, detalhe, andamento e exportação em CSV", asy
   await page.getByRole("button", { name: "Salvar andamento" }).click();
   await expect(page.getByText("Andamento atualizado.")).toBeVisible();
 
+  // Voltar para "Novo" (a opção de valor vazio da lista) também salva.
+  await page.getByLabel("Etapa atual").selectOption({ label: "Novo" });
+  await page.getByRole("button", { name: "Salvar andamento" }).click();
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByLabel("Etapa atual")).toHaveValue("", { timeout: 1_000 });
+  }).toPass();
+  await page.getByLabel("Etapa atual").selectOption({ label: "Em contato" });
+  await page.getByRole("button", { name: "Salvar andamento" }).click();
+  await expect(page.getByText("Andamento atualizado.")).toBeVisible();
+
   await page.goto("/leads?status=em_contato");
   await expect(tabela.getByRole("row")).toHaveCount(2);
   await expect(tabela.getByRole("link", { name: "Quente E2E" })).toBeVisible();
