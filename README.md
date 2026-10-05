@@ -11,6 +11,68 @@ mostra com quem falar primeiro.
 O produto se chamava LeadScore IA. O repositório e os nomes técnicos continuam
 `leadscore-ia`.
 
+| | |
+|---|---|
+| **Aplicação no ar** | <https://leadscore-ia.vercel.app> |
+| **Repositório** | <https://github.com/FernandoRCoelho5/leadscore-ia> |
+| **Instituição** | FAETERJ Barra Mansa, 2026 |
+| **Disciplina** | Programação para Dispositivos Móveis e Inteligência Artificial |
+| **Autores** | Fernando Ramos Coelho (Turma 304) e Ryan Benedito (Turma 304) |
+
+## Como avaliar o projeto
+
+O caminho mais curto para ver o sistema funcionando, com a IA real:
+
+1. Acesse <https://leadscore-ia.vercel.app/cadastro> e crie uma conta.
+2. No passo seguinte, descreva uma empresa fictícia: o que ela faz e o
+   cliente ideal. É com isso que a IA dá a nota.
+3. Abra o formulário público da empresa: `https://leadscore-ia.vercel.app/f/<endereço escolhido>`.
+   Envie dois ou três contatos diferentes, por exemplo um cliente com
+   orçamento e prazo e um pedido de estágio.
+4. Volte ao painel em **Leads**. Em poucos segundos cada lead aparece com nota,
+   classificação, justificativa e resposta sugerida.
+5. No detalhe do lead, experimente mudar o andamento, analisar de novo,
+   exportar CSV e, no menu do avatar, alterar nome, foto e senha.
+
+Em 05/10/2026 esse roteiro foi executado em produção: um lead de indústria
+com orçamento aprovado recebeu 92 (quente), uma clínica sem prazo recebeu 45
+(morno) e um pedido de estágio recebeu 5 (frio). As quatro análises custaram
+cerca de US$ 0,02.
+
+As telas de administração (empresas, usuários e auditoria) exigem o perfil
+`admin` ou `suporte`, que não pode ser obtido pelo cadastro. Para vê-las,
+rode o projeto localmente com os dados de demonstração (seção
+[Dados de demonstração](#dados-de-demonstração)).
+
+## Como a IA funciona
+
+O motor fica em `src/server/ia/` e as decisões estão em
+[D-027](docs/decisoes.md#d-027--motor-de-ia-saída-estruturada-dados-mínimos-e-custo-controlado).
+
+1. O visitante envia o formulário. O lead é gravado e a resposta volta na
+   hora; a análise roda depois, com `after()` do Next.js.
+2. O prompt leva o perfil do negócio (o que a empresa faz, cliente ideal,
+   ticket médio, regiões) e, do lead, só empresa, segmento, mensagem e origem.
+   **Nome, e-mail e telefone não vão para a IA** (minimização da LGPD).
+3. O modelo `claude-haiku-4-5-20251001` (temperatura 0) devolve JSON com
+   **saída estruturada**: nota de 0 a 100, justificativa e resposta sugerida.
+4. Antes de salvar, o JSON é validado de novo com **Zod**
+   (`src/server/ia/schema.ts`). Se vier fora do formato, há nova tentativa.
+5. A classificação é calculada pelo app, não pela IA: 70 ou mais é quente,
+   40 a 69 é morno, abaixo de 40 é frio.
+
+Outros cuidados:
+
+- **Prompt injection:** o texto do visitante vai delimitado e é tratado como
+  dado. A IA não tem ferramentas nem acesso ao banco: o pior caso é uma nota
+  errada.
+- **Custo:** limite mensal de análises por empresa (100 por padrão), consumido
+  de forma atômica. Cada análise custa menos de meio centavo de dólar.
+- **Sem créditos ou em testes:** `IA_MODO=mock` usa um motor simulado com o
+  mesmo contrato (`MotorDeAnalise`), sem custo e sem rede.
+- **Avaliação:** `npm run ia:avaliar` roda 12 leads fictícios com a
+  classificação esperada, incluindo spam e uma tentativa de prompt injection.
+
 ## O que o sistema faz
 
 - **Formulário público** (`/f/[slug]`), que pode ir num iframe do site do
@@ -162,6 +224,38 @@ docs/           arquitetura, decisões (D-001...), identidade visual
 - [Implantação](docs/implantacao.md): variáveis por ambiente, primeiro
   admin, verificação depois do deploy e rollback.
 
+## Qualidade
+
+Números de 05/10/2026, na branch `main`:
+
+- **543 testes** unitários e de integração em 34 arquivos, todos passando.
+- **Cobertura de 89,5%** das linhas.
+- **56 testes E2E** no CI (Playwright), incluindo acessibilidade em
+  1024, 768 e 390 px de largura.
+- O CI do GitHub roda formatação, lint, tipos, testes com cobertura, build e
+  E2E com banco em cada pull request; o Dependabot acompanha as dependências.
+
+## Histórico de desenvolvimento
+
+O projeto foi feito em etapas, cada uma num pull request revisado pela dupla
+e com uma análise do OWASP Top 10:
+
+| Etapa | Entrega | PR |
+|---|---|---|
+| 1 | Arquitetura e registro de decisões | #1 |
+| 2 | Fundação: Next.js, TypeScript estrito, CI, cabeçalhos de segurança | #2 |
+| 3 | Banco de dados (Drizzle + Neon), repositórios e seed | #3 |
+| — | Identidade visual Brasa (cores, logo, tokens) | #4 |
+| 4 | Autenticação, RBAC, layout da área logada e foto de perfil | #5 |
+| 5 | Motor de IA com a Claude API | #6 |
+| 6 | Formulário público de captação, anti-spam e LGPD | #7 |
+| 7 | Painel do cliente e administração da equipe Brasa | #8 |
+| 8 | Qualidade, membros, convites, perfis de acesso e E2E | #9 |
+| 9 | Implantação na Vercel e primeiro admin | #10, #11 |
+
+As 31 decisões técnicas (D-001 a D-031), com as alternativas descartadas,
+estão em [docs/decisoes.md](docs/decisoes.md).
+
 ## Segurança e privacidade
 
 - Segredos só em variáveis de ambiente.
@@ -177,4 +271,6 @@ docs/           arquitetura, decisões (D-001...), identidade visual
 
 ---
 
-Projeto acadêmico da FAETERJ Barra Mansa (2026).
+Projeto acadêmico da FAETERJ Barra Mansa (2026), disciplina de Programação
+para Dispositivos Móveis e Inteligência Artificial. Autores: Fernando Ramos
+Coelho e Ryan Benedito (Turma 304).
