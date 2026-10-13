@@ -36,17 +36,23 @@ const SEM_ANALISE: Aparencia = {
 type PropsDoBadge = {
   /** `null` para leads ainda não analisados. */
   classificacao: Classificacao | null;
+  /**
+   * Chama viva no quente (D-033). Só em destaques (ex.: o título do lead): numa
+   * lista, várias chamas mexendo ao mesmo tempo disputariam a atenção.
+   */
+  vivo?: boolean;
   className?: string;
 };
 
-export function BadgeClassificacao({ classificacao, className = "" }: PropsDoBadge) {
+export function BadgeClassificacao({ classificacao, vivo = false, className = "" }: PropsDoBadge) {
   const { rotulo, Icone, cores } = classificacao ? APARENCIAS[classificacao] : SEM_ANALISE;
+  const chama = vivo && classificacao === "quente" ? "origin-[50%_90%] animate-chama" : "";
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm leading-none font-medium whitespace-nowrap ${cores} ${className}`}
     >
-      <Icone aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2.25} />
+      <Icone aria-hidden="true" className={`size-3.5 shrink-0 ${chama}`} strokeWidth={2.25} />
       {rotulo}
     </span>
   );
