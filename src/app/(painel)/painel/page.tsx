@@ -103,7 +103,11 @@ async function VisaoDaEmpresa({ sessao, empresaId }: { sessao: Sessao; empresaId
                   href={`/leads/${lead.id}`}
                   className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3 hover:text-marca-texto"
                 >
-                  <span className="min-w-0 flex-1 truncate font-semibold">{lead.nome}</span>
+                  {/* No celular o nome ganha linha própria: dividindo a linha com
+                      selo, nota e data, ele encolhia até sumir. */}
+                  <span className="w-full min-w-0 truncate font-semibold sm:w-auto sm:flex-1">
+                    {lead.nome}
+                  </span>
                   <BadgeClassificacao classificacao={lead.classificacaoAtual} />
                   <span className="font-semibold tabular-nums">{lead.scoreAtual}</span>
                   <span className="text-sm text-texto-suave tabular-nums">
