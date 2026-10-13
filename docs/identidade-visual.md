@@ -183,8 +183,9 @@ A escolha fica no cookie `tema` e é aplicada pelo servidor no atributo
 de tema e sem script inline (bloqueado pela CSP). Valores inválidos no cookie
 caem no tema claro.
 
-Também fazem parte da base: foco sempre visível no teclado e animações
-desligadas para quem ativou "reduzir movimento" no sistema.
+Também fazem parte da base: foco sempre visível no teclado e uma versão sem
+deslocamento das animações para quem ativou "reduzir movimento" no sistema
+(seção 13).
 
 ## 9. Logotipo
 
@@ -241,24 +242,108 @@ reescrever o nome com outra fonte.
 | `BadgeClassificacao` | Quente, morno, frio ou "Sem análise", sempre com ícone, palavra e cor |
 | Ícones | Biblioteca `lucide-react`, uma só família em todo o produto. Ícone ao lado de texto: `aria-hidden="true"`. Botão só com ícone: nome acessível (`aria-label`) |
 
-### Regras para as telas que ainda serão criadas
+### Regras de estrutura que continuam valendo
 
-Estas telas ainda não existem e devem seguir a identidade ao serem criadas:
+- **Área logada:** menu lateral esquerdo e menu superior na `superficie`, com
+  o `Logo` no topo do menu lateral; item ativo com `marca-texto` e um
+  indicador além da cor; link "Pular para o conteúdo" como primeiro elemento
+  focável; avatar com submenu acessível por teclado.
+- **Formulário público `/f/[slug]`:** rótulos visíveis acima dos campos
+  (nunca só placeholder), `borda-campo` nos campos, erro ao lado do campo com
+  ícone, botão `primaria` com altura `h-controle` e o `Logo` discreto no
+  rodapé ("feito com Brasa").
+- **Painel:** badges com `BadgeClassificacao`, números com `tabular-nums`,
+  gráficos com as cores `*-grafico` e legenda ou rótulo sempre visível.
 
-- **Área logada (Etapa 4):** menu lateral esquerdo e menu superior na
-  `superficie` (branco no claro, carvão-900 no escuro), com o `Logo` no topo
-  do menu lateral; item ativo com `marca-texto` e um indicador além da cor
-  (barra lateral ou peso da fonte); link "Pular para o conteúdo" como primeiro
-  elemento focável; avatar com submenu acessível por teclado.
-- **Formulário público `/f/[slug]` (Etapa 6):** fundo `fundo`, cartão em
-  `superficie`, rótulos visíveis acima dos campos (nunca só placeholder),
-  `borda-campo` nos campos, erro ao lado do campo com ícone, botão `primaria`
-  com altura `h-controle`, e o `Logo` discreto no rodapé ("feito com Brasa").
-- **Painel (Etapa 7):** badges com `BadgeClassificacao`, números com
-  `tabular-nums`, gráficos com as cores `*-grafico` e legenda ou rótulo
-  sempre visível.
+## 12. Direção visual: Brasa viva
 
-## 12. Como a acessibilidade é garantida
+Escolhida em 13/10/2026 na reformulação do front-end (D-033), entre três
+direções: "Carvão" (inspirada em Linear e Vercel), "Gradiente térmico"
+(inspirada no Stripe) e esta, que combina as duas.
+
+**Ideia:** o calor aparece só onde tem significado. A área logada é sóbria e
+precisa, para quem usa o painel o dia todo; as páginas públicas são
+expressivas, para vender e acolher.
+
+| Área | Como fica |
+|---|---|
+| **Área logada** | Superfícies limpas, borda de 1px com sombra mínima, raios atuais (`rounded-md` nos controles, `rounded-lg` nos cards), botão `primaria` sólido. Movimento **sutil**: microinterações e um ou dois momentos de destaque por tela (números do painel, revelação da análise da IA). |
+| **Páginas públicas** | Seção principal da landing **sempre escura e quente** (carvão com a base em brasa, nos dois temas), com faíscas subindo e o gradiente térmico nos destaques. Demais seções seguem o tema. Movimento **expressivo** só na abertura da landing e na confirmação do formulário; moderado no resto. |
+
+### A escala térmica como linguagem
+
+- **Calor tem significado:** só o lead quente ganha brilho que "respira" e
+  chama viva no badge. Morno e frio ficam parados.
+- **A nota é um termômetro:** barra do gelo ao âmbar e à brasa, sempre com o
+  número escrito ao lado (a barra é reforço, não a informação).
+- **Carregamento quente:** o esqueleto tem um brilho quente que passa da
+  esquerda para a direita, em vez de cinza neutro.
+- **Cor nunca sozinha:** ícone, palavra e número continuam em todo badge e
+  gráfico (seção 5).
+
+### Tokens novos (criados na fundação, Etapa 2)
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| `escala-termica` | gelo-500 → âmbar-400 → brasa-600 | gelo-400 → âmbar-400 → brasa-500 | Termômetro da nota, destaques das páginas públicas |
+| `brilho-quente` | anel brasa-300 + halo brasa-500 | anel brasa-500 + halo brasa-500 mais forte | Lead quente (camada que respira) |
+| `trilho` | `superficie-2` | carvão-800 | Fundo de barras e termômetros |
+| `fundo-publico` | carvão-950 → carvão-900 → brasa-950 | igual | Seção principal da landing |
+
+Os valores exatos e os pares de contraste entram no `globals.css` e no teste
+de contraste (seção 14) junto com os componentes.
+
+### Tipografia
+
+A Sora continua sendo a única fonte. Nas páginas públicas, títulos com peso
+700 a 800 e espaçamento −0,02em; na área logada, peso 600 e −0,01em. Números
+usam a própria Sora com `tabular-nums` (uma fonte mono foi descartada).
+
+## 13. Movimento
+
+Tokens centralizados no `globals.css` (D-034); nenhum componente escreve
+duração ou curva solta.
+
+| Token | Valor | Quando usar |
+|---|---|---|
+| `--mov-imediato` | 90ms | Resposta ao toque: botão afunda (escala 0,97) |
+| `--mov-rapido` | 150ms | Hover, foco, troca de cor |
+| `--mov-padrao` | 240ms | Menu da conta, gaveta, abas, indicador do menu lateral, toasts |
+| `--mov-enfatico` | 420ms | Entrada de cards e modais, revelação da análise da IA |
+| `--mov-narrativo` | 900ms | Contagem dos números do painel, termômetro enchendo, gráfico entrando (uma vez por carregamento) |
+| `--mov-ambiente` | 3,2s, ida e volta | Respiração da brasa e fundo da landing (menos de 0,5 ciclo por segundo) |
+| `--escalonar` | 45ms por item | Entrada em sequência; no máximo 8 itens animados |
+
+| Curva | Valor | Quando usar |
+|---|---|---|
+| `--curva-padrao` | `cubic-bezier(.2, 0, 0, 1)` | Mudanças de estado na própria tela |
+| `--curva-entrada` | `cubic-bezier(.16, 1, .3, 1)` | O que chega: rápido no início, pousa devagar |
+| `--curva-saida` | `cubic-bezier(.4, 0, 1, 1)` | O que sai, com cerca de 60% da duração da entrada |
+| `--curva-brasa` | `linear()`, mola leve | Só em destaques (indicador do menu, mudança de classificação); sem suporte, cai na curva padrão |
+
+| Tipo | Como é |
+|---|---|
+| Entrada | Sobe 10px e aparece (`--mov-enfatico`, `--curva-entrada`) |
+| Saída | Desce e some, mais curta (`--curva-saida`) |
+| Destaque | Um único pulso, nunca em laço |
+| Carregamento | Esqueleto com brilho quente; só aparece se a espera passar de 300ms |
+| Troca de tela | `<ViewTransition>` do React: esmaecimento curto; da lista para o detalhe, o nome do lead "viaja" até o título |
+
+**Regras:**
+
+- Animar só `transform` e `opacity`. Brilho e sombra mudam pela opacidade de
+  uma camada já pintada.
+- **Movimento reduzido** (`prefers-reduced-motion`): sem deslocamento, sem
+  ambiente e sem contagem (o número final aparece direto); brilhos ficam
+  estáticos.
+- Nada pisca mais de 3 vezes por segundo, e nenhuma animação bloqueia o
+  clique.
+- **O texto principal nunca entra escondido:** o título é a maior pintura da
+  tela (LCP) e aparece pronto; só o que está em volta anima.
+- **Celular:** faíscas com um terço das partículas; animações de fundo
+  pausadas fora da tela e com a aba oculta.
+
+## 14. Como a acessibilidade é garantida
 
 - `tests/unit/identidade.test.ts` lê o `globals.css`, resolve os tokens nos
   dois temas e confere 28 pares de contraste. O CI reprova qualquer mudança
