@@ -241,6 +241,19 @@ reescrever o nome com outra fonte.
 | `Logo` | Logotipo em SVG embutido. `variante="simbolo"` para só a chama; `decorativo` quando o nome "Brasa" já estiver escrito ao lado |
 | `BadgeClassificacao` | Quente, morno, frio ou "Sem análise", sempre com ícone, palavra e cor |
 | Ícones | Biblioteca `lucide-react`, uma só família em todo o produto. Ícone ao lado de texto: `aria-hidden="true"`. Botão só com ícone: nome acessível (`aria-label`) |
+| `BadgeClassificacao vivo` | Chama animada no quente, só em destaques (título do lead, cartão urgente); nunca em listas |
+| `MedidorDaNota` | Nota da IA como termômetro (`escala-termica`), com número e classificação escritos |
+| `NumeroAnimado` | Número que conta ao aparecer, só com CSS; de 0 a 999 (acima disso, aparece formatado) |
+| `Cartao` | Cartão padrão; com `titulo` vira região nomeada; `quente` dá o brilho que respira |
+| `Tabela`, `Th`, `Td`, `Linha` | Tabela das listas no computador (`table-fixed`, legenda para leitores de tela) |
+| `Esqueleto`, `Carregando` | Carregamento quente; a região só aparece se a espera passar de 300 ms |
+| `EstadoVazio`, `EstadoDeErro` | Tela ou parte sem dados ou que falhou, sempre com o próximo passo |
+| `Abas` | Abas acessíveis (setas, Home, End) com indicador que desliza |
+| `ProvedorDeToasts`, `useToasts` | Avisos passageiros; erros só fecham pela pessoa |
+| Classes `surgir` e `gaveta` | Abrir e fechar de `<dialog>` e popovers só com CSS |
+
+Todos aparecem no catálogo `/admin/componentes` (admin e suporte, D-035), nos
+dois temas lado a lado e com a opção de simular o movimento reduzido.
 
 ### Regras de estrutura que continuam valendo
 

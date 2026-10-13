@@ -1133,6 +1133,30 @@ não reprova mais o CI; a revisão dos alertas passa a ser manual (rodar
 `npm audit` ao atualizar dependências). Reavaliar quando o `braces` ou o
 `fast-glob` publicarem correção, e voltar a barrar altas em tudo.
 
+## D-035 · Catálogo de componentes para a equipe
+
+**Contexto.** A reformulação do front-end (D-033, D-034) cria componentes
+base que precisam ser revisados nos dois temas e com movimento reduzido,
+antes de chegarem às telas. A revisão também precisa funcionar nos previews
+da Vercel, onde os PRs são conferidos.
+
+**Decisão.** Página `/admin/componentes` dentro da área logada, com a
+permissão nova `catalogo:ver` para admin e suporte (equipe Brasa); o
+cliente recebe 404, como no restante da administração. A página só usa
+exemplos fixos: não lê nem grava dados, e as ações de exemplo (excluir,
+enviar) são simulações. Cada componente aparece nos temas claro e escuro lado
+a lado: o atributo `data-tema` passou a valer num trecho da página, e
+`data-movimento="reduzido"` simula a preferência de movimento reduzido.
+
+**Alternativas.** Só em desenvolvimento (404 em produção): não mexeria na
+matriz de permissões, mas não daria para revisar nos previews. Storybook:
+mais uma ferramenta e um build à parte para algo que uma página resolve.
+
+**Consequências.** Uma linha a mais na matriz RBAC (`docs/arquitetura.md`,
+seção 4) e um item "Componentes" no menu da administração. Componentes novos
+entram no catálogo junto com o teste E2E de acessibilidade, que confere a
+página nos dois temas e nas larguras de 360 a 1280 px.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
