@@ -193,12 +193,14 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
             <dl className="flex flex-col gap-3">
               <Dado rotulo="E-mail">
                 {lead.email && (
+                  // E-mail não tem espaços: sem `wrap-anywhere`, um endereço longo
+                  // passa da borda do cartão e cria rolagem lateral no celular.
                   <a
                     href={`mailto:${lead.email}`}
-                    className="inline-flex items-center gap-1.5 text-marca-texto hover:underline"
+                    className="inline-flex max-w-full items-center gap-1.5 text-marca-texto hover:underline"
                   >
                     <Mail aria-hidden="true" className="size-4 shrink-0" />
-                    {lead.email}
+                    <span className="min-w-0 wrap-anywhere">{lead.email}</span>
                   </a>
                 )}
               </Dado>
@@ -206,10 +208,10 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                 {lead.telefone && (
                   <a
                     href={`tel:${lead.telefone.replace(/[^\d+]/g, "")}`}
-                    className="inline-flex items-center gap-1.5 text-marca-texto hover:underline"
+                    className="inline-flex max-w-full items-center gap-1.5 text-marca-texto hover:underline"
                   >
                     <Phone aria-hidden="true" className="size-4 shrink-0" />
-                    {lead.telefone}
+                    <span className="min-w-0 wrap-anywhere">{lead.telefone}</span>
                   </a>
                 )}
               </Dado>
