@@ -122,6 +122,100 @@
 
   /* Altura de botões e campos: 40px; 44px em telas de toque (ver abaixo). */
   --spacing-controle: 2.5rem;
+
+  /*
+   * Movimento: só as curvas e animações da marca existem (docs/identidade-visual.md,
+   * seção 13). As durações (--mov-*) e curvas (--curva-*) ficam em :root, abaixo.
+   */
+  --ease-*: initial;
+  --animate-*: initial;
+  --default-transition-duration: var(--mov-rapido);
+  --default-transition-timing-function: var(--curva-padrao);
+}
+
+/* Utilitários de movimento: `ease-entrada`, `animate-entrar`, `shadow-brilho-quente`... */
+@theme inline {
+  --ease-padrao: var(--curva-padrao);
+  --ease-entrada: var(--curva-entrada);
+  --ease-saida: var(--curva-saida);
+  --ease-brasa: var(--curva-brasa);
+
+  --animate-entrar: entrar var(--mov-enfatico) var(--curva-entrada) both;
+  --animate-sair: sair calc(var(--mov-enfatico) * 0.6) var(--curva-saida) both;
+  --animate-destacar: destacar var(--mov-narrativo) var(--curva-padrao);
+  --animate-respirar: respirar var(--mov-ambiente) ease-in-out infinite alternate;
+  --animate-chama: chama calc(var(--mov-ambiente) / 2) ease-in-out infinite;
+  --animate-encher: encher var(--mov-narrativo) var(--curva-entrada) both;
+  --animate-varrer: varrer calc(var(--mov-ambiente) * 0.4) var(--curva-padrao) infinite;
+  --animate-girar: girar calc(var(--mov-narrativo) * 0.8) linear infinite;
+
+  --shadow-brilho-quente: var(--brilho-quente);
+}
+
+/* Só transform e opacity (docs/identidade-visual.md, seção 13). */
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+@keyframes sair {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+@keyframes destacar {
+  30% {
+    transform: scale(1.03);
+  }
+}
+@keyframes respirar {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.85;
+  }
+}
+@keyframes chama {
+  50% {
+    transform: scale(1.08, 1.14) rotate(-3deg);
+  }
+}
+@keyframes encher {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes varrer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}
+/* Número que conta ao carregar (NumeroAnimado), sem JavaScript. */
+@property --contagem {
+  syntax: "<integer>";
+  initial-value: 0;
+  inherits: false;
+}
+@keyframes contar {
+  from {
+    --contagem: 0;
+  }
 }
 
 /* Tokens semânticos: os componentes usam estes (ex.: bg-superficie, text-texto-suave). */
@@ -161,6 +255,7 @@
   --color-frio-texto: var(--frio-texto);
   --color-frio-icone: var(--frio-icone);
   --color-frio-grafico: var(--frio-grafico);
+  --color-trilho: var(--trilho);
 }
 
 /*
@@ -168,8 +263,12 @@
  * CSS fora de camada sempre venceria o de dentro, e o tema escuro não aplicaria.
  */
 @layer base {
-  /* Tema claro (padrão). Contrastes conferidos em docs/identidade-visual.md. */
-  :root {
+  /*
+   * Tema claro (padrão). Contrastes conferidos em docs/identidade-visual.md.
+   * `data-tema` também vale num trecho da página (ex.: catálogo de componentes).
+   */
+  :root,
+  [data-tema="claro"] {
     color-scheme: light;
     --fundo: var(--color-carvao-50);
     --superficie: var(--color-white);
@@ -207,6 +306,16 @@
     --frio-texto: var(--color-gelo-800);
     --frio-icone: var(--color-gelo-600);
     --frio-grafico: var(--color-gelo-600);
+    --trilho: var(--color-carvao-100);
+    --escala-termica: linear-gradient(
+      90deg,
+      var(--color-gelo-500),
+      var(--color-ambar-400) 55%,
+      var(--color-brasa-600)
+    );
+    --brilho-quente:
+      0 0 0 1px var(--color-brasa-300),
+      0 10px 26px -10px color-mix(in oklab, var(--color-brasa-500) 73%, transparent);
   }
 
   /* Tema escuro: tons ajustados (não cores invertidas). */
@@ -247,6 +356,16 @@
     --frio-texto: var(--color-gelo-200);
     --frio-icone: var(--color-gelo-300);
     --frio-grafico: var(--color-gelo-400);
+    --trilho: var(--color-carvao-800);
+    --escala-termica: linear-gradient(
+      90deg,
+      var(--color-gelo-400),
+      var(--color-ambar-400) 55%,
+      var(--color-brasa-500)
+    );
+    --brilho-quente:
+      0 0 0 1px color-mix(in oklab, var(--color-brasa-500) 67%, transparent),
+      0 0 32px -6px color-mix(in oklab, var(--color-brasa-500) 80%, transparent);
   }
 
   /* "sistema": mesmo tema escuro quando o sistema operacional está no modo escuro. */
@@ -288,6 +407,16 @@
       --frio-texto: var(--color-gelo-200);
       --frio-icone: var(--color-gelo-300);
       --frio-grafico: var(--color-gelo-400);
+      --trilho: var(--color-carvao-800);
+      --escala-termica: linear-gradient(
+        90deg,
+        var(--color-gelo-400),
+        var(--color-ambar-400) 55%,
+        var(--color-brasa-500)
+      );
+      --brilho-quente:
+        0 0 0 1px color-mix(in oklab, var(--color-brasa-500) 67%, transparent),
+        0 0 32px -6px color-mix(in oklab, var(--color-brasa-500) 80%, transparent);
     }
   }
 
@@ -296,6 +425,44 @@
     :root {
       --spacing-controle: 2.75rem;
     }
+  }
+
+  /*
+   * Movimento (docs/identidade-visual.md, seção 13): iguais nos dois temas.
+   * Nenhum componente escreve duração ou curva solta.
+   */
+  :root {
+    --mov-imediato: 90ms;
+    --mov-rapido: 150ms;
+    --mov-padrao: 240ms;
+    --mov-enfatico: 420ms;
+    --mov-narrativo: 900ms;
+    --mov-ambiente: 3200ms;
+    --escalonar: 45ms;
+    --curva-padrao: cubic-bezier(0.2, 0, 0, 1);
+    --curva-entrada: cubic-bezier(0.16, 1, 0.3, 1);
+    --curva-saida: cubic-bezier(0.4, 0, 1, 1);
+    /* Mola leve; sem suporte a linear(), cai na curva padrão. */
+    --curva-brasa: var(--curva-padrao);
+
+    /* Seção principal das páginas públicas: sempre escura e quente (D-033). */
+    --fundo-publico: linear-gradient(
+      180deg,
+      var(--color-carvao-950) 0%,
+      var(--color-carvao-900) 70%,
+      var(--color-brasa-950) 130%
+    );
+  }
+  @supports (transition-timing-function: linear(0, 1)) {
+    :root {
+      --curva-brasa: linear(0, 0.32 8%, 0.77 20%, 1.02 33%, 1.06 41%, 1.02 55%, 0.995 70%, 1);
+    }
+  }
+
+  /* Um trecho com outro tema (ex.: catálogo) pinta o próprio fundo e texto. */
+  [data-tema]:not(html) {
+    background-color: var(--fundo);
+    color: var(--texto);
   }
 
   body {
@@ -322,7 +489,11 @@
     color: var(--color-carvao-950);
   }
 
-  /* Respeita quem pediu menos movimento no sistema operacional. */
+  /*
+   * Respeita quem pediu menos movimento no sistema operacional: cada animação
+   * pula direto para o estado final (sem deslocamento, sem ambiente, número já
+   * contado). `data-movimento="reduzido"` simula o mesmo num trecho (catálogo).
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -332,5 +503,117 @@
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
     }
+  }
+  [data-movimento="reduzido"],
+  [data-movimento="reduzido"] *,
+  [data-movimento="reduzido"] *::before,
+  [data-movimento="reduzido"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Padrões de movimento reutilizados pelos componentes. */
+@layer components {
+  /* Entrada em sequência: `animate-entrar escalonado` com style={{ "--i": posição }}. */
+  .escalonado {
+    animation-delay: calc(min(var(--i, 0), 8) * var(--escalonar));
+  }
+
+  /*
+   * Modais (<dialog>) e menus (popover) surgem e somem só com opacity e
+   * transform. @starting-style dá o estado de partida ao abrir; o
+   * allow-discrete segura o display e a camada superior até a saída acabar.
+   */
+  .surgir,
+  .gaveta {
+    transition-property: opacity, transform, overlay, display;
+    transition-duration: calc(var(--mov-padrao) * 0.6);
+    transition-timing-function: var(--curva-saida);
+    transition-behavior: allow-discrete;
+  }
+  .surgir {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  .surgir:is([open], :popover-open) {
+    opacity: 1;
+    transform: none;
+    transition-duration: var(--mov-padrao);
+    transition-timing-function: var(--curva-entrada);
+  }
+  @starting-style {
+    .surgir:is([open], :popover-open) {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+  /* Gaveta do menu no celular: entra pela esquerda. */
+  .gaveta {
+    transform: translateX(-100%);
+  }
+  .gaveta:popover-open {
+    transform: none;
+    transition-duration: var(--mov-padrao);
+    transition-timing-function: var(--curva-entrada);
+  }
+  @starting-style {
+    .gaveta:popover-open {
+      transform: translateX(-100%);
+    }
+  }
+  .surgir::backdrop,
+  .gaveta::backdrop {
+    opacity: 0;
+    transition-property: opacity, overlay, display;
+    transition-duration: var(--mov-padrao);
+    transition-timing-function: var(--curva-padrao);
+    transition-behavior: allow-discrete;
+  }
+  .surgir:is([open], :popover-open)::backdrop,
+  .gaveta:popover-open::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    .surgir:is([open], :popover-open)::backdrop,
+    .gaveta:popover-open::backdrop {
+      opacity: 0;
+    }
+  }
+
+  /* Esqueleto de carregamento "quente": um brilho passa da esquerda para a direita. */
+  .esqueleto {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--trilho);
+  }
+  .esqueleto::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-ambar-400) 28%, transparent),
+      color-mix(in oklab, var(--color-brasa-500) 20%, transparent),
+      transparent
+    );
+    transform: translateX(-100%);
+    animation: varrer calc(var(--mov-ambiente) * 0.4) var(--curva-padrao) infinite;
+  }
+  /* Só aparece se a espera passar de 300 ms (sem "piscar" em respostas rápidas). */
+  .carregamento-atrasado {
+    animation: aparecer var(--mov-rapido) var(--curva-padrao) 300ms both;
+  }
+
+  /* Número que conta de 0 ao valor (--valor) com um contador de CSS. */
+  .numero-animado {
+    --contagem: var(--valor);
+    counter-reset: contagem var(--contagem);
+    animation: contar var(--mov-narrativo) var(--curva-entrada) both;
+  }
+  .numero-animado::after {
+    content: counter(contagem);
   }
 }
