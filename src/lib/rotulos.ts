@@ -1,4 +1,5 @@
 import type { Classificacao, StatusAnalise, StatusLead } from "@/db/schema";
+import type { SituacaoDaAnalise } from "@/lib/analise";
 
 /** Textos exibidos para os valores guardados no banco (uma fonte só para telas e CSV). */
 
@@ -34,6 +35,13 @@ export const ROTULO_DA_ANALISE: Record<StatusAnalise, string> = {
   concluida: "Analisado",
   falhou: "A análise falhou",
   limite_atingido: "Limite do mês atingido",
+};
+
+/** Nas telas, também a análise parada (ver lib/analise.ts); o CSV usa o status guardado. */
+export const ROTULO_DA_SITUACAO_DA_ANALISE: Record<SituacaoDaAnalise, string> = {
+  ...ROTULO_DA_ANALISE,
+  nao_iniciada: "Análise não iniciada",
+  interrompida: "Análise interrompida",
 };
 
 export const ROTULO_DA_ORIGEM = {

@@ -2,8 +2,9 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import type { Lead } from "@/db/schema";
+import { situacaoDaAnalise } from "@/lib/analise";
 import { formatarDataHora } from "@/lib/datas";
-import { ROTULO_DA_ANALISE, ROTULO_DO_STATUS } from "@/lib/rotulos";
+import { ROTULO_DA_SITUACAO_DA_ANALISE, ROTULO_DO_STATUS } from "@/lib/rotulos";
 
 import { BadgeClassificacao } from "./BadgeClassificacao";
 
@@ -24,7 +25,9 @@ function Classificacao({ lead }: { lead: Lead }) {
         </span>
       ) : (
         lead.statusAnalise !== "concluida" && (
-          <span className="text-xs text-texto-suave">{ROTULO_DA_ANALISE[lead.statusAnalise]}</span>
+          <span className="text-xs text-texto-suave">
+            {ROTULO_DA_SITUACAO_DA_ANALISE[situacaoDaAnalise(lead)]}
+          </span>
         )
       )}
     </span>
