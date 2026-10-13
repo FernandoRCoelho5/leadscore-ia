@@ -99,8 +99,9 @@ test("cliente: cadastro, onboarding, painel, perfil e saída", async ({ page }) 
     "page",
   );
 
-  // A administração não existe para o cliente (404).
+  // A administração não existe para o cliente (404), nem o catálogo de componentes.
   expect((await page.goto("/admin/empresas"))?.status()).toBe(404);
+  expect((await page.goto("/admin/componentes"))?.status()).toBe(404);
 
   // Alterar perfil pelo menu do avatar.
   await page.goto("/painel");

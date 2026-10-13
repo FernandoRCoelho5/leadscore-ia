@@ -3,7 +3,14 @@ import { expect, test } from "@playwright/test";
 /** Telas de acesso e proteção das áreas logadas (não precisam de banco). */
 
 test.describe("áreas logadas sem sessão", () => {
-  for (const area of ["/painel", "/leads", "/admin/empresas", "/perfil", "/onboarding"]) {
+  for (const area of [
+    "/painel",
+    "/leads",
+    "/admin/empresas",
+    "/admin/componentes",
+    "/perfil",
+    "/onboarding",
+  ]) {
     test(`${area} leva ao login, guardando o destino`, async ({ page }) => {
       await page.goto(area);
 

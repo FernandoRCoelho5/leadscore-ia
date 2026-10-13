@@ -188,6 +188,8 @@ test("telas da administração não têm problemas de acessibilidade", async ({ 
     `/admin/empresas?busca=${encodeURIComponent("Empresa Extraordinariamente")}`,
     `/admin/usuarios?busca=${encodeURIComponent("Pessoa Extraordinariamente")}`,
     "/admin/auditoria",
+    // Catálogo: todos os componentes, nos dois temas lado a lado.
+    "/admin/componentes",
   ];
 
   try {
