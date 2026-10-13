@@ -1095,67 +1095,43 @@ sempre cria cliente, e só um admin promove outro.
   - exclusão da conta pela própria pessoa;
   - uma rotina que retome análises interrompidas (D-007).
 
-## D-033 · Direção visual "Brasa viva" para a reformulação do front-end
+## D-032 · Next.js 16.3.8 e vulnerabilidade alta aceita no ESLint
 
-**Contexto.** O produto vai ser vendido a pequenas e médias empresas e
-precisa de uma identidade marcante. O diagnóstico de 13/10/2026 mostrou base
-técnica boa (acessibilidade 100 no Lighthouse, tokens com contraste testado),
-mas pouca personalidade: a marca vivia no logotipo e nos badges, sem
-movimento e com hierarquia plana. Foram apresentadas três direções dentro da
-identidade: "Carvão" (Linear e Vercel), "Gradiente térmico" (Stripe) e
-"Brasa viva" (híbrida).
+**Contexto.** Em 13/10/2026 a auditoria do CI passou a reprovar todos os PRs,
+inclusive a `main`, por alertas novos:
 
-**Decisão.** Adotar a "Brasa viva" (`docs/identidade-visual.md`, seção 12):
-
-- **Área logada sóbria**, com movimento sutil e o calor só onde tem
-  significado (lead quente, nota da IA).
-- **Páginas públicas expressivas**: seção principal da landing sempre escura
-  e quente, com faíscas e o gradiente térmico.
-- **Escala térmica como linguagem**: brilho no lead quente, nota como
-  termômetro, carregamento "quente"; cor nunca sozinha.
-- **Sora como única fonte**; a fonte mono para números foi descartada.
-- Paleta, logotipo e contrastes existentes continuam; os tokens novos
-  (`escala-termica`, `brilho-quente`, `trilho`, `fundo-publico`) entram na
-  Etapa 2 com teste de contraste.
-
-**Alternativas.** "Carvão": a mais leve e técnica, mas fria no tema claro,
-que é o padrão do produto. "Gradiente térmico": a mais memorável, mas cansa
-no uso diário do painel e pesa mais no celular.
-
-**Consequências.** Duas "vozes" (logada e pública) a manter consistentes,
-com tokens separados por área. A seção principal da landing não segue o tema
-claro, por escolha.
-
-## D-034 · Movimento com CSS e View Transitions, sem biblioteca
-
-**Contexto.** A reformulação pede animações que transmitam qualidade sem
-prejudicar desempenho nem acessibilidade. No celular, o LCP já está entre 2,6
-e 3,1 s, e o maior elemento é sempre texto. A CSP com nonce e
-`strict-dynamic` (D-016) só aceita scripts do próprio pacote, e a maioria das
-telas são Server Components.
+- **Next.js 16.3.6** (alta): SSRF na otimização de imagens, envenenamento de
+  cache em páginas estáticas e vazamento de informação em rotas de imagem de
+  metadados, entre outros. Corrigidos no 16.3.8.
+- **`sharp` e `source-map-js`** (alta): corrigidos em versões de correção.
+- **`braces`** (alta, GHSA-vfj7-8cjw-p6xm): estouro de pilha com padrões
+  muito aninhados. Chega pelo plugin de ESLint do Next (`eslint-config-next` →
+  `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`). O alerta
+  vale para todas as versões publicadas: não há correção.
 
 **Decisão.**
 
-- **CSS** para microinterações, entradas, destaques e esqueletos, com tokens
-  centralizados (`--mov-*`, `--curva-*`, `--escalonar`;
-  `docs/identidade-visual.md`, seção 13).
-- **`<ViewTransition>` do React**, que já vem no Next 16 sem configuração,
-  para troca de tela, revelação de conteúdo carregado e elementos
-  compartilhados. Sem suporte do navegador, a tela só não anima.
-- **Canvas próprio** (cerca de 2 KB) para as faíscas da landing, carregado
-  depois do conteúdo, pausado fora da tela e desligado com movimento reduzido.
-- Animar só `transform` e `opacity`; o texto principal nunca entra
-  escondido; versão sem deslocamento para `prefers-reduced-motion`.
+- Atualizar `next` e `eslint-config-next` para **16.3.8** (correção dentro
+  da mesma versão menor, versão fixa como antes) e aplicar o `npm audit fix`
+  sem `--force` (`sharp` 0.35.5, `source-map-js` 1.2.2).
+- **Aceitar o risco do `braces`:** ele só roda no ESLint, sobre o código do
+  próprio repositório, nunca com padrões vindos de fora e nunca em produção.
+  O pior caso é o lint travar na máquina de quem desenvolve ou no CI.
+- **Auditoria do CI em dois níveis:** dependências de produção
+  (`npm audit --omit=dev`) continuam barrando vulnerabilidades altas e
+  críticas; as de desenvolvimento passam a barrar só as críticas.
 
-**Alternativas.** Motion (MIT): cerca de 34 KB gzip com o componente
-completo, exige componentes de cliente em cada parte animada. GSAP: cerca de
-25 KB gzip no núcleo, licença própria (não é código aberto) e API imperativa.
-As duas aumentariam o JavaScript no celular para efeitos que o CSS e o
-navegador já fazem.
+**Alternativas.** Subir para o Next 16.4.0: traz mudanças de versão menor sem
+necessidade para corrigir as falhas. Seguir o `npm audit fix --force`:
+rebaixaria o `eslint-config-next` para a versão 14, incompatível com o Next
+16. Remover o `eslint-config-next`: perderia as regras do Next e do React.
+Manter o CI barrando altas em tudo: nenhum PR passaria até sair uma correção
+upstream.
 
-**Consequências.** Nenhuma dependência nova. Molas reais ficam limitadas a
-`linear()`; coreografias longas por rolagem ficam fora do escopo. O
-Lighthouse antes e depois (Etapa 5) usa o mesmo método do diagnóstico.
+**Consequências.** Uma vulnerabilidade alta em ferramenta de desenvolvimento
+não reprova mais o CI; a revisão dos alertas passa a ser manual (rodar
+`npm audit` ao atualizar dependências). Reavaliar quando o `braces` ou o
+`fast-glob` publicarem correção, e voltar a barrar altas em tudo.
 
 ---
 
