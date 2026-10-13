@@ -62,7 +62,7 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
     <div>
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
-      <dd className="font-medium break-words">{children ?? "—"}</dd>
+      <dd className="font-medium wrap-anywhere">{children ?? "—"}</dd>
     </div>
   );
 }
@@ -142,7 +142,7 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
         Voltar para os leads
       </Link>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold break-words">{lead.nome}</h1>
+        <h1 className="min-w-0 text-2xl font-bold wrap-anywhere">{lead.nome}</h1>
         <BadgeClassificacao classificacao={lead.classificacaoAtual} />
       </div>
 
@@ -197,9 +197,9 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                   // passa da borda do cartão e cria rolagem lateral no celular.
                   <a
                     href={`mailto:${lead.email}`}
-                    className="inline-flex max-w-full items-center gap-1.5 text-marca-texto hover:underline"
+                    className="inline-flex max-w-full items-start gap-1.5 text-marca-texto hover:underline"
                   >
-                    <Mail aria-hidden="true" className="size-4 shrink-0" />
+                    <Mail aria-hidden="true" className="mt-1 size-4 shrink-0" />
                     <span className="min-w-0 wrap-anywhere">{lead.email}</span>
                   </a>
                 )}
@@ -208,9 +208,9 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                 {lead.telefone && (
                   <a
                     href={`tel:${lead.telefone.replace(/[^\d+]/g, "")}`}
-                    className="inline-flex max-w-full items-center gap-1.5 text-marca-texto hover:underline"
+                    className="inline-flex max-w-full items-start gap-1.5 text-marca-texto hover:underline"
                   >
-                    <Phone aria-hidden="true" className="size-4 shrink-0" />
+                    <Phone aria-hidden="true" className="mt-1 size-4 shrink-0" />
                     <span className="min-w-0 wrap-anywhere">{lead.telefone}</span>
                   </a>
                 )}
