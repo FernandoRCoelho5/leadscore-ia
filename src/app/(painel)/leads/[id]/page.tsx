@@ -10,7 +10,8 @@ import { MedidorDaNota } from "@/components/leads/MedidorDaNota";
 import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { classesDeBotao } from "@/components/ui/Botao";
 import { db } from "@/db";
-import type { Analise, Lead } from "@/db/schema";
+import type { Analise } from "@/db/schema";
+import { situacaoDaAnalise, type SituacaoDaAnalise } from "@/lib/analise";
 import { formatarDataHora } from "@/lib/datas";
 import { ErroNaoEncontrado } from "@/lib/erros";
 import {
@@ -32,13 +33,19 @@ export const metadata: Metadata = { title: "Lead" };
 export const maxDuration = 120;
 
 /** O que dizer quando ainda não há análise concluída. */
-const SEM_ANALISE: Record<Exclude<Lead["statusAnalise"], "concluida">, string> = {
+const SEM_ANALISE: Record<Exclude<SituacaoDaAnalise, "concluida">, string> = {
   pendente: "A análise vai começar em instantes.",
+  nao_iniciada: "A análise deste lead não começou. Peça a análise agora.",
+  interrompida: "A análise foi interrompida antes de terminar. Peça uma nova análise.",
   processando: "A IA está analisando este lead. Recarregue a página em alguns segundos.",
   falhou: "A análise falhou. Você pode pedir uma nova análise.",
   limite_atingido:
     "O limite de análises do mês acabou quando este lead chegou. Com saldo, peça uma nova análise.",
 };
+
+function mensagemSemAnalise(situacao: SituacaoDaAnalise): string {
+  return situacao === "concluida" ? ROTULO_DA_ANALISE.concluida : SEM_ANALISE[situacao];
+}
 
 function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
   const id = `secao-${titulo
@@ -161,11 +168,7 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                 {!anonimizado && <RespostaSugerida analise={ultima} email={lead.email} />}
               </>
             ) : (
-              <p className="text-texto-suave">
-                {lead.statusAnalise === "concluida"
-                  ? ROTULO_DA_ANALISE.concluida
-                  : SEM_ANALISE[lead.statusAnalise]}
-              </p>
+              <p className="text-texto-suave">{mensagemSemAnalise(situacaoDaAnalise(lead))}</p>
             )}
             {podeEditar && !anonimizado && (
               <div className="mt-5 border-t border-borda pt-5">
