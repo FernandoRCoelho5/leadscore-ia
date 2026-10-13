@@ -194,7 +194,7 @@ async function MenuDaConta({ sessao }: { sessao: Sessao }) {
       <div
         id="menu-da-conta"
         popover="auto"
-        className="fixed inset-auto top-18 right-4 m-0 w-72 rounded-lg border border-borda bg-superficie p-2 text-texto shadow-lg"
+        className="surgir fixed inset-auto top-18 right-4 m-0 w-72 origin-top-right rounded-lg border border-borda bg-superficie p-2 text-texto shadow-lg"
       >
         <div className="flex items-center gap-3 px-2 py-2">
           <Avatar nome={nome} fotoUrl={fotoUrl} />
@@ -323,7 +323,7 @@ export function EstruturaDoPainel({ sessao, children }: { sessao: Sessao; childr
         id="menu-movel"
         popover="auto"
         aria-label="Menu"
-        className="inset-y-0 right-auto left-0 m-0 h-dvh max-h-none w-72 max-w-[85vw] flex-col border-0 border-r border-borda bg-superficie p-0 text-texto backdrop:bg-carvao-950/50 [&:popover-open]:flex"
+        className="gaveta inset-y-0 right-auto left-0 m-0 h-dvh max-h-none w-72 max-w-[85vw] flex-col border-0 border-r border-borda bg-superficie p-0 text-texto backdrop:bg-carvao-950/50 [&:popover-open]:flex"
       >
         <MenuDeNavegacao sessao={sessao} emGaveta />
       </div>

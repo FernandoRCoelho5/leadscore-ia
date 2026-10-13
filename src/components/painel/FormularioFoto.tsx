@@ -145,7 +145,7 @@ export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: strin
         <Avatar nome={nome} fotoUrl={previa ?? fotoUrl} tamanho="lg" />
         {pendente && (
           <span className="absolute inset-0 flex items-center justify-center rounded-full bg-superficie/70 text-texto">
-            <LoaderCircle aria-hidden="true" className="size-6 animate-spin" />
+            <LoaderCircle aria-hidden="true" className="size-6 animate-girar" />
           </span>
         )}
       </div>
@@ -211,7 +211,7 @@ export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: strin
         popover="auto"
         role="dialog"
         aria-labelledby="titulo-remover-foto"
-        className="m-auto w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-borda bg-superficie p-5 text-texto shadow-lg backdrop:bg-carvao-950/50"
+        className="surgir m-auto w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-borda bg-superficie p-5 text-texto shadow-lg backdrop:bg-carvao-950/50"
       >
         <p id="titulo-remover-foto" className="font-semibold">
           Remover a sua foto?

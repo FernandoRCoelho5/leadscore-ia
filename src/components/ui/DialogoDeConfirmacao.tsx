@@ -45,7 +45,7 @@ export function DialogoDeConfirmacao({
       <button
         type="button"
         onClick={() => refDialogo.current?.showModal()}
-        className={`inline-flex h-controle cursor-pointer items-center gap-2 rounded-md border border-erro/40 bg-superficie text-sm font-semibold text-erro transition-colors duration-150 hover:bg-erro-fundo ${gatilhoCompacto ? "px-3" : "w-full px-4"}`}
+        className={`inline-flex h-controle cursor-pointer items-center gap-2 rounded-md border border-erro/40 bg-superficie text-sm font-semibold text-erro transition-colors hover:bg-erro-fundo ${gatilhoCompacto ? "px-3" : "w-full px-4"}`}
       >
         {iconeDoGatilho}
         {rotuloDoGatilho}
@@ -56,7 +56,7 @@ export function DialogoDeConfirmacao({
       <dialog
         ref={refDialogo}
         aria-labelledby={idDoTitulo}
-        className="m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-carvao-950/50"
+        className="surgir m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-carvao-950/50"
       >
         <form
           onSubmit={async (evento) => {
