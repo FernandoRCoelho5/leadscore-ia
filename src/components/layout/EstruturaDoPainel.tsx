@@ -1,6 +1,7 @@
 import {
   Building2,
   ChevronDown,
+  Component,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -97,6 +98,12 @@ const GRUPOS: { titulo?: string; itens: ItemDoMenu[] }[] = [
         href: "/admin/auditoria",
         icone: <ScrollText aria-hidden="true" />,
         acao: "auditoria:ver",
+      },
+      {
+        rotulo: "Componentes",
+        href: "/admin/componentes",
+        icone: <Component aria-hidden="true" />,
+        acao: "catalogo:ver",
       },
     ],
   },

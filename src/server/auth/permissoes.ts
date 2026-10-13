@@ -28,6 +28,8 @@ export const ACOES = [
   "membros:gerir",
   "plataforma:gerir-usuarios",
   "auditoria:ver",
+  // Catálogo de componentes da interface (revisão de design pela equipe, D-035).
+  "catalogo:ver",
   "perfil:editar",
 ] as const;
 export type Acao = (typeof ACOES)[number];
@@ -42,6 +44,7 @@ const PERMISSOES: Record<Papel, ReadonlySet<Acao>> = {
     "usuarios:listar",
     "membros:ver",
     "auditoria:ver",
+    "catalogo:ver",
     "perfil:editar",
   ]),
   cliente: new Set<Acao>([
