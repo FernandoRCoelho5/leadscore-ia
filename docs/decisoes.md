@@ -1095,6 +1095,44 @@ sempre cria cliente, e só um admin promove outro.
   - exclusão da conta pela própria pessoa;
   - uma rotina que retome análises interrompidas (D-007).
 
+## D-032 · Next.js 16.3.8 e vulnerabilidade alta aceita no ESLint
+
+**Contexto.** Em 13/10/2026 a auditoria do CI passou a reprovar todos os PRs,
+inclusive a `main`, por alertas novos:
+
+- **Next.js 16.3.6** (alta): SSRF na otimização de imagens, envenenamento de
+  cache em páginas estáticas e vazamento de informação em rotas de imagem de
+  metadados, entre outros. Corrigidos no 16.3.8.
+- **`sharp` e `source-map-js`** (alta): corrigidos em versões de correção.
+- **`braces`** (alta, GHSA-vfj7-8cjw-p6xm): estouro de pilha com padrões
+  muito aninhados. Chega pelo plugin de ESLint do Next (`eslint-config-next` →
+  `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`). O alerta
+  vale para todas as versões publicadas: não há correção.
+
+**Decisão.**
+
+- Atualizar `next` e `eslint-config-next` para **16.3.8** (correção dentro
+  da mesma versão menor, versão fixa como antes) e aplicar o `npm audit fix`
+  sem `--force` (`sharp` 0.35.5, `source-map-js` 1.2.2).
+- **Aceitar o risco do `braces`:** ele só roda no ESLint, sobre o código do
+  próprio repositório, nunca com padrões vindos de fora e nunca em produção.
+  O pior caso é o lint travar na máquina de quem desenvolve ou no CI.
+- **Auditoria do CI em dois níveis:** dependências de produção
+  (`npm audit --omit=dev`) continuam barrando vulnerabilidades altas e
+  críticas; as de desenvolvimento passam a barrar só as críticas.
+
+**Alternativas.** Subir para o Next 16.4.0: traz mudanças de versão menor sem
+necessidade para corrigir as falhas. Seguir o `npm audit fix --force`:
+rebaixaria o `eslint-config-next` para a versão 14, incompatível com o Next
+16. Remover o `eslint-config-next`: perderia as regras do Next e do React.
+Manter o CI barrando altas em tudo: nenhum PR passaria até sair uma correção
+upstream.
+
+**Consequências.** Uma vulnerabilidade alta em ferramenta de desenvolvimento
+não reprova mais o CI; a revisão dos alertas passa a ser manual (rodar
+`npm audit` ao atualizar dependências). Reavaliar quando o `braces` ou o
+`fast-glob` publicarem correção, e voltar a barrar altas em tudo.
+
 ---
 
 ## Fontes consultadas (24/09/2026)
