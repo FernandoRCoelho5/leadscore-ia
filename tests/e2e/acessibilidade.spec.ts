@@ -42,7 +42,7 @@ async function conferir(page: Page, caminho: string) {
 const LARGURAS_MENORES = [
   { width: 1024, height: 768 },
   { width: 768, height: 1024 },
-  { width: 390, height: 844 },
+  { width: 360, height: 780 },
 ];
 
 test("o verificador acusa os problemas de uma página malfeita", async ({ page }) => {
@@ -83,7 +83,7 @@ const PUBLICAS = [
 
 for (const [dispositivo, tamanho] of [
   ["computador", { width: 1366, height: 900 }],
-  ["celular", { width: 390, height: 844 }],
+  ["celular", { width: 360, height: 780 }],
 ] as const) {
   test.describe(`telas públicas no ${dispositivo}`, () => {
     test.use({ viewport: tamanho });
@@ -122,9 +122,10 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
     [empresaId, emailUnico("lead-a11y")],
   );
   // Um lead com tudo no tamanho máximo, ainda sem análise (o selo mais largo).
-  await consultar(
+  const [leadLongo] = await consultar<{ id: string }>(
     `INSERT INTO leads (id, empresa_id, nome, email, empresa_nome, consentimento_lgpd)
-     VALUES (gen_random_uuid(), $1, $2, $3, $4, true)`,
+     VALUES (gen_random_uuid(), $1, $2, $3, $4, true)
+     RETURNING id`,
     [
       empresaId,
       longo("Lead", 120),
@@ -146,9 +147,20 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
 
   for (const tamanho of LARGURAS_MENORES) {
     await page.setViewportSize(tamanho);
-    for (const caminho of ["/painel", "/leads", "/membros"]) {
+    // O detalhe do lead longo: o e-mail sem espaços não pode passar da tela.
+    for (const caminho of ["/painel", "/leads", "/membros", `/leads/${leadLongo?.id}`]) {
       await conferir(page, caminho);
     }
+    // Nos quentes recentes, o nome divide a linha com selo, nota e data e não pode sumir.
+    await page.goto("/painel");
+    await expect(
+      page
+        .locator("section", {
+          has: page.getByRole("heading", { name: "Quentes mais recentes" }),
+        })
+        .getByText("Lead Acessível", { exact: true }),
+      `nome do lead nos quentes recentes (${tamanho.width}px)`,
+    ).toBeVisible();
   }
 });
 
