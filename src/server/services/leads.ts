@@ -14,6 +14,7 @@ import {
   excluirLead,
   listarLeads,
   lotesDeLeadsParaExportar,
+  leadExiste,
   obterLead,
   type FiltrosDeLeads,
 } from "@/server/repositories/leads";
@@ -25,6 +26,21 @@ import type { ContextoDoUsuario } from "./contexto";
  * escopo da empresa: o cliente só atua nas empresas dele, e o suporte só lê.
  * A auditoria nunca guarda dados pessoais (nome, e-mail, telefone, busca).
  */
+
+/**
+ * O lead pode ser aberto por quem pediu? Mesma autorização do detalhe, mas
+ * só confere a existência: não lê os dados nem registra auditoria, porque
+ * também roda quando o navegador pré-carrega o link (D-038).
+ */
+export async function leadEstaNaEmpresa(
+  db: BancoDeDados,
+  contexto: ContextoDoUsuario,
+  empresaId: string,
+  leadId: string,
+): Promise<boolean> {
+  autorizar(contexto.ator, "leads:ver", empresaId);
+  return leadExiste(db, empresaId, leadId);
+}
 
 /** Admin e suporte são da equipe Brasa: o acesso deles a dados de clientes é auditado. */
 const ehDaEquipe = (contexto: ContextoDoUsuario) => contexto.ator.papel !== "cliente";

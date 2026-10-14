@@ -27,6 +27,7 @@ import {
   anonimizarLeadDaEmpresa,
   excluirLeadDaEmpresa,
   exportarLeadsDaEmpresa,
+  leadEstaNaEmpresa,
   listarLeadsDaEmpresa,
   obterDetalheDoLead,
 } from "@/server/services/leads";
@@ -173,6 +174,25 @@ describe("detalhe do lead", () => {
     await obterDetalheDoLead(db, suporte, empresa.id, lead.id);
     const [evento] = await eventos("lead.visualizado", lead.id);
     expect(evento?.atorId).toBe(suporte.usuarioId);
+  });
+
+  it("a conferência antes do esqueleto só diz se o lead existe na empresa, sem auditoria", async () => {
+    const { empresa, cliente } = await cenario();
+    const lead = await novoLead(empresa);
+    const alheio = await novoLead(await criarEmpresaDeTeste(db));
+    const suporte = await novoUsuario("suporte");
+
+    expect(await leadEstaNaEmpresa(db, cliente, empresa.id, lead.id)).toBe(true);
+    expect(await leadEstaNaEmpresa(db, cliente, empresa.id, alheio.id)).toBe(false);
+    expect(await leadEstaNaEmpresa(db, cliente, empresa.id, "nao-e-uuid")).toBe(false);
+    // A equipe passa, mas a auditoria só registra quando o detalhe é lido de fato.
+    expect(await leadEstaNaEmpresa(db, suporte, empresa.id, lead.id)).toBe(true);
+    expect(await eventos("lead.visualizado", lead.id)).toHaveLength(0);
+    // Cliente de outra empresa: nem a pergunta é permitida.
+    const intruso = await novoUsuario("cliente", [(await criarEmpresaDeTeste(db)).id]);
+    await expect(leadEstaNaEmpresa(db, intruso, empresa.id, lead.id)).rejects.toBeInstanceOf(
+      ErroNaoEncontrado,
+    );
   });
 
   it("lead de outra empresa: não encontrado", async () => {

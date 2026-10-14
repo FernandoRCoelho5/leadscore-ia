@@ -128,6 +128,26 @@ export async function listarLeads(
   return montarPagina(itens, linhaDoTotal?.total ?? 0, pagina);
 }
 
+/**
+ * O lead existe nesta empresa? Só o id, sem ler os dados pessoais: serve para
+ * a página responder 404 antes de começar a carregar (D-038).
+ */
+export async function leadExiste(
+  db: BancoDeDados,
+  empresaId: string,
+  leadId: string,
+): Promise<boolean> {
+  if (!ehUuid(leadId)) {
+    return false;
+  }
+  const [linha] = await db
+    .select({ id: leads.id })
+    .from(leads)
+    .where(and(eq(leads.id, leadId), ...escopoDaEmpresa(empresaId)))
+    .limit(1);
+  return linha !== undefined;
+}
+
 export async function obterLead(
   db: BancoDeDados,
   empresaId: string,
