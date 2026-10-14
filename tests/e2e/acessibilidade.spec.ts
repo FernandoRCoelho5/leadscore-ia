@@ -28,11 +28,13 @@ function longo(prefixo: string, tamanho: number) {
 }
 
 /**
- * Nas telas do painel, o conteúdo chega depois do esqueleto (loading.tsx): o
- * verificador espera a espera acabar, para conferir a tela de verdade.
+ * Nas telas do painel, o conteúdo chega depois do esqueleto (loading.tsx),
+ * que não tem títulos: o verificador espera o título da tela aparecer, para
+ * conferir a tela de verdade. (O `aria-busy` não serve de sinal: o catálogo
+ * mostra o componente de carregamento como exemplo.)
  */
 async function semCarregamento(page: Page) {
-  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
 }
 
 async function conferir(page: Page, caminho: string) {
