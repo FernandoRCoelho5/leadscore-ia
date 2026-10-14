@@ -119,14 +119,17 @@ const NIVEIS_DA_WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
  */
 export async function violacoesDoAxe(page: Page): Promise<string[]> {
   // Mede a tela parada: no meio de uma entrada (opacidade subindo), o
-  // contraste ainda não é o final. As animações de ambiente (infinitas) não
-  // contam.
+  // contraste ainda não é o final. Não contam as animações de ambiente
+  // (infinitas) nem as ligadas à rolagem (a revelação da landing), que nunca
+  // "terminam".
   await page.waitForFunction(() =>
     document
       .getAnimations()
       .every(
         (animacao) =>
-          animacao.playState !== "running" || animacao.effect?.getTiming().iterations === Infinity,
+          animacao.playState !== "running" ||
+          animacao.timeline !== document.timeline ||
+          animacao.effect?.getTiming().iterations === Infinity,
       ),
   );
   const { violations } = await new AxeBuilder({ page }).withTags(NIVEIS_DA_WCAG).analyze();
