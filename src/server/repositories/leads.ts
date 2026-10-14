@@ -284,12 +284,14 @@ export type ResumoDosLeads = {
   doPeriodo: number;
   porClassificacao: Record<Classificacao | "semAnalise", number>;
   porStatus: Record<StatusLead, number>;
+  /** Quentes ainda no andamento "Novo", de qualquer data: ninguém respondeu. */
+  quentesSemResposta: number;
 };
 
 /**
  * Números da visão geral numa única consulta (COUNT ... FILTER): o total, os
  * recebidos desde `desde` e, entre eles, a classificação; o andamento
- * (status) considera todos os leads da empresa.
+ * (status) e os quentes sem resposta consideram todos os leads da empresa.
  */
 export async function resumirLeads(
   db: BancoDeDados,
@@ -311,6 +313,9 @@ export async function resumirLeads(
       emContato: contar(sql`${leads.status} = 'em_contato'`),
       ganho: contar(sql`${leads.status} = 'ganho'`),
       perdido: contar(sql`${leads.status} = 'perdido'`),
+      quentesSemResposta: contar(
+        sql`${leads.classificacaoAtual} = 'quente' and ${leads.status} = 'novo'`,
+      ),
     })
     .from(leads)
     .where(and(...escopoDaEmpresa(empresaId)));
@@ -330,6 +335,7 @@ export async function resumirLeads(
       ganho: linha?.ganho ?? 0,
       perdido: linha?.perdido ?? 0,
     },
+    quentesSemResposta: linha?.quentesSemResposta ?? 0,
   };
 }
 

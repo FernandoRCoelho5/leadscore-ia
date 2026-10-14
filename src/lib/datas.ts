@@ -50,3 +50,15 @@ export function fimDoDia(dia: string): Date {
 export function inicioDoMes(data: Date): Date {
   return inicioDoDia(`${diaEmSaoPaulo(data).slice(0, 7)}-01`);
 }
+
+/** Quantos dias a visão geral mostra (D-036): uma janela móvel, sem zerar na virada do mês. */
+export const DIAS_DO_PERIODO = 30;
+
+/**
+ * Meia-noite (em São Paulo) do primeiro dos últimos `dias` dias, contando
+ * hoje: com 30, vai de 29 dias atrás até agora.
+ */
+export function inicioDosUltimosDias(agora: Date, dias: number = DIAS_DO_PERIODO): Date {
+  const hoje = inicioDoDia(diaEmSaoPaulo(agora));
+  return new Date(hoje.getTime() - (dias - 1) * 24 * 60 * 60 * 1000);
+}

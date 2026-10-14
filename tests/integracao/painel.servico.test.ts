@@ -303,7 +303,7 @@ describe("exportação de leads", () => {
 });
 
 describe("visão geral", () => {
-  it("conta os leads do mês por classificação, o andamento e o consumo de análises", async () => {
+  it("conta os leads dos últimos 30 dias por classificação, o andamento e o consumo de análises", async () => {
     const { empresa, cliente } = await cenario();
     const quente = await novoLead(empresa);
     await analisar(empresa, quente.id, 90);
@@ -319,10 +319,38 @@ describe("visão geral", () => {
       doPeriodo: 3,
       porClassificacao: { quente: 1, morno: 0, frio: 1, semAnalise: 1 },
       porStatus: { novo: 2, em_contato: 0, ganho: 1, perdido: 0 },
+      quentesSemResposta: 1,
     });
     expect(visao.analisesUsadas).toBe(1);
     expect(visao.limiteDeAnalises).toBe(100);
     expect(visao.quentesRecentes.map((l) => l.id)).toEqual([quente.id]);
+  });
+
+  it("o período é de 30 dias corridos; os quentes sem resposta contam qualquer data", async () => {
+    const { empresa, cliente } = await cenario();
+    const antigo = await novoLead(empresa);
+    await analisar(empresa, antigo.id, 95);
+    const respondido = await novoLead(empresa, { status: "em_contato" });
+    await analisar(empresa, respondido.id, 80);
+    await db
+      .update(leads)
+      .set({ createdAt: new Date("2026-08-20T15:00:00Z") })
+      .where(eq(leads.id, antigo.id));
+
+    const visao = await visaoGeralDaEmpresa(
+      db,
+      cliente,
+      empresa.id,
+      new Date("2026-10-01T12:00:00Z"),
+    );
+
+    // Dia 1 do mês: com o mês do calendário, a tela estaria zerada.
+    expect(visao.leads).toMatchObject({
+      total: 2,
+      doPeriodo: 1,
+      porClassificacao: { quente: 1, morno: 0, frio: 0, semAnalise: 0 },
+      quentesSemResposta: 1,
+    });
   });
 
   it("a visão da plataforma é só da equipe", async () => {

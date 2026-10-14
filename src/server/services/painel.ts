@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Lead } from "@/db/schema";
 import type { BancoDeDados } from "@/db/tipos";
-import { inicioDoMes } from "@/lib/datas";
+import { inicioDosUltimosDias } from "@/lib/datas";
 import { ErroNaoEncontrado } from "@/lib/erros";
 import { autorizar } from "@/server/auth/permissoes";
 import { obterEmpresa } from "@/server/repositories/empresas";
@@ -12,7 +12,11 @@ import { competenciaDe, obterUsoDoMes } from "@/server/repositories/usoMensal";
 
 import type { ContextoDoUsuario } from "./contexto";
 
-/** Números da visão geral (D-029), sempre do mês corrente no fuso de São Paulo. */
+/**
+ * Números da visão geral (D-029). Os leads contam os últimos 30 dias (D-036),
+ * para a tela não zerar no dia 1; as análises da IA seguem o mês do
+ * calendário, porque é nele que o limite do plano zera.
+ */
 
 export type VisaoGeralDaEmpresa = {
   leads: ResumoDosLeads;
@@ -35,7 +39,7 @@ export async function visaoGeralDaEmpresa(
     throw new ErroNaoEncontrado("Empresa não encontrada.");
   }
   const [leads, uso, quentes] = await Promise.all([
-    resumirLeads(db, empresaId, inicioDoMes(agora)),
+    resumirLeads(db, empresaId, inicioDosUltimosDias(agora)),
     obterUsoDoMes(db, empresaId, competenciaDe(agora)),
     listarLeads(db, empresaId, { classificacao: "quente" }, { porPagina: 5 }),
   ]);
@@ -54,5 +58,5 @@ export async function visaoGeralDaPlataforma(
   agora: Date = new Date(),
 ): Promise<ResumoDaPlataforma> {
   autorizar(contexto.ator, "empresas:listar");
-  return resumirPlataforma(db, inicioDoMes(agora), competenciaDe(agora));
+  return resumirPlataforma(db, inicioDosUltimosDias(agora), competenciaDe(agora));
 }

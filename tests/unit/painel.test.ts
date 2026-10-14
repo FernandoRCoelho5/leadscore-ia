@@ -7,7 +7,14 @@ import {
   rotuloDaAcao,
 } from "@/lib/auditoria";
 import { BOM, celula, linhaCsv, nomeDoArquivo } from "@/lib/csv";
-import { diaEmSaoPaulo, fimDoDia, formatarDataHora, inicioDoDia, inicioDoMes } from "@/lib/datas";
+import {
+  diaEmSaoPaulo,
+  fimDoDia,
+  formatarDataHora,
+  inicioDoDia,
+  inicioDoMes,
+  inicioDosUltimosDias,
+} from "@/lib/datas";
 import {
   esquemaFiltrosDaAuditoria,
   esquemaFiltrosDeEmpresas,
@@ -59,6 +66,16 @@ describe("datas em São Paulo", () => {
     expect(diaEmSaoPaulo(noite)).toBe("2026-09-30");
     expect(inicioDoMes(noite).toISOString()).toBe("2026-09-01T03:00:00.000Z");
     expect(formatarDataHora(noite)).toBe("30/09/2026, 22:00");
+  });
+
+  it("os últimos 30 dias contam hoje e começam à meia-noite de 29 dias atrás", () => {
+    expect(inicioDosUltimosDias(new Date("2026-10-14T15:00:00Z")).toISOString()).toBe(
+      "2026-09-15T03:00:00.000Z",
+    );
+    // 22h de Brasília do dia 30 (já dia 1 em UTC): o "hoje" ainda é o dia 30.
+    expect(inicioDosUltimosDias(new Date("2026-10-01T01:00:00Z"), 1).toISOString()).toBe(
+      "2026-09-30T03:00:00.000Z",
+    );
   });
 });
 
