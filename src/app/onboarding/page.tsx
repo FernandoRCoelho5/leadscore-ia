@@ -32,15 +32,11 @@ export default async function PaginaOnboarding() {
           </button>
         </form>
       </div>
-      <div className="mt-8 w-full max-w-2xl rounded-lg border border-borda bg-superficie p-6 shadow-sm sm:p-8">
-        <p className="text-sm font-medium text-marca-texto">Passo 2 de 2</p>
-        <h1 className="mt-1 text-2xl font-bold">Conte sobre a sua empresa</h1>
-        <p className="mt-1 text-sm text-texto-suave">
-          A IA usa essas informações para dar nota a cada lead. Dá para ajustar depois.
-        </p>
-        <div className="mt-6">
-          <FormularioOnboarding urlBase={env.URL_DO_APP} />
-        </div>
+      <h1 className="mt-10 w-full max-w-2xl text-3xl font-extrabold tracking-[-0.02em] text-balance">
+        Falta pouco para receber seus primeiros leads.
+      </h1>
+      <div className="mt-6 w-full max-w-2xl rounded-lg border border-borda bg-superficie p-6 shadow-sm sm:p-8">
+        <FormularioOnboarding urlBase={env.URL_DO_APP} />
       </div>
     </main>
   );

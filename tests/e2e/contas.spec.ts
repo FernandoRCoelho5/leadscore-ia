@@ -59,6 +59,8 @@ async function cadastrar(page: Page, nome: string, email: string) {
 
 async function concluirOnboarding(page: Page, nomeDaEmpresa: string) {
   await page.getByLabel("Nome da empresa").fill(nomeDaEmpresa);
+  // Onboarding em passos: empresa, depois o perfil do negócio.
+  await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByLabel("O que a sua empresa faz").fill("Fabricamos peças metálicas sob medida.");
   await page
     .getByLabel("Cliente ideal")
@@ -82,6 +84,15 @@ test("cliente: cadastro, onboarding, painel, perfil e saída", async ({ page }) 
   await expect(page.getByLabel("Endereço do formulário de captação")).toHaveValue(
     /^metalurgica-e2e-\d+$/,
   );
+  // Progresso visível: conta criada, sua empresa (atual), perfil do negócio.
+  const progresso = page.getByRole("list", { name: "Progresso" });
+  await expect(progresso.getByRole("listitem")).toHaveCount(3);
+  await expect(progresso.locator('[aria-current="step"]')).toContainText("Sua empresa");
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Como a IA deve pontuar seus leads" }),
+  ).toBeFocused();
+  await expect(progresso.locator('[aria-current="step"]')).toContainText("Perfil do negócio");
   await page.getByLabel("O que a sua empresa faz").fill("Fabricamos peças metálicas sob medida.");
   await page
     .getByLabel("Cliente ideal")
