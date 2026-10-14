@@ -1,3 +1,4 @@
+import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
 import { resumirDetalhes, rotuloDaAcao } from "@/lib/auditoria";
 import { formatarDataHora } from "@/lib/datas";
 import type { EventoNaLista } from "@/server/repositories/auditoria";
@@ -64,56 +65,43 @@ export function ListaDaAuditoria({ eventos }: { eventos: EventoNaLista[] }) {
       </ul>
 
       {/* Telas largas: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
-        {/* table-fixed: ver ListaDeEmpresas. */}
-        <table className="w-full table-fixed text-left text-sm">
-          <caption className="sr-only">Eventos da auditoria</caption>
-          <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
-            <tr>
-              <th scope="col" className="w-40 px-4 py-3 font-medium whitespace-nowrap">
-                Quando
-              </th>
-              <th scope="col" className="px-4 py-3 font-medium">
-                Ação
-              </th>
-              <th scope="col" className="w-56 px-4 py-3 font-medium">
-                Quem
-              </th>
-              <th scope="col" className="w-44 px-4 py-3 font-medium">
-                Empresa
-              </th>
-              <th scope="col" className="w-48 px-4 py-3 font-medium">
-                Detalhes
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">
-            {eventos.map((evento) => (
-              <tr key={evento.id} className="align-top">
-                <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
-                  {formatarDataHora(evento.createdAt)}
-                </td>
-                <td className="px-4 py-3">
-                  <Acao evento={evento} />
-                </td>
-                <td className="px-4 py-3">
-                  <Quem evento={evento} />
-                </td>
-                <td className="px-4 py-3">
-                  {evento.empresaNome ? (
-                    <span className="block truncate">{evento.empresaNome}</span>
-                  ) : (
-                    <span className="text-texto-suave">Plataforma</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 break-words text-texto-suave">
-                  {resumirDetalhes(evento.detalhes) || "—"}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Tabela
+        legenda="Eventos da auditoria"
+        className="hidden xl:block"
+        cabecalho={
+          <>
+            <Th className="w-40 whitespace-nowrap">Quando</Th>
+            <Th>Ação</Th>
+            <Th className="w-56">Quem</Th>
+            <Th className="w-44">Empresa</Th>
+            <Th className="w-48">Detalhes</Th>
+          </>
+        }
+      >
+        {eventos.map((evento) => (
+          <Linha key={evento.id} className="align-top">
+            <Td className="whitespace-nowrap text-texto-suave tabular-nums">
+              {formatarDataHora(evento.createdAt)}
+            </Td>
+            <Td>
+              <Acao evento={evento} />
+            </Td>
+            <Td>
+              <Quem evento={evento} />
+            </Td>
+            <Td>
+              {evento.empresaNome ? (
+                <span className="block truncate">{evento.empresaNome}</span>
+              ) : (
+                <span className="text-texto-suave">Plataforma</span>
+              )}
+            </Td>
+            <Td className="break-words text-texto-suave">
+              {resumirDetalhes(evento.detalhes) || "—"}
+            </Td>
+          </Linha>
+        ))}
+      </Tabela>
     </>
   );
 }

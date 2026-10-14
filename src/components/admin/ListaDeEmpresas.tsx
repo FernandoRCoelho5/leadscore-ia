@@ -3,6 +3,7 @@ import { CircleAlert, LogIn } from "lucide-react";
 import { abrirEmpresaAcao } from "@/app/acoes";
 import { classesDeBotao } from "@/components/ui/Botao";
 import { SeloDeSituacao } from "@/components/ui/Selos";
+import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
 import { formatarData } from "@/lib/datas";
 import { ROTULO_DA_SITUACAO_DA_EMPRESA } from "@/lib/rotulos";
 import type { EmpresaNaLista } from "@/server/repositories/empresas";
@@ -137,69 +138,51 @@ export function ListaDeEmpresas({
       </ul>
 
       {/* Telas largas: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
-        {/* table-fixed: as colunas de tamanho previsível têm largura definida e o
-            nome fica com o resto, truncado (em layout automático, max-width na
-            célula não segura texto sem quebra e a tabela passa da tela). */}
-        <table className="w-full table-fixed text-left text-sm">
-          <caption className="sr-only">Empresas clientes</caption>
-          <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-medium">
-                Empresa
-              </th>
-              <th scope="col" className="w-32 px-4 py-3 font-medium">
-                Situação
-              </th>
-              <th scope="col" className="w-32 px-4 py-3 text-right font-medium whitespace-nowrap">
-                Leads no mês
-              </th>
-              <th scope="col" className="w-36 px-4 py-3 font-medium whitespace-nowrap">
-                Análises no mês
-              </th>
-              <th scope="col" className="w-28 px-4 py-3 font-medium whitespace-nowrap">
-                Criada em
-              </th>
-              <th
-                scope="col"
-                className={`${podeAdministrar ? "w-64" : "w-32"} px-4 py-3 font-medium`}
-              >
-                <span className="sr-only">Ações</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">
-            {empresas.map((empresa) => (
-              <tr key={empresa.id}>
-                <td className="px-4 py-3">
-                  <span className="block truncate font-semibold">{empresa.nome}</span>
-                  <span className="block truncate text-texto-suave">/f/{empresa.slug}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <Situacao empresa={empresa} />
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {empresa.leadsNoMes.toLocaleString("pt-BR")}
-                </td>
-                <td className="px-4 py-3">
-                  <UsoDoMes empresa={empresa} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
-                  {formatarData(empresa.createdAt)}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <Acoes
-                    empresa={empresa}
-                    aberta={empresa.id === empresaAbertaId}
-                    podeAdministrar={podeAdministrar}
-                    emLinha
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Tabela
+        legenda="Empresas clientes"
+        className="hidden xl:block"
+        cabecalho={
+          <>
+            <Th>Empresa</Th>
+            <Th className="w-32">Situação</Th>
+            <Th className="w-32 text-right whitespace-nowrap">Leads no mês</Th>
+            <Th className="w-36 whitespace-nowrap">Análises no mês</Th>
+            <Th className="w-28 whitespace-nowrap">Criada em</Th>
+            <Th className={podeAdministrar ? "w-64" : "w-32"}>
+              <span className="sr-only">Ações</span>
+            </Th>
+          </>
+        }
+      >
+        {empresas.map((empresa) => (
+          <Linha key={empresa.id}>
+            <Td>
+              <span className="block truncate font-semibold">{empresa.nome}</span>
+              <span className="block truncate text-texto-suave">/f/{empresa.slug}</span>
+            </Td>
+            <Td>
+              <Situacao empresa={empresa} />
+            </Td>
+            <Td className="text-right tabular-nums">
+              {empresa.leadsNoMes.toLocaleString("pt-BR")}
+            </Td>
+            <Td>
+              <UsoDoMes empresa={empresa} />
+            </Td>
+            <Td className="whitespace-nowrap text-texto-suave tabular-nums">
+              {formatarData(empresa.createdAt)}
+            </Td>
+            <Td className="whitespace-nowrap">
+              <Acoes
+                empresa={empresa}
+                aberta={empresa.id === empresaAbertaId}
+                podeAdministrar={podeAdministrar}
+                emLinha
+              />
+            </Td>
+          </Linha>
+        ))}
+      </Tabela>
     </>
   );
 }

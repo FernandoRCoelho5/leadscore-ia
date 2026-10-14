@@ -7,6 +7,8 @@ import { ListaDeConvites, ListaDeMembros } from "@/components/membros/ListasDeMe
 import { Cabecalho } from "@/components/painel/Cabecalho";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
+import { Cartao } from "@/components/ui/Cartao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import {
   esquemaPaginacaoDaUrl,
@@ -63,7 +65,7 @@ export default async function PaginaMembros({ searchParams }: PageProps<"/membro
   const podeGerir = pode(sessao.ator, "membros:gerir", empresaId);
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho titulo="Membros" descricao={`Pessoas com acesso aos leads da ${nome}.`} />
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-8 lg:col-span-2">
@@ -108,21 +110,14 @@ export default async function PaginaMembros({ searchParams }: PageProps<"/membro
         </div>
 
         {podeGerir && (
-          <aside
-            aria-labelledby="convidar"
-            className="rounded-lg border border-borda bg-superficie p-5 sm:p-6"
+          <Cartao
+            titulo="Convidar pessoa"
+            descricao={`Geramos um link que vale por ${DIAS_DE_VALIDADE_DO_CONVITE} dias. A pessoa entra ou cria a conta com o e-mail convidado e passa a ver os leads da ${nome}.`}
           >
-            <h2 id="convidar" className="text-lg font-semibold">
-              Convidar pessoa
-            </h2>
-            <p className="mt-1 mb-4 text-sm text-texto-suave">
-              Geramos um link que vale por {DIAS_DE_VALIDADE_DO_CONVITE} dias. A pessoa entra ou
-              cria a conta com o e-mail convidado e passa a ver os leads da {nome}.
-            </p>
             <FormularioDeConvite />
-          </aside>
+          </Cartao>
         )}
       </div>
-    </>
+    </ConteudoQueChega>
   );
 }
