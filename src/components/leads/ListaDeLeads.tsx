@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
+import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
 import type { Lead } from "@/db/schema";
 import { situacaoDaAnalise } from "@/lib/analise";
 import { formatarDataHora } from "@/lib/datas";
@@ -74,52 +75,39 @@ export function ListaDeLeads({
       </ul>
 
       {/* Computador: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie md:block">
-        {/* table-fixed: as colunas de tamanho previsível têm largura definida e o
-            nome fica com o resto, truncado (em layout automático, max-width na
-            célula não segura texto sem quebra e a tabela passa da tela). */}
-        <table className="w-full table-fixed text-left text-sm">
-          <caption className="sr-only">Leads</caption>
-          <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-medium">
-                Lead
-              </th>
-              <th scope="col" className="w-48 px-4 py-3 font-medium">
-                Classificação
-              </th>
-              <th scope="col" className="w-32 px-4 py-3 font-medium">
-                Andamento
-              </th>
-              <th scope="col" className="w-44 px-4 py-3 font-medium whitespace-nowrap">
-                Recebido em
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">
-            {leads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-superficie-2">
-                <td className="px-4 py-3">
-                  <Link
-                    href={`${caminhoDoDetalhe}/${lead.id}`}
-                    className="block truncate font-semibold text-texto hover:text-marca-texto hover:underline"
-                  >
-                    {lead.nome}
-                  </Link>
-                  <Contato lead={lead} />
-                </td>
-                <td className="px-4 py-3">
-                  <Classificacao lead={lead} />
-                </td>
-                <td className="px-4 py-3">{ROTULO_DO_STATUS[lead.status]}</td>
-                <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
-                  {formatarDataHora(lead.createdAt)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Tabela
+        legenda="Leads"
+        className="hidden md:block"
+        cabecalho={
+          <>
+            <Th>Lead</Th>
+            <Th className="w-48">Classificação</Th>
+            <Th className="w-32">Andamento</Th>
+            <Th className="w-44 whitespace-nowrap">Recebido em</Th>
+          </>
+        }
+      >
+        {leads.map((lead) => (
+          <Linha key={lead.id}>
+            <Td>
+              <Link
+                href={`${caminhoDoDetalhe}/${lead.id}`}
+                className="block truncate font-semibold text-texto hover:text-marca-texto hover:underline"
+              >
+                {lead.nome}
+              </Link>
+              <Contato lead={lead} />
+            </Td>
+            <Td>
+              <Classificacao lead={lead} />
+            </Td>
+            <Td>{ROTULO_DO_STATUS[lead.status]}</Td>
+            <Td className="whitespace-nowrap text-texto-suave tabular-nums">
+              {formatarDataHora(lead.createdAt)}
+            </Td>
+          </Linha>
+        ))}
+      </Tabela>
     </>
   );
 }

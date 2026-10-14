@@ -272,6 +272,18 @@ dois temas lado a lado e com a opção de simular o movimento reduzido.
 - **Painel:** badges com `BadgeClassificacao`, números com `tabular-nums`,
   gráficos com as cores `*-grafico` e legenda ou rótulo sempre visível.
 
+### Área logada na prática (Etapa 4)
+
+| Peça | Como é |
+|---|---|
+| `MenuLateral` | No computador, recolhe até ficar só com os ícones; o nome de cada item vira uma dica (`.rotulo-do-menu`) ao passar o mouse ou focar. A escolha fica no cookie `menu` (D-037). A largura muda sem animação |
+| Indicador do menu | A barra do item ativo desliza para o novo item ao navegar (`<ViewTransition name="indicador-do-menu">`, `--curva-brasa`). Só no menu do computador; na gaveta do celular, parada |
+| `loading.tsx` e `Esqueletos` | Toda tela do painel tem esqueleto com a forma dela (título, filtros, lista, cartões). Ao chegar, o esqueleto sai rápido e o conteúdo sobe (`EsqueletoQueSai`, `ConteudoQueChega`). A permissão é conferida num `layout.tsx` acima do esqueleto, para o 404 continuar 404 (D-038) |
+| Visão geral | Cartão quente "N leads quentes esperando resposta" (o único brilho e a única chama viva da tela), blocos que entram em sequência, números que contam e barras que enchem. Sem leads, três primeiros passos no lugar dos números zerados |
+| `FiltrosRecolhiveis` | No celular, filtros atrás do botão "Buscar e filtrar" (abertos quando há filtro aplicado); do tablet para cima, sempre à vista |
+| Detalhe do lead | Termômetro enche e a nota conta; a justificativa e a resposta chegam logo depois. Chama viva só no selo do título |
+| Toasts | Sucesso de ações rápidas (copiar, salvar andamento, análise concluída). Erros ficam ao lado do botão que falhou, até a próxima tentativa; formulários longos mantêm a confirmação no próprio formulário |
+
 ## 12. Direção visual: Brasa viva
 
 Escolhida em 13/10/2026 na reformulação do front-end (D-033), entre três
@@ -360,7 +372,7 @@ duração ou curva solta.
 | Saída | Desce e some, mais curta (`--curva-saida`) |
 | Destaque | Um único pulso, nunca em laço |
 | Carregamento | Esqueleto com brilho quente; só aparece se a espera passar de 300ms |
-| Troca de tela | `<ViewTransition>` do React: esmaecimento curto; da lista para o detalhe, o nome do lead "viaja" até o título |
+| Troca de tela | `<ViewTransition>` do React: o esqueleto sai rápido e o conteúdo chega subindo; a página em si não esmaece. No menu lateral, a barra do item ativo desliza |
 
 **Regras:**
 
@@ -373,6 +385,9 @@ duração ou curva solta.
   clique.
 - **O texto principal nunca entra escondido:** o título é a maior pintura da
   tela (LCP) e aparece pronto; só o que está em volta anima.
+- **Transição só com o que já está na tela:** o nome do lead "viajando" da
+  lista até o título exigiria o detalhe pronto no clique, o que não combina
+  com o esqueleto (que aparece antes dos dados); ficou de fora.
 - **Celular:** faíscas com um terço das partículas; animações de fundo
   pausadas fora da tela e com a aba oculta.
 

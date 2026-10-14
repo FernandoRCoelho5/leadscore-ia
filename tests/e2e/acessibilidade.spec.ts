@@ -27,8 +27,19 @@ function longo(prefixo: string, tamanho: number) {
   );
 }
 
+/**
+ * Nas telas do painel, o conteúdo chega depois do esqueleto (loading.tsx),
+ * que não tem títulos: o verificador espera o título da tela aparecer, para
+ * conferir a tela de verdade. (O `aria-busy` não serve de sinal: o catálogo
+ * mostra o componente de carregamento como exemplo.)
+ */
+async function semCarregamento(page: Page) {
+  await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+}
+
 async function conferir(page: Page, caminho: string) {
   await page.goto(caminho);
+  await semCarregamento(page);
   const { width } = page.viewportSize() ?? { width: 0 };
   expect(await problemasDeAcessibilidade(page), `problemas em ${caminho} (${width}px)`).toEqual([]);
 }
@@ -143,6 +154,7 @@ test("telas do cliente não têm problemas de acessibilidade", async ({ browser 
     .getByRole("link", { name: "Lead Acessível" })
     .click();
   await page.waitForURL(/\/leads\/[0-9a-f-]+$/);
+  await semCarregamento(page);
   expect(await problemasDeAcessibilidade(page), "problemas no detalhe do lead").toEqual([]);
 
   for (const tamanho of LARGURAS_MENORES) {

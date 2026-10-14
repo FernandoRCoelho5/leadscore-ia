@@ -5,6 +5,7 @@ import {
   COOKIE_EMPRESA_ATIVA,
   contextoDa,
   exigirPermissao,
+  exigirPermissaoNaEmpresa,
   exigirSessao,
   exigirSessaoComEmpresa,
   obterSessao,
@@ -241,6 +242,22 @@ describe("exigirPermissao", () => {
     logado();
 
     await expect(exigirPermissao("leads:editar")).resolves.toMatchObject({ papel: "cliente" });
+  });
+});
+
+describe("exigirPermissaoNaEmpresa", () => {
+  it("a equipe sem empresa aberta não vê as telas da empresa (404)", async () => {
+    logado({ papelPlataforma: "suporte" }, []);
+
+    await expect(exigirPermissaoNaEmpresa("leads:ver")).rejects.toThrow("notFound");
+  });
+
+  it("o cliente recebe a sessão com a empresa ativa garantida", async () => {
+    logado();
+
+    await expect(exigirPermissaoNaEmpresa("leads:ver")).resolves.toMatchObject({
+      empresaAtiva: { empresaId: EMPRESA_A.empresaId },
+    });
   });
 });
 

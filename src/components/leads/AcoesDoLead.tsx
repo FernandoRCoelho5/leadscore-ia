@@ -15,6 +15,7 @@ import { Alerta } from "@/components/ui/Avisos";
 import { Botao } from "@/components/ui/Botao";
 import { CampoTexto, Selecao } from "@/components/ui/Campo";
 import { DialogoDeConfirmacao } from "@/components/ui/DialogoDeConfirmacao";
+import { useToasts } from "@/components/ui/Toasts";
 import {
   PALAVRA_PARA_ANONIMIZAR,
   ROTULO_DA_CLASSIFICACAO,
@@ -22,7 +23,10 @@ import {
   STATUS_DO_LEAD,
 } from "@/lib/rotulos";
 
-type Aviso = { tipo: "sucesso" | "erro"; texto: string } | null;
+/**
+ * Sucesso vira toast (some sozinho, sem empurrar a tela); erro fica ao lado
+ * do botão, perto de onde aconteceu, até a próxima tentativa.
+ */
 
 /** Andamento do lead no funil comercial (novo, em contato, ganho, perdido). */
 export function FormularioDeStatus({
@@ -32,8 +36,9 @@ export function FormularioDeStatus({
   leadId: string;
   statusAtual: StatusLead;
 }) {
-  const [aviso, setAviso] = useState<Aviso>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
+  const { avisar } = useToasts();
 
   return (
     <form
@@ -42,11 +47,10 @@ export function FormularioDeStatus({
         const status = new FormData(evento.currentTarget).get("status");
         iniciar(async () => {
           const resultado = await alterarStatusAcao(leadId, status);
-          setAviso(
-            resultado.ok
-              ? { tipo: "sucesso", texto: "Andamento atualizado." }
-              : { tipo: "erro", texto: resultado.erro.mensagem },
-          );
+          setErro(resultado.ok ? null : resultado.erro.mensagem);
+          if (resultado.ok) {
+            avisar("sucesso", "Andamento atualizado.");
+          }
         });
       }}
       className="flex flex-col gap-3"
@@ -65,7 +69,7 @@ export function FormularioDeStatus({
       <Botao type="submit" variante="contorno" carregando={pendente}>
         Salvar andamento
       </Botao>
-      {aviso && <Alerta tipo={aviso.tipo}>{aviso.texto}</Alerta>}
+      {erro && <Alerta tipo="erro">{erro}</Alerta>}
     </form>
   );
 }
@@ -77,8 +81,9 @@ const MENSAGEM_DA_REANALISE = {
 } as const;
 
 export function BotaoReanalisar({ leadId, rotulo }: { leadId: string; rotulo: string }) {
-  const [aviso, setAviso] = useState<Aviso>(null);
+  const [erro, setErro] = useState<string | null>(null);
   const [pendente, iniciar] = useTransition();
+  const { avisar } = useToasts();
 
   return (
     <div className="flex flex-col gap-3">
@@ -89,18 +94,20 @@ export function BotaoReanalisar({ leadId, rotulo }: { leadId: string; rotulo: st
           iniciar(async () => {
             const resultado = await reanalisarLeadAcao(leadId);
             if (!resultado.ok) {
-              setAviso({ tipo: "erro", texto: resultado.erro.mensagem });
+              setErro(resultado.erro.mensagem);
               return;
             }
             const { dados } = resultado;
-            setAviso(
-              dados.situacao === "concluida"
-                ? {
-                    tipo: "sucesso",
-                    texto: `Análise concluída: nota ${dados.score} (${ROTULO_DA_CLASSIFICACAO[dados.classificacao].toLowerCase()}).`,
-                  }
-                : { tipo: "erro", texto: MENSAGEM_DA_REANALISE[dados.situacao] },
-            );
+            if (dados.situacao === "concluida") {
+              // A página se atualiza com a análise nova, que aparece com a revelação do termômetro.
+              setErro(null);
+              avisar(
+                "sucesso",
+                `Análise concluída: nota ${dados.score} (${ROTULO_DA_CLASSIFICACAO[dados.classificacao].toLowerCase()}).`,
+              );
+            } else {
+              setErro(MENSAGEM_DA_REANALISE[dados.situacao]);
+            }
           })
         }
       >
@@ -108,7 +115,7 @@ export function BotaoReanalisar({ leadId, rotulo }: { leadId: string; rotulo: st
         {pendente ? "Analisando…" : rotulo}
       </Botao>
       <p className="text-xs text-texto-suave">Cada nova análise usa 1 do limite do mês.</p>
-      {aviso && <Alerta tipo={aviso.tipo}>{aviso.texto}</Alerta>}
+      {erro && <Alerta tipo="erro">{erro}</Alerta>}
     </div>
   );
 }

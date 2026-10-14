@@ -9,6 +9,7 @@ import { LinkDeExportacao } from "@/components/painel/LinkDeExportacao";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import {
   esquemaFiltrosDeEmpresas,
@@ -39,7 +40,7 @@ export default async function PaginaEmpresas({ searchParams }: PageProps<"/admin
   const temFiltro = Boolean(filtros.busca || filtros.situacao);
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Empresas"
         descricao="Clientes da plataforma. Abra uma empresa para ver os leads dela: o acesso fica registrado na auditoria."
@@ -89,6 +90,6 @@ export default async function PaginaEmpresas({ searchParams }: PageProps<"/admin
           />
         </>
       )}
-    </>
+    </ConteudoQueChega>
   );
 }

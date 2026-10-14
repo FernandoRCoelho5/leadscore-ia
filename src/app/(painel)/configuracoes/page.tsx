@@ -8,6 +8,8 @@ import { Cabecalho } from "@/components/painel/Cabecalho";
 import { FormularioPerfilDoNegocio } from "@/components/painel/FormularioPerfilDoNegocio";
 import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { Cartao } from "@/components/ui/Cartao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { codigoDeIncorporacao, enderecoDoFormulario } from "@/lib/incorporacao";
 import { exigirPermissao } from "@/server/auth/sessao";
 import { obterEmpresa } from "@/server/repositories/empresas";
@@ -27,33 +29,22 @@ export default async function PaginaEmpresa() {
   const codigo = codigoDeIncorporacao(endereco, empresa.nome);
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Empresa"
         descricao="O perfil do negócio é o contexto que a IA usa para dar nota a cada lead."
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <section
-          aria-labelledby="titulo-perfil"
-          className="rounded-lg border border-borda bg-superficie p-5 sm:p-6"
-        >
-          <h2 id="titulo-perfil" className="mb-5 text-lg font-semibold">
-            Perfil do negócio
-          </h2>
+        <Cartao titulo="Perfil do negócio">
           <FormularioPerfilDoNegocio valores={empresa} />
-        </section>
+        </Cartao>
         <div className="flex h-fit flex-col gap-6">
-          <section
-            aria-labelledby="titulo-captacao"
-            className="rounded-lg border border-borda bg-superficie p-5 text-sm"
+          <Cartao
+            titulo="Formulário de captação"
+            descricao="Divulgue este endereço: cada envio vira um lead e é analisado pela IA."
+            className="text-sm"
           >
-            <h2 id="titulo-captacao" className="font-semibold">
-              Formulário de captação
-            </h2>
-            <p className="mt-1 text-texto-suave">
-              Divulgue este endereço: cada envio vira um lead e é analisado pela IA.
-            </p>
-            <p className="mt-3 font-medium break-all">{endereco}</p>
+            <p className="font-medium break-all">{endereco}</p>
             <div className="mt-3 flex flex-wrap items-start gap-2">
               <a
                 href={endereco}
@@ -65,7 +56,11 @@ export default async function PaginaEmpresa() {
                 Abrir
                 <span className="sr-only">(abre em outra aba)</span>
               </a>
-              <BotaoCopiar texto={endereco} rotulo="Copiar link" />
+              <BotaoCopiar
+                texto={endereco}
+                rotulo="Copiar link"
+                confirmacao="Link do formulário copiado."
+              />
             </div>
             <details className="mt-4 border-t border-borda pt-3">
               <summary className="cursor-pointer font-medium">Colocar no seu site</summary>
@@ -81,13 +76,12 @@ export default async function PaginaEmpresa() {
                 <code>{codigo}</code>
               </pre>
               <div className="mt-2">
-                <BotaoCopiar texto={codigo} rotulo="Copiar código" />
+                <BotaoCopiar texto={codigo} rotulo="Copiar código" confirmacao="Código copiado." />
               </div>
             </details>
-          </section>
-          <aside className="rounded-lg border border-borda bg-superficie p-5 text-sm">
-            <h2 className="font-semibold">{empresa.nome}</h2>
-            <dl className="mt-3 flex flex-col gap-3">
+          </Cartao>
+          <Cartao titulo={empresa.nome} className="text-sm">
+            <dl className="flex flex-col gap-3">
               <div>
                 <dt className="text-texto-suave">Versão do perfil</dt>
                 <dd className="font-medium tabular-nums">{empresa.perfilVersao}</dd>
@@ -97,9 +91,9 @@ export default async function PaginaEmpresa() {
                 <dd className="font-medium tabular-nums">até {empresa.limiteAnalisesMes}</dd>
               </div>
             </dl>
-          </aside>
+          </Cartao>
         </div>
       </div>
-    </>
+    </ConteudoQueChega>
   );
 }

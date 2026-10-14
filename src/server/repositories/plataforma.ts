@@ -12,7 +12,8 @@ export type ResumoDaPlataforma = {
   empresasBloqueadas: number;
   usuarios: number;
   usuariosBloqueados: number;
-  leadsNoMes: number;
+  /** Leads recebidos desde `leadsDesde` (os últimos 30 dias, na visão geral). */
+  leadsRecentes: number;
   analisesNoMes: number;
   tokensEntradaNoMes: number;
   tokensSaidaNoMes: number;
@@ -23,10 +24,10 @@ const contarSe = (condicao: ReturnType<typeof sql>) =>
 
 export async function resumirPlataforma(
   db: BancoDeDados,
-  inicioDoMes: Date,
+  leadsDesde: Date,
   competencia: string,
 ): Promise<ResumoDaPlataforma> {
-  const [[situacoes], [contas], [leadsDoMes], [uso]] = await Promise.all([
+  const [[situacoes], [contas], [leadsRecentes], [uso]] = await Promise.all([
     db
       .select({
         ativas: contarSe(sql`${empresas.status} = 'ativa'`),
@@ -41,7 +42,7 @@ export async function resumirPlataforma(
     db
       .select({ total: count() })
       .from(leads)
-      .where(and(isNull(leads.deletedAt), gte(leads.createdAt, inicioDoMes))),
+      .where(and(isNull(leads.deletedAt), gte(leads.createdAt, leadsDesde))),
     db
       .select({
         analises: sql<number>`coalesce(sum(${usoMensal.analises}), 0)`.mapWith(Number),
@@ -57,7 +58,7 @@ export async function resumirPlataforma(
     empresasBloqueadas: situacoes?.bloqueadas ?? 0,
     usuarios: contas?.total ?? 0,
     usuariosBloqueados: contas?.bloqueados ?? 0,
-    leadsNoMes: leadsDoMes?.total ?? 0,
+    leadsRecentes: leadsRecentes?.total ?? 0,
     analisesNoMes: uso?.analises ?? 0,
     tokensEntradaNoMes: uso?.entrada ?? 0,
     tokensSaidaNoMes: uso?.saida ?? 0,

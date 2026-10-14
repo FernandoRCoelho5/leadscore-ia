@@ -9,6 +9,7 @@ import { LinkDeExportacao } from "@/components/painel/LinkDeExportacao";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import {
   esquemaFiltrosDaAuditoria,
@@ -45,7 +46,7 @@ export default async function PaginaAuditoria({ searchParams }: PageProps<"/admi
   const temFiltro = Boolean(filtros.acao || filtros.de || filtros.ate);
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Auditoria"
         descricao="Ações sensíveis na plataforma, da mais recente para a mais antiga. Os registros não podem ser alterados."
@@ -91,6 +92,6 @@ export default async function PaginaAuditoria({ searchParams }: PageProps<"/admi
           />
         </>
       )}
-    </>
+    </ConteudoQueChega>
   );
 }

@@ -1,5 +1,6 @@
 import { Avatar } from "@/components/ui/Avisos";
 import { SeloDeSituacao, SeloDoPapel } from "@/components/ui/Selos";
+import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
 import { formatarData } from "@/lib/datas";
 import { ROTULO_DA_SITUACAO_DO_USUARIO } from "@/lib/rotulos";
 import type { UsuarioNaLista } from "@/server/repositories/usuarios";
@@ -82,72 +83,59 @@ export function ListaDeUsuarios({
       </ul>
 
       {/* Telas largas: tabela. */}
-      <div className="hidden overflow-hidden rounded-lg border border-borda bg-superficie xl:block">
-        {/* table-fixed: ver ListaDeEmpresas. */}
-        <table className="w-full table-fixed text-left text-sm">
-          <caption className="sr-only">Usuários da plataforma</caption>
-          <thead className="border-b border-borda bg-superficie-2 text-texto-suave">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-medium">
-                Usuário
-              </th>
-              <th scope="col" className="w-32 px-4 py-3 font-medium">
-                Perfil
-              </th>
-              <th scope="col" className="w-48 px-4 py-3 font-medium">
-                Empresas
-              </th>
-              <th scope="col" className="w-32 px-4 py-3 font-medium">
-                Situação
-              </th>
-              <th scope="col" className="w-28 px-4 py-3 font-medium whitespace-nowrap">
-                Criado em
-              </th>
-              {podeGerir && (
-                <th scope="col" className="w-40 px-4 py-3 font-medium">
-                  <span className="sr-only">Ações</span>
-                </th>
+      <Tabela
+        legenda="Usuários da plataforma"
+        className="hidden xl:block"
+        cabecalho={
+          <>
+            <Th>Usuário</Th>
+            <Th className="w-32">Perfil</Th>
+            <Th className="w-48">Empresas</Th>
+            <Th className="w-32">Situação</Th>
+            <Th className="w-28 whitespace-nowrap">Criado em</Th>
+            {podeGerir && (
+              <Th className="w-40">
+                <span className="sr-only">Ações</span>
+              </Th>
+            )}
+          </>
+        }
+      >
+        {usuarios.map((usuario) => (
+          <Linha key={usuario.id}>
+            <Td>
+              <Pessoa usuario={usuario} />
+            </Td>
+            <Td>
+              <SeloDoPapel papel={usuario.papelPlataforma ?? "cliente"} />
+            </Td>
+            <Td>
+              {usuario.empresas ? (
+                <span className="line-clamp-2">{usuario.empresas}</span>
+              ) : (
+                <span className="text-texto-suave">Nenhuma</span>
               )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">
-            {usuarios.map((usuario) => (
-              <tr key={usuario.id}>
-                <td className="px-4 py-3">
-                  <Pessoa usuario={usuario} />
-                </td>
-                <td className="px-4 py-3">
-                  <SeloDoPapel papel={usuario.papelPlataforma ?? "cliente"} />
-                </td>
-                <td className="px-4 py-3">
-                  {usuario.empresas ? (
-                    <span className="line-clamp-2">{usuario.empresas}</span>
+            </Td>
+            <Td>
+              <Situacao usuario={usuario} />
+            </Td>
+            <Td className="whitespace-nowrap text-texto-suave tabular-nums">
+              {formatarData(usuario.createdAt)}
+            </Td>
+            {podeGerir && (
+              <Td className="whitespace-nowrap">
+                <div className="flex justify-end">
+                  {podeAgirSobre(usuario) ? (
+                    acoes(usuario)
                   ) : (
-                    <span className="text-texto-suave">Nenhuma</span>
+                    <span className="text-sm text-texto-suave">Você</span>
                   )}
-                </td>
-                <td className="px-4 py-3">
-                  <Situacao usuario={usuario} />
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-texto-suave tabular-nums">
-                  {formatarData(usuario.createdAt)}
-                </td>
-                {podeGerir && (
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex justify-end">
-                      {podeAgirSobre(usuario) ? (
-                        acoes(usuario)
-                      ) : (
-                        <span className="text-sm text-texto-suave">Você</span>
-                      )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </Td>
+            )}
+          </Linha>
+        ))}
+      </Tabela>
     </>
   );
 }

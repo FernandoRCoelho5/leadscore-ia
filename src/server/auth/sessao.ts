@@ -155,6 +155,21 @@ export async function exigirPermissao(acao: Acao): Promise<Sessao> {
   return sessao;
 }
 
+/**
+ * Como `exigirPermissao`, para páginas da empresa ativa (leads, membros,
+ * empresa): sem empresa ativa, também 404.
+ */
+export async function exigirPermissaoNaEmpresa(
+  acao: Acao,
+): Promise<Sessao & { empresaAtiva: VinculoDeEmpresa }> {
+  const sessao = await exigirPermissao(acao);
+  const { empresaAtiva } = sessao;
+  if (!empresaAtiva) {
+    notFound();
+  }
+  return { ...sessao, empresaAtiva };
+}
+
 /** Contexto que os serviços recebem (sem depender de cookies nem do Next.js). */
 export function contextoDa(sessao: Sessao): ContextoDoUsuario {
   return { usuarioId: sessao.usuario.id, ator: sessao.ator };

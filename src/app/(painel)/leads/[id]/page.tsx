@@ -2,13 +2,15 @@ import { ArrowLeft, Mail, Phone, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { BadgeClassificacao } from "@/components/leads/BadgeClassificacao";
 import { BotaoReanalisar, FormularioDeStatus, ZonaDeRisco } from "@/components/leads/AcoesDoLead";
 import { MedidorDaNota } from "@/components/leads/MedidorDaNota";
 import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { Cartao } from "@/components/ui/Cartao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import type { Analise } from "@/db/schema";
 import { situacaoDaAnalise, type SituacaoDaAnalise } from "@/lib/analise";
@@ -47,24 +49,6 @@ function mensagemSemAnalise(situacao: SituacaoDaAnalise): string {
   return situacao === "concluida" ? ROTULO_DA_ANALISE.concluida : SEM_ANALISE[situacao];
 }
 
-function Secao({ titulo, children }: { titulo: string; children: ReactNode }) {
-  const id = `secao-${titulo
-    .normalize("NFD")
-    .replace(/[^a-z]/gi, "-")
-    .toLowerCase()}`;
-  return (
-    <section
-      aria-labelledby={id}
-      className="rounded-lg border border-borda bg-superficie p-5 sm:p-6"
-    >
-      <h2 id={id} className="mb-4 text-lg font-semibold">
-        {titulo}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   return (
     <div>
@@ -74,16 +58,23 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   );
 }
 
+/** Posição na revelação da análise (`.escalonado`), depois do termômetro. */
+const emSeguida = (indice: number) => ({ "--i": indice }) as CSSProperties;
+
 function RespostaSugerida({ analise, email }: { analise: Analise; email: string | null }) {
   const assunto = "Sobre o seu contato";
   return (
-    <div className="mt-5">
+    <div style={emSeguida(8)} className="escalonado mt-5 animate-entrar">
       <h3 className="mb-2 text-sm font-semibold">Resposta sugerida</h3>
       <p className="rounded-md bg-superficie-2 p-4 text-sm whitespace-pre-wrap">
         {analise.respostaSugerida}
       </p>
       <div className="mt-3 flex flex-wrap items-start gap-2">
-        <BotaoCopiar texto={analise.respostaSugerida} rotulo="Copiar resposta" />
+        <BotaoCopiar
+          texto={analise.respostaSugerida}
+          rotulo="Copiar resposta"
+          confirmacao="Resposta copiada. Cole no WhatsApp ou no e-mail."
+        />
         {email && (
           <a
             href={`mailto:${email}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(analise.respostaSugerida)}`}
@@ -140,7 +131,7 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
   const anonimizado = lead.anonimizadoEm !== null;
 
   return (
-    <>
+    <ConteudoQueChega>
       <Link
         href="/leads"
         className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-md text-sm font-medium text-texto-suave hover:text-texto"
@@ -150,23 +141,35 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
       </Link>
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="min-w-0 text-2xl font-bold wrap-anywhere">{lead.nome}</h1>
-        <BadgeClassificacao classificacao={lead.classificacaoAtual} />
+        {/* O título é um destaque: aqui a chama do quente fica viva (D-033). */}
+        <BadgeClassificacao classificacao={lead.classificacaoAtual} vivo />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Secao titulo="Análise da IA">
+          <Cartao titulo="Análise da IA">
             {lead.statusAnalise === "concluida" && ultima && lead.classificacaoAtual ? (
-              <>
+              // Revelação: o termômetro enche e a nota conta; logo depois chegam
+              // a justificativa e a resposta. A `key` refaz a revelação quando
+              // uma análise nova chega (ex.: depois de "Analisar de novo").
+              <div key={ultima.id}>
                 <MedidorDaNota score={ultima.score} classificacao={lead.classificacaoAtual} />
-                <p className="mt-4 whitespace-pre-wrap">{ultima.justificativa}</p>
-                <p className="mt-2 text-xs text-texto-suave">
+                <p
+                  style={emSeguida(6)}
+                  className="escalonado mt-4 animate-entrar whitespace-pre-wrap"
+                >
+                  {ultima.justificativa}
+                </p>
+                <p
+                  style={emSeguida(7)}
+                  className="escalonado mt-2 animate-entrar text-xs text-texto-suave"
+                >
                   {ROTULO_DA_CLASSIFICACAO[lead.classificacaoAtual]} · analisado em{" "}
                   {formatarDataHora(ultima.createdAt)}
                   {ultima.mock && " · análise simulada, sem IA"}
                 </p>
                 {!anonimizado && <RespostaSugerida analise={ultima} email={lead.email} />}
-              </>
+              </div>
             ) : (
               <p className="text-texto-suave">{mensagemSemAnalise(situacaoDaAnalise(lead))}</p>
             )}
@@ -178,21 +181,21 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                 />
               </div>
             )}
-          </Secao>
+          </Cartao>
 
-          <Secao titulo="Mensagem">
+          <Cartao titulo="Mensagem">
             <p className="whitespace-pre-wrap">{lead.mensagem ?? "—"}</p>
-          </Secao>
+          </Cartao>
 
           {analises.length > 1 && (
-            <Secao titulo="Histórico de análises">
+            <Cartao titulo="Histórico de análises">
               <Historico analises={analises} />
-            </Secao>
+            </Cartao>
           )}
         </div>
 
         <aside className="flex flex-col gap-6">
-          <Secao titulo="Contato">
+          <Cartao titulo="Contato">
             <dl className="flex flex-col gap-3">
               <Dado rotulo="E-mail">
                 {lead.email && (
@@ -223,17 +226,17 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
               <Dado rotulo="Origem">{ROTULO_DA_ORIGEM[lead.origem]}</Dado>
               <Dado rotulo="Recebido em">{formatarDataHora(lead.createdAt)}</Dado>
             </dl>
-          </Secao>
+          </Cartao>
 
-          <Secao titulo="Andamento">
+          <Cartao titulo="Andamento">
             {podeEditar ? (
               <FormularioDeStatus leadId={lead.id} statusAtual={lead.status} />
             ) : (
               <p className="font-medium">{ROTULO_DO_STATUS[lead.status]}</p>
             )}
-          </Secao>
+          </Cartao>
 
-          <Secao titulo="LGPD">
+          <Cartao titulo="LGPD">
             <p className="flex items-start gap-2 text-sm">
               <ShieldCheck aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-sucesso" />
               {anonimizado
@@ -247,9 +250,9 @@ export default async function PaginaDoLead({ params }: PageProps<"/leads/[id]">)
                 <ZonaDeRisco leadId={lead.id} anonimizado={anonimizado} />
               </div>
             )}
-          </Secao>
+          </Cartao>
         </aside>
       </div>
-    </>
+    </ConteudoQueChega>
   );
 }

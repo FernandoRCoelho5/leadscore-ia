@@ -8,6 +8,9 @@ import { SeloDeSituacao, SeloDoPapel } from "@/components/ui/Selos";
 import { BadgeClassificacao } from "@/components/leads/BadgeClassificacao";
 import { MedidorDaNota } from "@/components/leads/MedidorDaNota";
 import { Cabecalho } from "@/components/painel/Cabecalho";
+import { FiltrosRecolhiveis } from "@/components/painel/FiltrosRecolhiveis";
+import { BarrasDeClassificacao, BlocoDeIndicador } from "@/components/painel/Indicadores";
+import { QuentesSemResposta } from "@/components/painel/QuentesSemResposta";
 import { Abas } from "@/components/ui/Abas";
 import { Alerta, EstadoDeErro, EstadoVazio, ResumoDeErros } from "@/components/ui/Avisos";
 import { Botao } from "@/components/ui/Botao";
@@ -17,6 +20,7 @@ import { Dialogo } from "@/components/ui/Dialogo";
 import { Carregando, EsqueletoDeIndicadores, EsqueletoDeLista } from "@/components/ui/Esqueleto";
 import { NumeroAnimado } from "@/components/ui/NumeroAnimado";
 import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import type { Classificacao } from "@/db/schema";
 import { exigirPermissao } from "@/server/auth/sessao";
 
@@ -42,7 +46,7 @@ export default async function PaginaComponentes() {
   await exigirPermissao("catalogo:ver");
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Componentes"
         descricao="Componentes base da Brasa nos temas claro e escuro. Exemplos fixos: nada aqui lê ou grava dados."
@@ -230,6 +234,38 @@ export default async function PaginaComponentes() {
           )}
         </Amostra>
 
+        <Amostra
+          titulo="Visão geral"
+          descricao="O destaque dos quentes sem resposta é o único brilho da tela. Os blocos entram em sequência, os números contam e as barras enchem."
+        >
+          {() => (
+            <div className="flex flex-col gap-4">
+              <QuentesSemResposta quantidade={3} />
+              <dl className="grid gap-4 sm:grid-cols-2">
+                <BlocoDeIndicador ordem={0} rotulo="Leads nos últimos 30 dias" valor={42} />
+                <BlocoDeIndicador ordem={1} rotulo="Análises da IA em outubro" valor="38 / 100" />
+              </dl>
+              <BarrasDeClassificacao
+                contagem={{ quente: 9, morno: 17, frio: 12, semAnalise: 4 }}
+                total={42}
+              />
+            </div>
+          )}
+        </Amostra>
+
+        <Amostra
+          titulo="Filtros das listas"
+          descricao="No celular, ficam atrás de “Buscar e filtrar” (abertos com filtro aplicado). Diminua a janela para ver."
+        >
+          {(tema) => (
+            <FiltrosRecolhiveis temFiltro={false}>
+              <div className="rounded-lg border border-borda bg-superficie p-4">
+                <CampoTexto id={`catalogo-busca-${tema}`} rotulo="Buscar" type="search" />
+              </div>
+            </FiltrosRecolhiveis>
+          )}
+        </Amostra>
+
         <Amostra titulo="Abas" descricao="Setas, Home e End trocam de aba; o indicador desliza.">
           {() => (
             <Abas
@@ -275,6 +311,6 @@ export default async function PaginaComponentes() {
           )}
         </Amostra>
       </Vitrine>
-    </>
+    </ConteudoQueChega>
   );
 }

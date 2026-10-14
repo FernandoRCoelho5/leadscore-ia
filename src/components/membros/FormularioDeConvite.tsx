@@ -94,7 +94,11 @@ export function FormularioDeConvite() {
             onFocus={(evento) => evento.currentTarget.select()}
             className="h-controle w-full rounded-md border border-borda-campo bg-superficie px-3 font-mono text-xs"
           />
-          <BotaoCopiar texto={convite.link} rotulo="Copiar link" />
+          <BotaoCopiar
+            texto={convite.link}
+            rotulo="Copiar link"
+            confirmacao="Link do convite copiado."
+          />
           <p className="text-xs text-texto-suave">
             Vale até {formatarData(new Date(convite.expiraEm))}. Depois de usado, o link deixa de
             funcionar.

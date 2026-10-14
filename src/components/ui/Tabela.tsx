@@ -41,6 +41,6 @@ export function Td({ className = "", ...resto }: TdHTMLAttributes<HTMLTableCellE
 }
 
 /** Linha com destaque suave ao passar o mouse. */
-export function Linha({ children }: { children: ReactNode }) {
-  return <tr className="transition-colors hover:bg-superficie-2">{children}</tr>;
+export function Linha({ className = "", children }: { className?: string; children: ReactNode }) {
+  return <tr className={`transition-colors hover:bg-superficie-2 ${className}`}>{children}</tr>;
 }

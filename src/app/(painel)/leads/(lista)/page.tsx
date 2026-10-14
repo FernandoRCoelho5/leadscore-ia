@@ -10,6 +10,7 @@ import { LinkDeExportacao } from "@/components/painel/LinkDeExportacao";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import {
   esquemaFiltrosDeLeads,
@@ -55,7 +56,7 @@ export default async function PaginaLeads({ searchParams }: PageProps<"/leads">)
   const podeExportar = pode(sessao.ator, "leads:exportar", empresaId) && pagina.total > 0;
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Leads"
         descricao={nome}
@@ -109,6 +110,6 @@ export default async function PaginaLeads({ searchParams }: PageProps<"/leads">)
           />
         </>
       )}
-    </>
+    </ConteudoQueChega>
   );
 }
