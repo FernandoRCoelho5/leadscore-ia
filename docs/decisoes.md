@@ -1207,6 +1207,39 @@ para leitores de tela.
 
 ---
 
+## D-038 · 404 de verdade com esqueletos de carregamento
+
+**Contexto.** A D-030 deixou o painel sem `loading.tsx` porque, com ele, o
+Next começa a enviar a página (status 200, com o esqueleto) antes de a página
+rodar, e o `notFound()` das páginas protegidas passaria a responder 200. O
+diagnóstico da reformulação apontou a falta de esqueletos como problema de
+prioridade alta, e a Etapa 4 os acrescentou. Os testes E2E confirmaram o
+risco: o cliente que abre `/admin/empresas` e o lead de outra empresa aberto
+pela URL passaram a responder 200. A tela continuava sem mostrar nada, mas o
+404 faz parte do contrato de não revelar o que existe (D-023).
+
+**Decisão.** A conferência que decide entre a tela e o 404 roda num
+`layout.tsx` da rota, acima do esqueleto, antes de qualquer byte sair:
+permissão (`exigirPermissao`), permissão com empresa ativa
+(`exigirPermissaoNaEmpresa`) e, no detalhe do lead, se o lead existe na
+empresa (`leadEstaNaEmpresa`, que só lê o id e não registra auditoria,
+porque também roda quando o navegador pré-carrega o link). Cada rota tem o
+próprio `loading.tsx`, sem esqueleto num nível acima, que envolveria esses
+layouts; a lista de leads foi para o grupo `leads/(lista)` para o esqueleto
+dela não envolver o detalhe. As páginas continuam conferindo tudo de novo:
+o layout só garante o status.
+
+**Alternativas.** Aceitar o 200 com `noindex`, como o Next faz por padrão:
+a tela fica certa, mas o status entrega que a rota existe para quem não pode
+vê-la. Conferir no `proxy`: exigiria ler a sessão e o banco ali, a cada
+requisição. Tirar os esqueletos: voltaria o problema do diagnóstico.
+
+**Consequências.** Substitui o item "Sem `loading.tsx` no painel" da D-030.
+Toda rota nova do painel com `notFound()` precisa da conferência no layout. O teste E2E de acessibilidade espera o esqueleto
+sair antes de conferir a tela.
+
+---
+
 ## Fontes consultadas (24/09/2026)
 
 - [Preços do Clerk](https://clerk.com/pricing)

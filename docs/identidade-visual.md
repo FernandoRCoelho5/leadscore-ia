@@ -274,7 +274,7 @@ dois temas lado a lado e com a opção de simular o movimento reduzido.
 |---|---|
 | `MenuLateral` | No computador, recolhe até ficar só com os ícones; o nome de cada item vira uma dica (`.rotulo-do-menu`) ao passar o mouse ou focar. A escolha fica no cookie `menu` (D-037). A largura muda sem animação |
 | Indicador do menu | A barra do item ativo desliza para o novo item ao navegar (`<ViewTransition name="indicador-do-menu">`, `--curva-brasa`). Só no menu do computador; na gaveta do celular, parada |
-| `loading.tsx` e `Esqueletos` | Toda tela do painel tem esqueleto com a forma dela (título, filtros, lista, cartões). Ao chegar, o esqueleto sai rápido e o conteúdo sobe (`EsqueletoQueSai`, `ConteudoQueChega`) |
+| `loading.tsx` e `Esqueletos` | Toda tela do painel tem esqueleto com a forma dela (título, filtros, lista, cartões). Ao chegar, o esqueleto sai rápido e o conteúdo sobe (`EsqueletoQueSai`, `ConteudoQueChega`). A permissão é conferida num `layout.tsx` acima do esqueleto, para o 404 continuar 404 (D-038) |
 | Visão geral | Cartão quente "N leads quentes esperando resposta" (o único brilho e a única chama viva da tela), blocos que entram em sequência, números que contam e barras que enchem. Sem leads, três primeiros passos no lugar dos números zerados |
 | `FiltrosRecolhiveis` | No celular, filtros atrás do botão "Buscar e filtrar" (abertos quando há filtro aplicado); do tablet para cima, sempre à vista |
 | Detalhe do lead | Termômetro enche e a nota conta; a justificativa e a resposta chegam logo depois. Chama viva só no selo do título |
