@@ -7,6 +7,7 @@ import { MenuLateral } from "@/components/layout/MenuLateral";
 import { EsqueletoDoLead, EsqueletoDeListaComFiltros } from "@/components/painel/Esqueletos";
 import { FiltrosRecolhiveis } from "@/components/painel/FiltrosRecolhiveis";
 import { BlocoDeIndicador } from "@/components/painel/Indicadores";
+import { QuentesSemResposta } from "@/components/painel/QuentesSemResposta";
 import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { ProvedorDeToasts } from "@/components/ui/Toasts";
 import { COOKIE_DO_MENU, lerMenuRecolhido, VALOR_RECOLHIDO } from "@/lib/menu";
@@ -139,5 +140,19 @@ describe("BotaoCopiar", () => {
     );
 
     expect(html).toContain("Copiar resposta");
+  });
+});
+
+describe("QuentesSemResposta", () => {
+  it("leva à lista já filtrada e concorda em número", () => {
+    const um = renderToStaticMarkup(<QuentesSemResposta quantidade={1} />);
+    const varios = renderToStaticMarkup(<QuentesSemResposta quantidade={3} />);
+
+    expect(um).toContain("1 lead quente esperando resposta");
+    expect(um).toContain("Ele ainda está");
+    expect(varios).toContain("3 leads quentes esperando resposta");
+    expect(varios).toContain('href="/leads?classificacao=quente&amp;status=novo"');
+    // O brilho que respira marca o que é urgente.
+    expect(varios).toContain("animate-respirar");
   });
 });

@@ -1,4 +1,4 @@
-import { ArrowRight, Flame, Link2, MessageSquareReply, Share2, Sparkles } from "lucide-react";
+import { ArrowRight, Link2, Share2, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
@@ -11,13 +11,13 @@ import {
   BlocoDeIndicador,
   MedidorDeConsumo,
 } from "@/components/painel/Indicadores";
+import { QuentesSemResposta } from "@/components/painel/QuentesSemResposta";
 import { classesDeBotao } from "@/components/ui/Botao";
 import { Cartao } from "@/components/ui/Cartao";
 import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import { custoEstimadoEmDolares, formatarDolares } from "@/lib/custoDaIa";
 import { DIAS_DO_PERIODO, formatarData, formatarDataHora, inicioDosUltimosDias } from "@/lib/datas";
-import { urlComFiltros } from "@/lib/validacao/filtros";
 import { pode } from "@/server/auth/permissoes";
 import { contextoDa, exigirPermissao, type Sessao } from "@/server/auth/sessao";
 import { visaoGeralDaEmpresa, visaoGeralDaPlataforma } from "@/server/services/painel";
@@ -36,42 +36,6 @@ function periodo(agora: Date) {
 
 /** As análises seguem o mês do calendário: é nele que o limite do plano zera. */
 const rotuloDasAnalises = (agora: Date) => `Análises da IA em ${MES.format(agora)}`;
-
-/**
- * Destaque do que pede ação agora (D-036): quentes que ninguém respondeu.
- * É o único brilho que respira e a única chama viva da tela, para não
- * disputarem atenção.
- */
-function QuentesSemResposta({ quantidade }: { quantidade: number }) {
-  const um = quantidade === 1;
-  return (
-    <Cartao quente className="flex flex-wrap items-center gap-4">
-      <span
-        aria-hidden="true"
-        className="flex size-12 shrink-0 items-center justify-center rounded-full bg-quente-fundo text-quente-icone"
-      >
-        <Flame className="size-6 origin-[50%_90%] animate-chama" strokeWidth={2.25} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="text-lg font-semibold">
-          {quantidade.toLocaleString("pt-BR")}{" "}
-          {um ? "lead quente esperando resposta" : "leads quentes esperando resposta"}
-        </h2>
-        <p className="text-sm text-texto-suave">
-          {um ? "Ele ainda está" : "Eles ainda estão"} no andamento &quot;Novo&quot;. Quem responde
-          primeiro tem mais chance de fechar.
-        </p>
-      </div>
-      <Link
-        href={urlComFiltros("/leads", { classificacao: "quente", status: "novo" })}
-        className={classesDeBotao("primaria")}
-      >
-        <MessageSquareReply aria-hidden="true" className="size-4" />
-        Responder agora
-      </Link>
-    </Cartao>
-  );
-}
 
 function Passo({
   numero,
