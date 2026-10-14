@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleCheck, Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import { ResumoDeErros } from "@/components/ui/Avisos";
 import { Botao } from "@/components/ui/Botao";
@@ -198,6 +198,16 @@ export function FormularioDeCaptacao({ slug, nomeDaEmpresa, carimbo }: Props) {
   );
 }
 
+/** Posição, atraso e deriva de cada faísca da confirmação (decorativas). */
+const FAISCAS: CSSProperties[] = [
+  { "--x": "18%", "--atraso": "0ms", "--deriva": "-14px" },
+  { "--x": "34%", "--atraso": "90ms", "--deriva": "-6px" },
+  { "--x": "50%", "--atraso": "40ms", "--deriva": "4px" },
+  { "--x": "66%", "--atraso": "130ms", "--deriva": "10px" },
+  { "--x": "82%", "--atraso": "60ms", "--deriva": "16px" },
+  { "--x": "42%", "--atraso": "180ms", "--deriva": "-2px" },
+].map((faisca) => faisca as CSSProperties);
+
 function Confirmacao({ nomeDaEmpresa, email }: { nomeDaEmpresa: string; email: string }) {
   const refTitulo = useRef<HTMLHeadingElement>(null);
 
@@ -207,8 +217,16 @@ function Confirmacao({ nomeDaEmpresa, email }: { nomeDaEmpresa: string; email: s
   }, []);
 
   return (
-    <div role="status" className="flex flex-col items-center gap-3 py-6 text-center">
-      <CircleCheck aria-hidden="true" className="size-12 text-sucesso" />
+    <div role="status" className="flex animate-entrar flex-col items-center gap-3 py-6 text-center">
+      {/* Confirmação marcante: o círculo pulsa uma vez e faíscas sobem e somem. */}
+      <div aria-hidden="true" className="relative flex size-24 items-center justify-center">
+        {FAISCAS.map((faisca, indice) => (
+          <span key={indice} className="faisca" style={faisca} />
+        ))}
+        <span className="flex size-16 animate-destacar items-center justify-center rounded-full bg-sucesso-fundo ring-8 ring-sucesso-fundo/50">
+          <CircleCheck className="size-9 text-sucesso" />
+        </span>
+      </div>
       <h2 ref={refTitulo} tabIndex={-1} className="text-xl font-semibold text-texto">
         Mensagem enviada
       </h2>
