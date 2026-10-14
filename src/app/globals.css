@@ -201,9 +201,29 @@
     transform: rotate(360deg);
   }
 }
+/* Nunca parte do invisível: fora da tela, a seção já está ali (impressão, leitura). */
+@keyframes revelar {
+  from {
+    opacity: 0.3;
+    transform: translateY(24px);
+  }
+}
 @keyframes aparecer {
   from {
     opacity: 0;
+  }
+}
+@keyframes subir {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--deriva, 0px), -90px) scale(0.4);
   }
 }
 /* Número que conta ao carregar (NumeroAnimado), sem JavaScript. */
@@ -452,6 +472,13 @@
       var(--color-carvao-900) 70%,
       var(--color-brasa-950) 130%
     );
+    /* Brasa acesa na base das seções escuras das páginas públicas. */
+    --brasa-ao-fundo: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--color-brasa-500) 55%, transparent),
+      color-mix(in oklab, var(--color-ambar-400) 18%, transparent) 60%,
+      transparent
+    );
   }
   @supports (transition-timing-function: linear(0, 1)) {
     :root {
@@ -605,6 +632,48 @@
   /* Só aparece se a espera passar de 300 ms (sem "piscar" em respostas rápidas). */
   .carregamento-atrasado {
     animation: aparecer var(--mov-rapido) var(--curva-padrao) 300ms both;
+  }
+
+  /*
+   * Seções das páginas públicas que entram ao rolar. Só onde o navegador tem
+   * animação por rolagem; nos demais, o conteúdo já está lá, parado.
+   */
+  @supports (animation-timeline: view()) {
+    .revelar {
+      animation: revelar linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+  }
+  /* Na rolagem a duração é ignorada: o movimento reduzido precisa desligar a animação. */
+  @media (prefers-reduced-motion: reduce) {
+    .revelar {
+      animation: none;
+    }
+  }
+  [data-movimento="reduzido"] .revelar {
+    animation: none;
+  }
+  @media print {
+    .revelar {
+      animation: none;
+    }
+  }
+
+  /* Faíscas da confirmação do formulário público: sobem e somem uma vez. */
+  .faisca {
+    position: absolute;
+    left: var(--x, 50%);
+    bottom: 30%;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-brasa-500);
+    opacity: 0;
+    animation: subir var(--mov-narrativo) var(--curva-saida) var(--atraso, 0ms) both;
+  }
+  .faisca:nth-child(even) {
+    background: var(--color-ambar-400);
   }
 
   /* Número que conta de 0 ao valor (--valor) com um contador de CSS. */
