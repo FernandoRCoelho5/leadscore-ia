@@ -32,18 +32,28 @@ export function obterEsquema<Esquema extends z.ZodType>(
 }
 
 /**
- * Começa a baixar o esquema quando o navegador fica ocioso (depois de a página
- * aparecer): na hora de enviar, ele normalmente já está pronto.
+ * Começa a baixar o esquema no primeiro sinal de uso da página (foco, toque
+ * ou tecla): quem vai preencher leva alguns segundos digitando, e o esquema
+ * chega antes do envio. Assim ele não disputa a rede com o carregamento da
+ * página (no pior caso, o envio espera o download).
  */
 export function useEsquemaAntecipado<Esquema extends z.ZodType>(fonte: FonteDoEsquema<Esquema>) {
   useEffect(() => {
-    const baixar = () => void obterEsquema(fonte).catch(() => undefined);
-    if (typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(baixar, { timeout: 3000 });
-      return () => window.cancelIdleCallback(id);
+    const eventos = ["focusin", "pointerdown", "keydown"] as const;
+    const baixar = () => {
+      for (const evento of eventos) {
+        document.removeEventListener(evento, baixar, true);
+      }
+      void obterEsquema(fonte).catch(() => undefined);
+    };
+    for (const evento of eventos) {
+      document.addEventListener(evento, baixar, true);
     }
-    const id = window.setTimeout(baixar, 1500);
-    return () => window.clearTimeout(id);
+    return () => {
+      for (const evento of eventos) {
+        document.removeEventListener(evento, baixar, true);
+      }
+    };
   }, [fonte]);
 }
 
