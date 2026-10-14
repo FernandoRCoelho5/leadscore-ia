@@ -46,7 +46,7 @@ export function LinkDoMenu({
       href={href}
       onClick={fecharPopover}
       aria-current={ativo ? "page" : undefined}
-      className={`relative flex h-controle items-center gap-3 rounded-md px-3 text-sm transition-colors duration-150 [&>svg]:size-5 [&>svg]:shrink-0 ${
+      className={`relative flex h-controle items-center gap-3 rounded-md px-3 text-sm transition-colors [&>svg]:size-5 [&>svg]:shrink-0 ${
         ativo
           ? "bg-superficie-2 font-semibold text-marca-texto before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r before:bg-primaria"
           : "text-texto-suave hover:bg-superficie-2 hover:text-texto"

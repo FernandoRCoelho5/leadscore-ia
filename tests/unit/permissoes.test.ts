@@ -31,6 +31,7 @@ const ESPERADO: Record<Acao, Record<Papel, boolean>> = {
   "membros:gerir": { admin: true, suporte: false, cliente: true },
   "plataforma:gerir-usuarios": { admin: true, suporte: false, cliente: false },
   "auditoria:ver": { admin: true, suporte: true, cliente: false },
+  "catalogo:ver": { admin: true, suporte: true, cliente: false },
   "perfil:editar": { admin: true, suporte: true, cliente: true },
 };
 

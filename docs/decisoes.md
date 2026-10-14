@@ -1133,67 +1133,29 @@ não reprova mais o CI; a revisão dos alertas passa a ser manual (rodar
 `npm audit` ao atualizar dependências). Reavaliar quando o `braces` ou o
 `fast-glob` publicarem correção, e voltar a barrar altas em tudo.
 
-## D-033 · Direção visual "Brasa viva" para a reformulação do front-end
+## D-035 · Catálogo de componentes para a equipe
 
-**Contexto.** O produto vai ser vendido a pequenas e médias empresas e
-precisa de uma identidade marcante. O diagnóstico de 13/10/2026 mostrou base
-técnica boa (acessibilidade 100 no Lighthouse, tokens com contraste testado),
-mas pouca personalidade: a marca vivia no logotipo e nos badges, sem
-movimento e com hierarquia plana. Foram apresentadas três direções dentro da
-identidade: "Carvão" (Linear e Vercel), "Gradiente térmico" (Stripe) e
-"Brasa viva" (híbrida).
+**Contexto.** A reformulação do front-end (D-033, D-034) cria componentes
+base que precisam ser revisados nos dois temas e com movimento reduzido,
+antes de chegarem às telas. A revisão também precisa funcionar nos previews
+da Vercel, onde os PRs são conferidos.
 
-**Decisão.** Adotar a "Brasa viva" (`docs/identidade-visual.md`, seção 12):
+**Decisão.** Página `/admin/componentes` dentro da área logada, com a
+permissão nova `catalogo:ver` para admin e suporte (equipe Brasa); o
+cliente recebe 404, como no restante da administração. A página só usa
+exemplos fixos: não lê nem grava dados, e as ações de exemplo (excluir,
+enviar) são simulações. Cada componente aparece nos temas claro e escuro lado
+a lado: o atributo `data-tema` passou a valer num trecho da página, e
+`data-movimento="reduzido"` simula a preferência de movimento reduzido.
 
-- **Área logada sóbria**, com movimento sutil e o calor só onde tem
-  significado (lead quente, nota da IA).
-- **Páginas públicas expressivas**: seção principal da landing sempre escura
-  e quente, com faíscas e o gradiente térmico.
-- **Escala térmica como linguagem**: brilho no lead quente, nota como
-  termômetro, carregamento "quente"; cor nunca sozinha.
-- **Sora como única fonte**; a fonte mono para números foi descartada.
-- Paleta, logotipo e contrastes existentes continuam; os tokens novos
-  (`escala-termica`, `brilho-quente`, `trilho`, `fundo-publico`) entram na
-  Etapa 2 com teste de contraste.
+**Alternativas.** Só em desenvolvimento (404 em produção): não mexeria na
+matriz de permissões, mas não daria para revisar nos previews. Storybook:
+mais uma ferramenta e um build à parte para algo que uma página resolve.
 
-**Alternativas.** "Carvão": a mais leve e técnica, mas fria no tema claro,
-que é o padrão do produto. "Gradiente térmico": a mais memorável, mas cansa
-no uso diário do painel e pesa mais no celular.
-
-**Consequências.** Duas "vozes" (logada e pública) a manter consistentes,
-com tokens separados por área. A seção principal da landing não segue o tema
-claro, por escolha.
-
-## D-034 · Movimento com CSS e View Transitions, sem biblioteca
-
-**Contexto.** A reformulação pede animações que transmitam qualidade sem
-prejudicar desempenho nem acessibilidade. No celular, o LCP já está entre 2,6
-e 3,1 s, e o maior elemento é sempre texto. A CSP com nonce e
-`strict-dynamic` (D-016) só aceita scripts do próprio pacote, e a maioria das
-telas são Server Components.
-
-**Decisão.**
-
-- **CSS** para microinterações, entradas, destaques e esqueletos, com tokens
-  centralizados (`--mov-*`, `--curva-*`, `--escalonar`;
-  `docs/identidade-visual.md`, seção 13).
-- **`<ViewTransition>` do React**, que já vem no Next 16 sem configuração,
-  para troca de tela, revelação de conteúdo carregado e elementos
-  compartilhados. Sem suporte do navegador, a tela só não anima.
-- **Canvas próprio** (cerca de 2 KB) para as faíscas da landing, carregado
-  depois do conteúdo, pausado fora da tela e desligado com movimento reduzido.
-- Animar só `transform` e `opacity`; o texto principal nunca entra
-  escondido; versão sem deslocamento para `prefers-reduced-motion`.
-
-**Alternativas.** Motion (MIT): cerca de 34 KB gzip com o componente
-completo, exige componentes de cliente em cada parte animada. GSAP: cerca de
-25 KB gzip no núcleo, licença própria (não é código aberto) e API imperativa.
-As duas aumentariam o JavaScript no celular para efeitos que o CSS e o
-navegador já fazem.
-
-**Consequências.** Nenhuma dependência nova. Molas reais ficam limitadas a
-`linear()`; coreografias longas por rolagem ficam fora do escopo. O
-Lighthouse antes e depois (Etapa 5) usa o mesmo método do diagnóstico.
+**Consequências.** Uma linha a mais na matriz RBAC (`docs/arquitetura.md`,
+seção 4) e um item "Componentes" no menu da administração. Componentes novos
+entram no catálogo junto com o teste E2E de acessibilidade, que confere a
+página nos dois temas e nas larguras de 360 a 1280 px.
 
 ---
 

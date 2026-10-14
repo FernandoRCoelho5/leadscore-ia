@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck } from "lucide-react";
+import { CircleAlert, CircleCheck, CloudAlert } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode, Ref } from "react";
 
@@ -8,7 +8,7 @@ export function Alerta({ tipo, children }: { tipo: "erro" | "sucesso"; children:
   return (
     <div
       role={tipo === "erro" ? "alert" : "status"}
-      className={`flex items-start gap-2 rounded-md px-3 py-2.5 text-sm ${
+      className={`flex animate-entrar items-start gap-2 rounded-md px-3 py-2.5 text-sm ${
         tipo === "erro" ? "bg-erro-fundo text-erro-alerta" : "bg-sucesso-fundo text-sucesso"
       }`}
     >
@@ -40,7 +40,7 @@ export function ResumoDeErros({ mensagem, erros, refResumo }: PropsDoResumo) {
       ref={refResumo}
       tabIndex={-1}
       role="alert"
-      className="rounded-md bg-erro-fundo px-3 py-2.5 text-sm text-erro-alerta"
+      className="animate-entrar rounded-md bg-erro-fundo px-3 py-2.5 text-sm text-erro-alerta"
     >
       <p className="flex items-center gap-2 font-semibold">
         <CircleAlert aria-hidden="true" className="size-4 shrink-0" />
@@ -68,16 +68,61 @@ type PropsDoEstadoVazio = {
   acao?: ReactNode;
 };
 
-/** Tela sem dados: explica o que vai aparecer ali e oferece o próximo passo. */
+/**
+ * Tela sem dados: explica o que vai aparecer ali e oferece o próximo passo.
+ * O ícone fica numa "brasa" (círculo quente com anéis), convidando à ação.
+ */
 export function EstadoVazio({ icone, titulo, descricao, acao }: PropsDoEstadoVazio) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-borda bg-superficie px-6 py-12 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-superficie-2 text-texto-suave [&>svg]:size-6">
-        {icone}
-      </div>
+    <div className="flex animate-entrar flex-col items-center gap-3 rounded-lg border border-dashed border-borda bg-superficie px-6 py-12 text-center">
+      <IconeEmBrasa tom="quente">{icone}</IconeEmBrasa>
       <h2 className="text-lg font-semibold">{titulo}</h2>
       <p className="max-w-md text-sm text-texto-suave">{descricao}</p>
       {acao}
+    </div>
+  );
+}
+
+/**
+ * Parte da tela que não carregou (o resto continua funcionando). Diz o que
+ * aconteceu e como resolver; a mensagem técnica nunca aparece.
+ */
+export function EstadoDeErro({
+  titulo = "Não conseguimos carregar esta parte",
+  descricao = "Tente de novo em alguns segundos. Se continuar, fale com o suporte da Brasa.",
+  acao,
+}: {
+  titulo?: string;
+  descricao?: string;
+  acao?: ReactNode;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex animate-entrar flex-col items-center gap-3 rounded-lg border border-borda bg-superficie px-6 py-10 text-center"
+    >
+      <IconeEmBrasa tom="erro">
+        <CloudAlert aria-hidden="true" />
+      </IconeEmBrasa>
+      <h2 className="text-lg font-semibold">{titulo}</h2>
+      <p className="max-w-md text-sm text-texto-suave">{descricao}</p>
+      {acao}
+    </div>
+  );
+}
+
+/** Ícone decorativo num círculo com dois anéis (estados vazios e de erro). */
+function IconeEmBrasa({ tom, children }: { tom: "quente" | "erro"; children: ReactNode }) {
+  const cores =
+    tom === "quente"
+      ? "bg-quente-fundo text-quente-icone ring-quente-fundo/60"
+      : "bg-erro-fundo text-erro ring-erro-fundo/60";
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex size-14 items-center justify-center rounded-full ring-8 [&>svg]:size-6 ${cores}`}
+    >
+      {children}
     </div>
   );
 }

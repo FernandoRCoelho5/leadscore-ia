@@ -61,7 +61,7 @@ src/
     empresa-bloqueada/ aviso ao cliente de empresa bloqueada (D-029)
     (painel)/         layout: menu lateral por perfil + topo com avatar
       painel/  leads/  leads/[id]/  membros/  configuracoes/  perfil/
-      admin/empresas/  admin/usuarios/  admin/auditoria/
+      admin/empresas/  admin/usuarios/  admin/auditoria/  admin/componentes/ (catálogo, D-035)
     api/              auth/[...all], usuarios/[id]/foto, publico/[slug]/leads (D-028),
                       leads/exportar, admin/{empresas,usuarios,auditoria}/exportar (D-029)
   server/
@@ -250,6 +250,7 @@ perfil não pode usar.
 | Membros · convidar (link) e remover (lógico) | ✅ | ❌ | ✅ própria |
 | Usuários da plataforma · alterar perfil de acesso, bloquear | ✅ | ❌ | ❌ |
 | Auditoria · consultar + CSV | ✅ | ✅ leitura | ❌ (futuro: da própria empresa) |
+| Catálogo de componentes da interface | ✅ | ✅ | ❌ |
 | Próprio perfil (nome, foto, senha) | ✅ | ✅ | ✅ |
 | Foto e nome de outro usuário · ver | ✅ | ✅ | colegas de uma empresa em comum |
 

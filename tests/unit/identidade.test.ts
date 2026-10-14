@@ -84,12 +84,26 @@ const PARES: [string, string, number][] = [
   ["quente-grafico", "superficie", GRAFICO],
   ["morno-grafico-contorno", "superficie", GRAFICO],
   ["frio-grafico", "superficie", GRAFICO],
+  // Barras e termômetro sobre o trilho (o número sempre vem escrito ao lado).
+  ["quente-grafico", "trilho", GRAFICO],
+  ["morno-grafico-contorno", "trilho", GRAFICO],
+  ["frio-grafico", "trilho", GRAFICO],
 ];
 
 const TEMAS = {
-  claro: tokensDoBloco(":root {"),
+  claro: tokensDoBloco('[data-tema="claro"] {'),
   escuro: tokensDoBloco('[data-tema="escuro"] {'),
 };
+
+/** Todas as declarações de um bloco (cores, gradientes e sombras), sem espaços. */
+function declaracoesDoBloco(inicioDoBloco: string): string[] {
+  const inicio = css.indexOf(inicioDoBloco);
+  const corpo = css.slice(inicio + inicioDoBloco.length, css.indexOf("}", inicio));
+  return corpo
+    .split(";")
+    .map((declaracao) => declaracao.replace(/\s+/g, ""))
+    .filter(Boolean);
+}
 
 describe.each(Object.entries(TEMAS))("contraste do tema %s", (_, tokens) => {
   it.each(PARES)("%s sobre %s atinge %s:1", (frente, fundo, minimo) => {
@@ -105,6 +119,23 @@ describe.each(Object.entries(TEMAS))("contraste do tema %s", (_, tokens) => {
 describe("temas", () => {
   it("o modo 'sistema' escuro usa exatamente os mesmos tokens do tema escuro", () => {
     expect(tokensDoBloco('[data-tema="sistema"] {')).toEqual(TEMAS.escuro);
+    // Também gradientes e sombras (escala térmica, brilho do lead quente).
+    expect(declaracoesDoBloco('[data-tema="sistema"] {')).toEqual(
+      declaracoesDoBloco('[data-tema="escuro"] {'),
+    );
+  });
+
+  it("o tema claro também vale num trecho da página e é o padrão do :root", () => {
+    expect(css).toContain(':root,\n  [data-tema="claro"] {');
+  });
+
+  it("os tokens térmicos existem nos dois temas", () => {
+    for (const bloco of ['[data-tema="claro"] {', '[data-tema="escuro"] {']) {
+      const declaracoes = declaracoesDoBloco(bloco).join(";");
+      expect(declaracoes).toContain("--escala-termica:linear-gradient(");
+      expect(declaracoes).toContain("--brilho-quente:");
+      expect(declaracoes).toContain("--trilho:var(--color-carvao-");
+    }
   });
 
   it("os dois temas definem os mesmos tokens", () => {
