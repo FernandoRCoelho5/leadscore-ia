@@ -103,7 +103,9 @@ describe("FiltrosRecolhiveis", () => {
     );
 
     expect(sem).toContain('aria-expanded="false"');
-    expect(sem).toMatch(/class="hidden md:mt-0 md:block"/);
+    expect(sem).toContain('class="hidden md:mt-0 md:block md:animate-none"');
+    // Ao carregar já filtrado, os filtros aparecem sem animação.
+    expect(com).not.toContain("animate-entrar");
     expect(com).toContain('aria-expanded="true"');
     expect(com).toContain("com filtros");
     // Do tablet para cima, o botão some e os filtros ficam sempre à vista.
