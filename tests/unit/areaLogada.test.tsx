@@ -17,7 +17,7 @@ import { COOKIE_DO_MENU, lerMenuRecolhido, VALOR_RECOLHIDO } from "@/lib/menu";
 // dos testes ainda não o tem. Aqui ele só repassa o conteúdo, como num
 // navegador sem suporte.
 vi.mock("react", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react")>()),
+  ...(await importOriginal<Record<string, unknown>>()),
   ViewTransition: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/leads/123" }));
