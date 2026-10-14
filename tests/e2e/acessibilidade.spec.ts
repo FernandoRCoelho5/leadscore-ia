@@ -8,11 +8,13 @@ import {
   emailUnico,
   novaPagina,
   problemasDeAcessibilidade,
+  violacoesDoAxe,
 } from "./apoio";
 
 /**
- * Acessibilidade de todas as telas (verificador em tests/e2e/apoio.ts), no
- * computador e no celular. As telas públicas rodam sempre; as logadas, só com
+ * Acessibilidade de todas as telas, no computador e no celular: o verificador
+ * próprio (tests/e2e/apoio.ts) e o axe-core, que mede o contraste e as regras
+ * de ARIA da WCAG 2.1 AA (D-039). As telas públicas rodam sempre; as logadas, só com
  * E2E_COM_BANCO=1.
  */
 
@@ -42,6 +44,7 @@ async function conferir(page: Page, caminho: string) {
   await semCarregamento(page);
   const { width } = page.viewportSize() ?? { width: 0 };
   expect(await problemasDeAcessibilidade(page), `problemas em ${caminho} (${width}px)`).toEqual([]);
+  expect(await violacoesDoAxe(page), `axe em ${caminho} (${width}px)`).toEqual([]);
 }
 
 /**
@@ -83,6 +86,24 @@ test("o verificador acusa os problemas de uma página malfeita", async ({ page }
   );
 });
 
+test("o axe acusa contraste baixo e ARIA inválido", async ({ page }) => {
+  await page.setContent(`
+    <html lang="pt-BR"><head><title>Teste</title></head><body><main>
+      <h1>Teste</h1>
+      <p style="color: #bbbbbb; background: #ffffff">texto claro demais</p>
+      <button aria-expanded="talvez">Abrir</button>
+    </main></body></html>`);
+
+  const violacoes = await violacoesDoAxe(page);
+
+  expect(violacoes).toEqual(
+    expect.arrayContaining([
+      expect.stringContaining("color-contrast"),
+      expect.stringContaining("aria-valid-attr-value"),
+    ]),
+  );
+});
+
 const PUBLICAS = [
   "/",
   "/login",
@@ -92,12 +113,18 @@ const PUBLICAS = [
   "/uma-pagina-que-nao-existe",
 ];
 
-for (const [dispositivo, tamanho] of [
-  ["computador", { width: 1366, height: 900 }],
-  ["celular", { width: 360, height: 780 }],
+for (const [dispositivo, tamanho, tema] of [
+  ["computador", { width: 1366, height: 900 }, "claro"],
+  ["computador, tema escuro", { width: 1366, height: 900 }, "escuro"],
+  ["celular", { width: 360, height: 780 }, "claro"],
+  // 320 px: a menor largura da WCAG 1.4.10 (conteúdo sem rolagem lateral).
+  ["celular pequeno", { width: 320, height: 640 }, "claro"],
 ] as const) {
   test.describe(`telas públicas no ${dispositivo}`, () => {
     test.use({ viewport: tamanho });
+    test.beforeEach(async ({ context, baseURL }) => {
+      await context.addCookies([{ name: "tema", value: tema, url: baseURL ?? "" }]);
+    });
     for (const caminho of PUBLICAS) {
       test(`${caminho} não tem problemas de acessibilidade`, async ({ page }) => {
         await conferir(page, caminho);
@@ -223,6 +250,7 @@ test("telas da administração não têm problemas de acessibilidade", async ({ 
       .first()
       .click();
     expect(await problemasDeAcessibilidade(page), "problemas no diálogo Gerenciar").toEqual([]);
+    expect(await violacoesDoAxe(page), "axe no diálogo Gerenciar").toEqual([]);
     await page.goto("/admin/usuarios");
     await page
       .getByRole("table")
@@ -232,6 +260,7 @@ test("telas da administração não têm problemas de acessibilidade", async ({ 
     expect(await problemasDeAcessibilidade(page), "problemas no diálogo Gerenciar usuário").toEqual(
       [],
     );
+    expect(await violacoesDoAxe(page), "axe no diálogo Gerenciar usuário").toEqual([]);
   } finally {
     await consultar("UPDATE usuarios SET bloqueado_em = now() WHERE email = $1", [email]);
   }
