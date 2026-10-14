@@ -218,6 +218,20 @@ describe("ações sobre o lead", () => {
     expect(evento?.detalhes).toEqual({ de: "novo", para: "em_contato" });
   });
 
+  it("um lead movido por engano volta para Novo, também auditado", async () => {
+    const { empresa, cliente } = await cenario();
+    const lead = await novoLead(empresa);
+
+    await alterarStatusDoLead(db, cliente, empresa.id, lead.id, "em_contato");
+    const devolvido = await alterarStatusDoLead(db, cliente, empresa.id, lead.id, "novo");
+
+    expect(devolvido.status).toBe("novo");
+    const historico = await eventos("lead.status_alterado", lead.id);
+    expect(historico.map((evento) => evento.detalhes)).toEqual(
+      expect.arrayContaining([{ de: "em_contato", para: "novo" }]),
+    );
+  });
+
   it("o suporte não altera nada (somente leitura)", async () => {
     const { empresa } = await cenario();
     const lead = await novoLead(empresa);
