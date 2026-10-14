@@ -18,9 +18,10 @@ const CORES = ["255, 90, 31", "255, 176, 32"];
 /**
  * Faíscas subindo da base da abertura da landing (D-034): canvas próprio,
  * sem biblioteca. Decorativo (`aria-hidden`), começa depois que a página
- * fica ociosa (não disputa o LCP), usa um terço das partículas no celular e
- * pausa fora da tela, com a aba oculta ou com movimento reduzido (aí fica
- * parado, como um retrato).
+ * fica ociosa (não disputa o LCP), anima a ~30 quadros por segundo e pausa
+ * fora da tela, com a aba oculta ou com movimento reduzido. Em telas
+ * estreitas (celular) não anima: desenha as faíscas uma vez, paradas, para
+ * não gastar a CPU nem a bateria.
  */
 export function Faiscas() {
   const refCanvas = useRef<HTMLCanvasElement>(null);
@@ -32,10 +33,12 @@ export function Faiscas() {
       return;
     }
     const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const estreito = window.matchMedia("(max-width: 767px)");
     let largura = 0;
     let altura = 0;
     let faiscas: Faisca[] = [];
     let quadro = 0;
+    let ultimo = 0;
     let visivel = true;
 
     const nova = (espalhar: boolean): Faisca => ({
@@ -75,22 +78,27 @@ export function Faiscas() {
       }
     }
 
-    function animar() {
+    function animar(agora: number) {
+      quadro = requestAnimationFrame(animar);
+      // ~30 quadros por segundo bastam para faíscas lentas (metade do trabalho).
+      if (agora - ultimo < 32) {
+        return;
+      }
+      ultimo = agora;
       for (const f of faiscas) {
-        f.y -= f.v;
-        f.fase += 0.02;
-        f.x += Math.sin(f.fase) * 0.35;
+        f.y -= f.v * 2;
+        f.fase += 0.04;
+        f.x += Math.sin(f.fase) * 0.7;
         if (f.y < -10) {
           Object.assign(f, nova(false));
         }
       }
       desenhar(1);
-      quadro = requestAnimationFrame(animar);
     }
 
     function ligar() {
       cancelAnimationFrame(quadro);
-      if (visivel && !reduzido.matches && !document.hidden) {
+      if (visivel && !reduzido.matches && !estreito.matches && !document.hidden) {
         quadro = requestAnimationFrame(animar);
       } else {
         desenhar(0.6);
@@ -112,6 +120,7 @@ export function Faiscas() {
       observador.observe(canvas);
       document.addEventListener("visibilitychange", ligar);
       reduzido.addEventListener("change", ligar);
+      estreito.addEventListener("change", ligar);
       window.addEventListener("resize", aoRedimensionar);
       ligar();
     };
@@ -131,6 +140,7 @@ export function Faiscas() {
       observador.disconnect();
       document.removeEventListener("visibilitychange", ligar);
       reduzido.removeEventListener("change", ligar);
+      estreito.removeEventListener("change", ligar);
       window.removeEventListener("resize", aoRedimensionar);
     };
   }, []);

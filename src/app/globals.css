@@ -201,11 +201,13 @@
     transform: rotate(360deg);
   }
 }
-/* Nunca parte do invisível: fora da tela, a seção já está ali (impressão, leitura). */
+/*
+ * Só desloca, sem mexer na opacidade: o texto nunca fica desbotado (contraste
+ * WCAG) e, fora da tela, a seção já está ali (impressão, leitura, buscadores).
+ */
 @keyframes revelar {
   from {
-    opacity: 0.3;
-    transform: translateY(24px);
+    transform: translateY(32px);
   }
 }
 @keyframes aparecer {
