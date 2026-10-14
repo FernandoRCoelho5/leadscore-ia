@@ -63,6 +63,8 @@ export async function clienteComEmpresa(
   const nome = `Agência Painel ${unico("e2e").slice(-10)}`;
   await cadastrar(page, pessoa, email);
   await page.getByLabel("Nome da empresa").fill(nome);
+  // Onboarding em passos: empresa, depois o perfil do negócio.
+  await page.getByRole("button", { name: "Continuar" }).click();
   await page.getByLabel("O que a sua empresa faz").fill("Criamos sites e lojas virtuais B2B.");
   await page.getByLabel("Cliente ideal").fill("Indústrias de médio porte do Sul Fluminense.");
   await page.getByRole("button", { name: "Criar empresa e ir para o painel" }).click();

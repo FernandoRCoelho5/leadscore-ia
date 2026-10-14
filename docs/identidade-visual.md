@@ -251,6 +251,10 @@ reescrever o nome com outra fonte.
 | `Abas` | Abas acessíveis (setas, Home, End) com indicador que desliza |
 | `ProvedorDeToasts`, `useToasts` | Avisos passageiros; erros só fecham pela pessoa |
 | Classes `surgir` e `gaveta` | Abrir e fechar de `<dialog>` e popovers só com CSS |
+| `IndicadorDeEtapas` | Progresso de fluxos em passos (onboarding), com `aria-current="step"` e "concluído" escrito |
+| `Faiscas` | Faíscas da abertura da landing: canvas próprio, só depois da página ociosa, ~30 quadros por segundo; paradas no celular e com movimento reduzido |
+| `CabecalhoPublico`, `RodapePublico` | Topo e rodapé das páginas públicas (landing, política de privacidade) |
+| Classe `revelar` | Seções públicas que sobem ao rolar (só deslocamento: o texto nunca fica desbotado); desligada com movimento reduzido e na impressão |
 
 Todos aparecem no catálogo `/admin/componentes` (admin e suporte, D-035), nos
 dois temas lado a lado e com a opção de simular o movimento reduzido.
@@ -305,6 +309,22 @@ expressivas, para vender e acolher.
 
 Os valores exatos e os pares de contraste entram no `globals.css` e no teste
 de contraste (seção 14) junto com os componentes.
+
+### Páginas públicas na prática (Etapa 3)
+
+- **Landing (`/`):** abertura escura com faíscas e leads de exemplo ganhando
+  nota; depois, seções claras que seguem o tema. Só fatos do produto: nenhum
+  cliente, número ou depoimento inventado.
+- **Telas de acesso:** no computador, painel da marca escuro ao lado do
+  formulário; no celular, só o formulário.
+- **Onboarding:** três passos visíveis (conta criada, sua empresa, perfil do
+  negócio) num mesmo formulário.
+- **Formulário público:** confirmação com o círculo que pulsa uma vez e
+  faíscas que sobem e somem.
+- **Erros:** logotipo fora do painel; ícone quente para "não encontrado" e
+  carmim para erro.
+- **Regra de LCP:** o título de cada página aparece pronto. Nada que contém o
+  título entra com animação de opacidade.
 
 ### Tipografia
 

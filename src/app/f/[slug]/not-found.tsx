@@ -9,7 +9,9 @@ export default function FormularioNaoEncontrado() {
   return (
     <MolduraDoFormulario urlDaBrasa={env.URL_DO_APP}>
       <div className="flex flex-col items-center gap-3 py-6 text-center">
-        <SearchX aria-hidden="true" className="size-12 text-texto-suave" />
+        <span className="flex size-16 animate-entrar items-center justify-center rounded-full bg-quente-fundo text-quente-icone ring-8 ring-quente-fundo/50">
+          <SearchX aria-hidden="true" className="size-7" />
+        </span>
         <h1 className="text-xl font-semibold text-texto">Formulário não encontrado</h1>
         <p className="max-w-sm text-texto-suave">
           O endereço pode estar incompleto ou o formulário foi desativado. Confira o link com a

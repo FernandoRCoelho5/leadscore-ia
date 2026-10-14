@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Logo } from "@/components/marca/Logo";
+import { PularParaOConteudo, RodapePublico } from "@/components/publico/EstruturaPublica";
 import { env } from "@/env";
 
 export const metadata: Metadata = {
@@ -304,65 +305,83 @@ const SECOES: { id: string; titulo: string; conteudo: ReactNode }[] = [
  */
 export default function PoliticaDePrivacidade() {
   return (
-    <main id="conteudo" className="flex flex-1 flex-col px-4 py-10 sm:px-6 sm:py-14">
-      <article className="mx-auto flex w-full max-w-prose flex-col gap-8 leading-relaxed">
-        <Link href="/" aria-label="Brasa, página inicial" className="self-start rounded-md">
-          <Logo decorativo className="h-8 w-auto" />
-        </Link>
-
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl leading-tight font-bold text-balance">Política de privacidade</h1>
-          <p className="text-sm text-texto-suave">Atualizada em {ATUALIZADA_EM}.</p>
-        </header>
-
-        <section
-          aria-labelledby="resumo"
-          className="rounded-lg border border-borda bg-superficie p-5 sm:p-6"
-        >
-          <h2 id="resumo" className="text-lg font-semibold">
-            Em resumo
-          </h2>
-          <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 marker:text-texto-suave">
-            <li>Guardamos só o necessário para o serviço funcionar, no Brasil.</li>
-            <li>Não vendemos dados nem usamos cookies de publicidade.</li>
-            <li>A IA que dá a nota aos leads nunca recebe nome, e-mail ou telefone.</li>
-            <li>
-              Você pode pedir acesso, correção ou eliminação dos seus dados a qualquer momento.
-            </li>
-          </ul>
-        </section>
-
-        <nav aria-labelledby="sumario">
-          <h2 id="sumario" className="text-lg font-semibold">
-            Nesta página
-          </h2>
-          <ol className="mt-3 flex list-decimal flex-col gap-1.5 pl-5 marker:text-texto-suave">
-            {SECOES.map((secao) => (
-              <li key={secao.id}>
-                <a href={`#${secao.id}`} className={LINK}>
-                  {secao.titulo}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-
-        {SECOES.map((secao, indice) => (
-          <section key={secao.id} aria-labelledby={secao.id} className="flex flex-col gap-3">
-            <h2 id={secao.id} className="scroll-mt-6 text-xl font-semibold text-balance">
-              {indice + 1}. {secao.titulo}
+    <>
+      <PularParaOConteudo />
+      {/* Abertura escura e quente, como nas demais páginas públicas (D-033). */}
+      <div
+        data-tema="escuro"
+        className="relative isolate overflow-hidden bg-(image:--fundo-publico)"
+      >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-[-10%] -bottom-48 -z-10 h-64 rounded-[50%] bg-(image:--brasa-ao-fundo)"
+        />
+        <div className="mx-auto flex w-full max-w-prose flex-col gap-8 px-4 pt-8 pb-14 sm:px-0">
+          <Link href="/" aria-label="Brasa, página inicial" className="self-start rounded-md">
+            <Logo decorativo className="h-8 w-auto" />
+          </Link>
+          <header className="flex flex-col gap-2">
+            <h1 className="text-4xl leading-tight font-extrabold tracking-[-0.02em] text-balance">
+              Política de privacidade
+            </h1>
+            <p className="text-sm text-texto-suave">Atualizada em {ATUALIZADA_EM}.</p>
+          </header>
+        </div>
+      </div>
+      <main
+        id="conteudo"
+        tabIndex={-1}
+        className="flex flex-1 flex-col px-4 py-10 outline-none sm:px-6 sm:py-14"
+      >
+        <article className="mx-auto flex w-full max-w-prose flex-col gap-8 leading-relaxed">
+          <section
+            aria-labelledby="resumo"
+            className="rounded-lg border border-borda bg-superficie p-5 sm:p-6"
+          >
+            <h2 id="resumo" className="text-lg font-semibold">
+              Em resumo
             </h2>
-            {secao.conteudo}
+            <ul className="mt-3 flex list-disc flex-col gap-2 pl-5 marker:text-texto-suave">
+              <li>Guardamos só o necessário para o serviço funcionar, no Brasil.</li>
+              <li>Não vendemos dados nem usamos cookies de publicidade.</li>
+              <li>A IA que dá a nota aos leads nunca recebe nome, e-mail ou telefone.</li>
+              <li>
+                Você pode pedir acesso, correção ou eliminação dos seus dados a qualquer momento.
+              </li>
+            </ul>
           </section>
-        ))}
 
-        <footer className="border-t border-borda pt-6">
-          <Link href="/" className={`inline-flex items-center gap-2 ${LINK}`}>
+          <nav aria-labelledby="sumario">
+            <h2 id="sumario" className="text-lg font-semibold">
+              Nesta página
+            </h2>
+            <ol className="mt-3 flex list-decimal flex-col gap-1.5 pl-5 marker:text-texto-suave">
+              {SECOES.map((secao) => (
+                <li key={secao.id}>
+                  <a href={`#${secao.id}`} className={LINK}>
+                    {secao.titulo}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+
+          {SECOES.map((secao, indice) => (
+            <section key={secao.id} aria-labelledby={secao.id} className="flex flex-col gap-3">
+              <h2 id={secao.id} className="scroll-mt-6 text-xl font-semibold text-balance">
+                {indice + 1}. {secao.titulo}
+              </h2>
+              {secao.conteudo}
+            </section>
+          ))}
+
+          <Link href="/" className={`inline-flex items-center gap-2 self-start ${LINK}`}>
             <ArrowLeft aria-hidden="true" className="size-4" />
             Voltar para o início
           </Link>
-        </footer>
-      </article>
-    </main>
+        </article>
+      </main>
+      <RodapePublico logado={false} />
+    </>
   );
 }

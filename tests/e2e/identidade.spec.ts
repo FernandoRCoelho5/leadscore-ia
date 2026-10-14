@@ -20,7 +20,10 @@ async function coresDaPagina(pagina: Page) {
 test("a página inicial apresenta a marca de forma acessível", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("img", { name: "Brasa" })).toBeVisible();
+  // O logotipo leva ao início; o nome acessível fica no link.
+  const marca = page.getByRole("link", { name: "Brasa, página inicial" });
+  await expect(marca).toBeVisible();
+  await expect(marca.locator("svg")).toBeVisible();
   await expect(
     page.getByRole("heading", { level: 1, name: "Seus leads mais quentes, primeiro." }),
   ).toBeVisible();

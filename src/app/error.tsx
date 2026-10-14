@@ -12,7 +12,7 @@ export default function Erro({
 }) {
   return (
     <main id="conteudo" className="flex flex-1 flex-col">
-      <TelaDeErro codigo={error.digest} aoTentarDeNovo={retry} />
+      <TelaDeErro codigo={error.digest} aoTentarDeNovo={retry} comLogo />
     </main>
   );
 }
