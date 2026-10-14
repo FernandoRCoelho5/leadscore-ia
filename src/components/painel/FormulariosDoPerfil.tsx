@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { z } from "zod";
 
 import { salvarNomeAcao } from "@/app/(painel)/perfil/acoes";
 import { Alerta, ResumoDeErros } from "@/components/ui/Avisos";
@@ -11,9 +10,11 @@ import { CampoSenha } from "@/components/ui/CampoSenha";
 import { useFormulario } from "@/components/ui/useFormulario";
 import { authCliente } from "@/lib/auth/cliente";
 import { mensagemDoErroDeAutenticacao } from "@/lib/auth/erros";
-import { SENHA_MINIMO, esquemaNome, esquemaTrocaDeSenha } from "@/lib/validacao/auth";
+import { SENHA_MINIMO } from "@/lib/validacao/regras";
 
-const esquemaDoNome = z.object({ nome: esquemaNome });
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaDoNome = () => import("@/lib/validacao/auth").then((m) => m.esquemaDoNome);
+const esquemaTrocaDeSenha = () => import("@/lib/validacao/auth").then((m) => m.esquemaTrocaDeSenha);
 
 export function FormularioNome({ nome }: { nome: string }) {
   const { aoEnviar, erros, erroGeral, pendente, sucesso, refResumo } = useFormulario({

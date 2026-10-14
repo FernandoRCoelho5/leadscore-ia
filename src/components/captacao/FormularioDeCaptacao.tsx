@@ -9,13 +9,10 @@ import { AreaDeTexto, CaixaDeMarcacao, CampoTexto, Selecao } from "@/components/
 import { useFormulario, type ResultadoDoEnvio } from "@/components/ui/useFormulario";
 import type { DetalheDeCampo } from "@/lib/erros";
 import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
-import {
-  CAMPO_ARMADILHA,
-  CAMPO_CARIMBO,
-  MENSAGEM_MAXIMO,
-  SEGMENTOS,
-  esquemaLeadPublico,
-} from "@/lib/validacao/lead";
+import { CAMPO_ARMADILHA, CAMPO_CARIMBO, MENSAGEM_MAXIMO, SEGMENTOS } from "@/lib/validacao/regras";
+
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaLeadPublico = () => import("@/lib/validacao/lead").then((m) => m.esquemaLeadPublico);
 
 type Props = {
   slug: string;

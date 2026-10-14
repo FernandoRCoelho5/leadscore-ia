@@ -1,12 +1,13 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 /**
  * Validações dos formulários de conta. As mesmas regras rodam no navegador
  * (resposta imediata) e no servidor (a validação que vale).
  */
 
-export const SENHA_MINIMO = 10;
-export const SENHA_MAXIMO = 128;
+import { SENHA_MAXIMO, SENHA_MINIMO } from "./regras";
+
+export { SENHA_MAXIMO, SENHA_MINIMO };
 
 const email = z
   .string()
@@ -83,3 +84,6 @@ export function destinoSeguro(proximo: string | null | undefined): string {
 
 /** E-mail como o banco guarda (no máximo 254 caracteres). */
 export const esquemaEmail = email;
+
+/** Formulário "Seu nome" do perfil. */
+export const esquemaDoNome = z.object({ nome: esquemaNome });

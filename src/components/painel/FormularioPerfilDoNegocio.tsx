@@ -4,9 +4,12 @@ import { salvarPerfilDoNegocioAcao } from "@/app/(painel)/configuracoes/acoes";
 import { Alerta, ResumoDeErros } from "@/components/ui/Avisos";
 import { Botao } from "@/components/ui/Botao";
 import { useFormulario } from "@/components/ui/useFormulario";
-import { esquemaPerfilDoNegocio } from "@/lib/validacao/empresa";
 
 import { CamposDoPerfilDoNegocio } from "./CamposDoPerfilDoNegocio";
+
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaPerfilDoNegocio = () =>
+  import("@/lib/validacao/empresa").then((m) => m.esquemaPerfilDoNegocio);
 
 type Valores = Parameters<typeof CamposDoPerfilDoNegocio>[0]["valores"];
 

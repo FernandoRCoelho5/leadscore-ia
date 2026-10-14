@@ -8,14 +8,17 @@ import { ResumoDeErros } from "@/components/ui/Avisos";
 import { Botao } from "@/components/ui/Botao";
 import { CampoTexto } from "@/components/ui/Campo";
 import { IndicadorDeEtapas } from "@/components/ui/IndicadorDeEtapas";
-import { useFormulario } from "@/components/ui/useFormulario";
-import { SLUG_MAXIMO, esquemaOnboarding, gerarSlug } from "@/lib/validacao/empresa";
+import { obterEsquema, useFormulario } from "@/components/ui/useFormulario";
+import { SLUG_MAXIMO, gerarSlug } from "@/lib/validacao/regras";
 
 import { CamposDoPerfilDoNegocio } from "./CamposDoPerfilDoNegocio";
 
 const ETAPAS = ["Conta criada", "Sua empresa", "Perfil do negócio"] as const;
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaOnboarding = () => import("@/lib/validacao/empresa").then((m) => m.esquemaOnboarding);
 /** Campos do passo "Sua empresa", validados antes de seguir. */
-const esquemaDaEmpresa = esquemaOnboarding.pick({ nomeEmpresa: true, slug: true });
+const esquemaDaEmpresa = () =>
+  import("@/lib/validacao/empresa").then((m) => m.esquemaDaEmpresaNoOnboarding);
 const CAMPOS_DA_EMPRESA = ["nomeEmpresa", "slug"];
 
 /**
@@ -58,13 +61,22 @@ export function FormularioOnboarding({ urlBase }: { urlBase: string }) {
     refTitulo.current?.focus();
   }, [etapa]);
 
-  function continuar() {
+  async function continuar() {
     const formulario = refFormulario.current;
     if (!formulario) {
       return;
     }
     const dados = new FormData(formulario);
-    const validacao = esquemaDaEmpresa.safeParse({
+    let validador;
+    try {
+      validador = await obterEsquema(esquemaDaEmpresa);
+    } catch {
+      // Sem rede para baixar a validação: segue, e o envio final (que o
+      // servidor valida) devolve ao passo da empresa se algo estiver errado.
+      setEtapa(2);
+      return;
+    }
+    const validacao = validador.safeParse({
       nomeEmpresa: String(dados.get("nomeEmpresa") ?? ""),
       slug: String(dados.get("slug") ?? ""),
     });
@@ -88,7 +100,7 @@ export function FormularioOnboarding({ urlBase }: { urlBase: string }) {
   function aoTeclar(evento: KeyboardEvent<HTMLFormElement>) {
     if (etapa === 1 && evento.key === "Enter" && evento.target instanceof HTMLInputElement) {
       evento.preventDefault();
-      continuar();
+      void continuar();
     }
   }
 
