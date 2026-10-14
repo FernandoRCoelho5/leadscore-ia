@@ -1133,6 +1133,68 @@ não reprova mais o CI; a revisão dos alertas passa a ser manual (rodar
 `npm audit` ao atualizar dependências). Reavaliar quando o `braces` ou o
 `fast-glob` publicarem correção, e voltar a barrar altas em tudo.
 
+## D-033 · Direção visual "Brasa viva" para a reformulação do front-end
+
+**Contexto.** O produto vai ser vendido a pequenas e médias empresas e
+precisa de uma identidade marcante. O diagnóstico de 13/10/2026 mostrou base
+técnica boa (acessibilidade 100 no Lighthouse, tokens com contraste testado),
+mas pouca personalidade: a marca vivia no logotipo e nos badges, sem
+movimento e com hierarquia plana. Foram apresentadas três direções dentro da
+identidade: "Carvão" (Linear e Vercel), "Gradiente térmico" (Stripe) e
+"Brasa viva" (híbrida).
+
+**Decisão.** Adotar a "Brasa viva" (`docs/identidade-visual.md`, seção 12):
+
+- **Área logada sóbria**, com movimento sutil e o calor só onde tem
+  significado (lead quente, nota da IA).
+- **Páginas públicas expressivas**: seção principal da landing sempre escura
+  e quente, com faíscas e o gradiente térmico.
+- **Escala térmica como linguagem**: brilho no lead quente, nota como
+  termômetro, carregamento "quente"; cor nunca sozinha.
+- **Sora como única fonte**; a fonte mono para números foi descartada.
+- Paleta, logotipo e contrastes existentes continuam; os tokens novos
+  (`escala-termica`, `brilho-quente`, `trilho`, `fundo-publico`) entram na
+  Etapa 2 com teste de contraste.
+
+**Alternativas.** "Carvão": a mais leve e técnica, mas fria no tema claro,
+que é o padrão do produto. "Gradiente térmico": a mais memorável, mas cansa
+no uso diário do painel e pesa mais no celular.
+
+**Consequências.** Duas "vozes" (logada e pública) a manter consistentes,
+com tokens separados por área. A seção principal da landing não segue o tema
+claro, por escolha.
+
+## D-034 · Movimento com CSS e View Transitions, sem biblioteca
+
+**Contexto.** A reformulação pede animações que transmitam qualidade sem
+prejudicar desempenho nem acessibilidade. No celular, o LCP já está entre 2,6
+e 3,1 s, e o maior elemento é sempre texto. A CSP com nonce e
+`strict-dynamic` (D-016) só aceita scripts do próprio pacote, e a maioria das
+telas são Server Components.
+
+**Decisão.**
+
+- **CSS** para microinterações, entradas, destaques e esqueletos, com tokens
+  centralizados (`--mov-*`, `--curva-*`, `--escalonar`;
+  `docs/identidade-visual.md`, seção 13).
+- **`<ViewTransition>` do React**, que já vem no Next 16 sem configuração,
+  para troca de tela, revelação de conteúdo carregado e elementos
+  compartilhados. Sem suporte do navegador, a tela só não anima.
+- **Canvas próprio** (cerca de 2 KB) para as faíscas da landing, carregado
+  depois do conteúdo, pausado fora da tela e desligado com movimento reduzido.
+- Animar só `transform` e `opacity`; o texto principal nunca entra
+  escondido; versão sem deslocamento para `prefers-reduced-motion`.
+
+**Alternativas.** Motion (MIT): cerca de 34 KB gzip com o componente
+completo, exige componentes de cliente em cada parte animada. GSAP: cerca de
+25 KB gzip no núcleo, licença própria (não é código aberto) e API imperativa.
+As duas aumentariam o JavaScript no celular para efeitos que o CSS e o
+navegador já fazem.
+
+**Consequências.** Nenhuma dependência nova. Molas reais ficam limitadas a
+`linear()`; coreografias longas por rolagem ficam fora do escopo. O
+Lighthouse antes e depois (Etapa 5) usa o mesmo método do diagnóstico.
+
 ## D-035 · Catálogo de componentes para a equipe
 
 **Contexto.** A reformulação do front-end (D-033, D-034) cria componentes
