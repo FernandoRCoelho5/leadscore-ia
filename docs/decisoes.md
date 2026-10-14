@@ -1159,6 +1159,54 @@ página nos dois temas e nas larguras de 360 a 1280 px.
 
 ---
 
+## D-036 · Visão geral nos últimos 30 dias e quentes sem resposta
+
+**Contexto.** A visão geral contava os leads do mês do calendário. No dia 1,
+a tela ficava zerada justamente quando o cliente abre o painel para saber
+como vai. Além disso, ela não dizia o que fazer agora: os quentes ainda sem
+resposta se perdiam no meio dos números.
+
+**Decisão.** Os leads e a classificação passam a contar os últimos 30 dias,
+de meia-noite de 29 dias atrás até agora, no fuso de São Paulo
+(`inicioDosUltimosDias`). As análises da IA continuam no mês do calendário,
+porque é nele que o limite do plano zera (`uso_mensal`); o rótulo diz o mês
+("Análises da IA em outubro"). Uma contagem nova, só de leitura, entra na
+mesma consulta (`COUNT ... FILTER`): quentes com andamento "Novo", de
+qualquer data. Quando há algum, a visão geral mostra o destaque "N leads
+quentes esperando resposta", com o link para a lista já filtrada.
+
+**Alternativas.** Manter o mês: simples, mas zera a tela todo começo de mês.
+Deixar a pessoa escolher o período: mais um controle numa tela que precisa
+ser lida num relance; pode vir depois, sem mudar a consulta.
+
+**Consequências.** Nenhuma mudança no banco nem consulta nova: um filtro a
+mais na contagem que já existia. A lista de empresas da administração segue
+com "Leads no mês", que acompanha o consumo do plano.
+
+## D-037 · Menu lateral recolhido guardado num cookie do navegador
+
+**Contexto.** No computador, o menu lateral pode ser recolhido até ficar só
+com os ícones. A escolha precisa valer na próxima visita e chegar do servidor
+já aplicada, sem o menu "pular" de largura ao carregar.
+
+**Decisão.** Cookie `menu=recolhido`, lido no servidor (`lerMenuRecolhido`:
+qualquer outro valor vale como aberto), como o tema. Diferente do tema, ele
+é gravado pelo próprio navegador (`document.cookie`, `SameSite=Lax`,
+`Secure` em HTTPS), sem `HttpOnly`: é só uma preferência visual, e gravar
+pelo servidor faria uma Server Action recarregar os dados da página a cada
+clique.
+
+**Alternativas.** Server Action como no tema: cookie `HttpOnly`, mas uma ida
+ao servidor por clique. `localStorage`: o servidor não leria, e o menu
+apareceria aberto e depois fecharia.
+
+**Consequências.** O cookie não carrega nada sensível e é validado ao ler;
+um valor forjado no máximo deixa o menu aberto. O botão diz o que vai fazer
+("Recolher menu", "Expandir menu"), e os nomes dos itens continuam no link
+para leitores de tela.
+
+---
+
 ## Fontes consultadas (24/09/2026)
 
 - [Preços do Clerk](https://clerk.com/pricing)
