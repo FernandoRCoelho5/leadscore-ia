@@ -17,6 +17,7 @@ import { Dialogo } from "@/components/ui/Dialogo";
 import { Carregando, EsqueletoDeIndicadores, EsqueletoDeLista } from "@/components/ui/Esqueleto";
 import { NumeroAnimado } from "@/components/ui/NumeroAnimado";
 import { Linha, Tabela, Td, Th } from "@/components/ui/Tabela";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import type { Classificacao } from "@/db/schema";
 import { exigirPermissao } from "@/server/auth/sessao";
 
@@ -42,7 +43,7 @@ export default async function PaginaComponentes() {
   await exigirPermissao("catalogo:ver");
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Componentes"
         descricao="Componentes base da Brasa nos temas claro e escuro. Exemplos fixos: nada aqui lê ou grava dados."
@@ -275,6 +276,6 @@ export default async function PaginaComponentes() {
           )}
         </Amostra>
       </Vitrine>
-    </>
+    </ConteudoQueChega>
   );
 }

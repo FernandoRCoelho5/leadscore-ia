@@ -9,6 +9,7 @@ import { LinkDeExportacao } from "@/components/painel/LinkDeExportacao";
 import { Paginacao } from "@/components/painel/Paginacao";
 import { EstadoVazio } from "@/components/ui/Avisos";
 import { classesDeBotao } from "@/components/ui/Botao";
+import { ConteudoQueChega } from "@/components/ui/Revelacao";
 import { db } from "@/db";
 import {
   esquemaFiltrosDeUsuarios,
@@ -44,7 +45,7 @@ export default async function PaginaUsuarios({ searchParams }: PageProps<"/admin
   const temFiltro = Boolean(filtros.busca || filtros.papel || filtros.situacao);
 
   return (
-    <>
+    <ConteudoQueChega>
       <Cabecalho
         titulo="Usuários"
         descricao="Equipe Brasa e usuários das empresas clientes."
@@ -94,6 +95,6 @@ export default async function PaginaUsuarios({ searchParams }: PageProps<"/admin
           />
         </>
       )}
-    </>
+    </ConteudoQueChega>
   );
 }
