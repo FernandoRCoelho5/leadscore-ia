@@ -72,7 +72,7 @@ ideia para todo lado:
 | Movimento reduzido | Todas as animações param; conferido em todas as telas (nenhuma animação rodando, nenhum quadro no canvas) |
 | Responsividade | Telas conferidas de 320 a 1366 px, sem rolagem lateral |
 | Segurança (OWASP) | CSP sem `unsafe-eval` e sem violações (teste novo nos formulários), 404 para quem não pode ver, cookie do menu validado ao ler |
-| Funcionalidades | 594 testes unitários e de integração e os E2E com banco no CI |
+| Funcionalidades | 599 testes unitários e de integração e os E2E com banco no CI |
 
 ## 5. Lighthouse: Etapa 0 e agora
 
