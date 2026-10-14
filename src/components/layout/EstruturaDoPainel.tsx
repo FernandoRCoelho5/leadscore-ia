@@ -24,12 +24,15 @@ import type { ReactNode } from "react";
 import { definirEmpresaAtivaAcao, definirTemaAcao, sairAcao, sairDaEmpresaAcao } from "@/app/acoes";
 import { Logo } from "@/components/marca/Logo";
 import { Avatar } from "@/components/ui/Avisos";
+import { ProvedorDeToasts } from "@/components/ui/Toasts";
+import { COOKIE_DO_MENU, lerMenuRecolhido } from "@/lib/menu";
 import { CAMINHO_DA_POLITICA } from "@/lib/privacidade";
 import { COOKIE_DO_TEMA, lerTema, type Tema } from "@/lib/tema";
 import { pode, type Acao, type Papel } from "@/server/auth/permissoes";
 import type { Sessao } from "@/server/auth/sessao";
 
 import { LinkDoMenu, LinkQueFechaPopover } from "./Links";
+import { MenuLateral } from "./MenuLateral";
 
 /**
  * Estrutura da área logada: menu lateral à esquerda (fixo no desktop, em
@@ -130,10 +133,16 @@ function itensVisiveis(sessao: Sessao) {
 function MenuDeNavegacao({ sessao, emGaveta = false }: { sessao: Sessao; emGaveta?: boolean }) {
   return (
     <>
-      <div className="flex h-16 shrink-0 items-center justify-between px-5">
+      <div className="flex h-16 shrink-0 items-center justify-between px-5 group-data-[recolhido=true]/menu:justify-center group-data-[recolhido=true]/menu:px-0">
         <LinkQueFechaPopover href="/painel" className="rounded-md">
           <span className="sr-only">Brasa, visão geral</span>
-          <Logo decorativo className="h-7 w-auto" />
+          {/* Recolhido, o menu só tem espaço para o símbolo. */}
+          <Logo decorativo className="h-7 w-auto group-data-[recolhido=true]/menu:hidden" />
+          <Logo
+            variante="simbolo"
+            decorativo
+            className="hidden size-7 group-data-[recolhido=true]/menu:block"
+          />
         </LinkQueFechaPopover>
         {emGaveta && (
           <button
@@ -147,18 +156,26 @@ function MenuDeNavegacao({ sessao, emGaveta = false }: { sessao: Sessao; emGavet
           </button>
         )}
       </div>
-      <nav aria-label="Principal" className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
+      {/* Recolhido, a rolagem fica desligada para as dicas poderem sair do menu. */}
+      <nav
+        aria-label="Principal"
+        className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4 group-data-[recolhido=true]/menu:overflow-visible"
+      >
         {itensVisiveis(sessao).map((grupo) => (
-          <div key={grupo.titulo ?? "principal"} className="flex flex-col gap-1">
+          <div
+            key={grupo.titulo ?? "principal"}
+            className="flex flex-col gap-1 group-data-[recolhido=true]/menu:not-first:border-t group-data-[recolhido=true]/menu:not-first:border-borda group-data-[recolhido=true]/menu:not-first:pt-6"
+          >
             {grupo.titulo && (
-              <h2 className="px-3 pb-1 text-xs font-semibold tracking-wide text-texto-suave uppercase">
+              // Recolhido, o título vira uma linha divisória (e segue para leitores de tela).
+              <h2 className="px-3 pb-1 text-xs font-semibold tracking-wide text-texto-suave uppercase group-data-[recolhido=true]/menu:sr-only">
                 {grupo.titulo}
               </h2>
             )}
             <ul className="flex flex-col gap-1">
               {grupo.itens.map((item) => (
                 <li key={item.href}>
-                  <LinkDoMenu href={item.href} icone={item.icone}>
+                  <LinkDoMenu href={item.href} icone={item.icone} indicadorAnimado={!emGaveta}>
                     {item.rotulo}
                   </LinkDoMenu>
                 </li>
@@ -311,7 +328,14 @@ function EmpresaAtiva({ sessao }: { sessao: Sessao }) {
   );
 }
 
-export function EstruturaDoPainel({ sessao, children }: { sessao: Sessao; children: ReactNode }) {
+export async function EstruturaDoPainel({
+  sessao,
+  children,
+}: {
+  sessao: Sessao;
+  children: ReactNode;
+}) {
+  const menuRecolhido = lerMenuRecolhido((await cookies()).get(COOKIE_DO_MENU)?.value);
   return (
     <div className="flex flex-1">
       <a
@@ -321,9 +345,9 @@ export function EstruturaDoPainel({ sessao, children }: { sessao: Sessao; childr
         Pular para o conteúdo
       </a>
 
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-borda bg-superficie lg:flex">
+      <MenuLateral recolhidoInicial={menuRecolhido}>
         <MenuDeNavegacao sessao={sessao} />
-      </aside>
+      </MenuLateral>
 
       {/* Menu em gaveta no celular (popover nativo: fecha com Esc ou tocando fora). */}
       <div
@@ -358,7 +382,9 @@ export function EstruturaDoPainel({ sessao, children }: { sessao: Sessao; childr
         </header>
 
         <main id="conteudo" tabIndex={-1} className="flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
+          <div className="mx-auto w-full max-w-6xl">
+            <ProvedorDeToasts>{children}</ProvedorDeToasts>
+          </div>
         </main>
       </div>
     </div>

@@ -27,6 +27,9 @@ const cabecalhosDeSeguranca = [
 const nextConfig: NextConfig = {
   // Não anuncia "X-Powered-By: Next.js" (menos informação para quem ataca).
   poweredByHeader: false,
+  // Só em desenvolvimento: no canto esquerdo, o indicador cobria o botão de
+  // recolher o menu lateral.
+  devIndicators: { position: "bottom-right" },
   experimental: {
     serverActions: {
       // Padrão: 1 MB. A foto de perfil aceita até 2 MB (FOTO_TAMANHO_MAXIMO);
