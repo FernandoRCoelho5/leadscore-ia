@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, useTransition, type ChangeEvent } from "re
 
 import { enviarFotoAcao, removerFotoAcao } from "@/app/(painel)/perfil/acoes";
 import { Alerta, Avatar } from "@/components/ui/Avisos";
-import { Botao, classesDeBotao } from "@/components/ui/Botao";
+import { classesDeBotao } from "@/components/ui/Botao";
+import { DialogoDeConfirmacao } from "@/components/ui/DialogoDeConfirmacao";
 import {
   BYTES_DA_ASSINATURA,
   FOTO_LADO_MAXIMO,
@@ -16,7 +17,6 @@ import {
 
 /** Maior arquivo aceito ANTES do ajuste no navegador (fotos de celular têm de 3 a 8 MB). */
 const ORIGINAL_MAXIMO = 20 * 1024 * 1024;
-const ID_CONFIRMACAO = "confirmar-remocao-da-foto";
 
 /**
  * Reduz a foto para no máximo 512 px e a regrava (WebP, ou JPEG se o navegador
@@ -71,7 +71,6 @@ async function problemaNoArquivo(arquivo: File): Promise<string | null> {
  */
 export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: string | null }) {
   const refEntrada = useRef<HTMLInputElement>(null);
-  const refConfirmacao = useRef<HTMLDivElement>(null);
   const [previa, setPrevia] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -123,19 +122,26 @@ export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: strin
     });
   }
 
-  function remover() {
+  /**
+   * Fecha a confirmação nos dois casos (devolve `true`): o erro aparece no
+   * formulário, e não escondido atrás da janela.
+   */
+  function remover(): Promise<boolean> {
     setErro(null);
     setAviso(null);
-    iniciar(async () => {
-      const resultado = await removerFotoAcao();
-      refConfirmacao.current?.hidePopover();
-      if (resultado.ok) {
-        setAviso("Foto removida.");
-        // O botão "Remover foto" some: o foco volta para a escolha de arquivo.
-        refEntrada.current?.focus();
-      } else {
-        setErro(resultado.erro.mensagem);
-      }
+    return new Promise((resolver) => {
+      iniciar(async () => {
+        const resultado = await removerFotoAcao();
+        if (resultado.ok) {
+          setAviso("Foto removida.");
+          // Ao fechar, a janela devolve o foco a "Remover foto", que some com a
+          // foto: depois disso, o foco vai para a escolha de arquivo.
+          setTimeout(() => refEntrada.current?.focus(), 0);
+        } else {
+          setErro(resultado.erro.mensagem);
+        }
+        resolver(true);
+      });
     });
   }
 
@@ -179,15 +185,20 @@ export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: strin
             {fotoUrl ? "Trocar foto" : "Escolher foto"}
           </label>
           {fotoUrl && (
-            <button
-              type="button"
-              popoverTarget={ID_CONFIRMACAO}
-              disabled={pendente}
-              className={classesDeBotao("fantasma")}
+            <DialogoDeConfirmacao
+              rotuloDoGatilho="Remover foto"
+              iconeDoGatilho={<Trash2 aria-hidden="true" className="size-4" />}
+              gatilhoCompacto
+              titulo="Remover a sua foto?"
+              rotuloDeConfirmar="Remover foto"
+              pendente={pendente}
+              aoConfirmar={remover}
             >
-              <Trash2 aria-hidden="true" className="size-4" />
-              Remover foto
-            </button>
+              <p>
+                As suas iniciais voltam a aparecer no lugar dela. Você pode enviar outra quando
+                quiser.
+              </p>
+            </DialogoDeConfirmacao>
           )}
         </div>
 
@@ -203,35 +214,6 @@ export function FormularioFoto({ nome, fotoUrl }: { nome: string; fotoUrl: strin
           </p>
         )}
         {aviso && <Alerta tipo="sucesso">{aviso}</Alerta>}
-      </div>
-
-      <div
-        ref={refConfirmacao}
-        id={ID_CONFIRMACAO}
-        popover="auto"
-        role="dialog"
-        aria-labelledby="titulo-remover-foto"
-        className="surgir m-auto w-[min(24rem,calc(100vw-2rem))] rounded-lg border border-borda bg-superficie p-5 text-texto shadow-lg backdrop:bg-carvao-950/50"
-      >
-        <p id="titulo-remover-foto" className="font-semibold">
-          Remover a sua foto?
-        </p>
-        <p className="mt-1 text-sm text-texto-suave">
-          As suas iniciais voltam a aparecer no lugar dela. Você pode enviar outra quando quiser.
-        </p>
-        <div className="mt-4 flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            popoverTarget={ID_CONFIRMACAO}
-            popoverTargetAction="hide"
-            className={classesDeBotao("contorno")}
-          >
-            Cancelar
-          </button>
-          <Botao variante="destrutivo" onClick={remover} carregando={pendente}>
-            Remover foto
-          </Botao>
-        </div>
       </div>
     </div>
   );

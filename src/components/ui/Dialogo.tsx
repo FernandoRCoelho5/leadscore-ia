@@ -6,6 +6,17 @@ import { useId, useRef, type ReactNode } from "react";
 import { classesDeBotao } from "./Botao";
 
 /**
+ * Moldura das janelas modais, igual em todo o produto: `padrao` para
+ * formulários (ex.: Gerenciar empresa) e `estreita` para confirmações. Surge
+ * e some com `.surgir`; o véu (`--veu`) escurece a página atrás.
+ */
+export function classesDaJanela(largura: "padrao" | "estreita"): string {
+  const maxima =
+    largura === "padrao" ? "w-[min(32rem,calc(100%-2rem))]" : "w-[min(28rem,calc(100%-2rem))]";
+  return `surgir m-auto ${maxima} rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-veu`;
+}
+
+/**
  * Janela modal com o <dialog> nativo: prende o foco, fecha com Esc ou no X e
  * devolve o foco ao botão que a abriu. Para ações destrutivas, use
  * `DialogoDeConfirmacao`.
@@ -52,7 +63,7 @@ export function Dialogo({
         ref={refDialogo}
         aria-labelledby={idDoTitulo}
         onClose={aoFechar}
-        className="surgir m-auto w-[min(32rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-carvao-950/50"
+        className={classesDaJanela("padrao")}
       >
         <div className="flex items-start justify-between gap-4 border-b border-borda px-6 py-4">
           <div className="min-w-0">

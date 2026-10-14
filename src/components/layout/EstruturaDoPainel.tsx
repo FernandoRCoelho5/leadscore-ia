@@ -354,7 +354,7 @@ export async function EstruturaDoPainel({
         id="menu-movel"
         popover="auto"
         aria-label="Menu"
-        className="gaveta inset-y-0 right-auto left-0 m-0 h-dvh max-h-none w-72 max-w-[85vw] flex-col border-0 border-r border-borda bg-superficie p-0 text-texto backdrop:bg-carvao-950/50 [&:popover-open]:flex"
+        className="gaveta inset-y-0 right-auto left-0 m-0 h-dvh max-h-none w-72 max-w-[85vw] flex-col border-0 border-r border-borda bg-superficie p-0 text-texto backdrop:bg-veu [&:popover-open]:flex"
       >
         <MenuDeNavegacao sessao={sessao} emGaveta />
       </div>

@@ -278,6 +278,7 @@
   --color-frio-icone: var(--frio-icone);
   --color-frio-grafico: var(--frio-grafico);
   --color-trilho: var(--trilho);
+  --color-veu: var(--veu);
 }
 
 /*
@@ -329,6 +330,8 @@
     --frio-icone: var(--color-gelo-600);
     --frio-grafico: var(--color-gelo-600);
     --trilho: var(--color-carvao-100);
+    /* Véu atrás de modais e da gaveta do menu: escurece a página para isolar o que está por cima. */
+    --veu: color-mix(in oklab, var(--color-carvao-950) 50%, transparent);
     --escala-termica: linear-gradient(
       90deg,
       var(--color-gelo-500),
@@ -379,6 +382,7 @@
     --frio-icone: var(--color-gelo-300);
     --frio-grafico: var(--color-gelo-400);
     --trilho: var(--color-carvao-800);
+    --veu: color-mix(in oklab, var(--color-black) 70%, transparent);
     --escala-termica: linear-gradient(
       90deg,
       var(--color-gelo-400),
@@ -430,6 +434,7 @@
       --frio-icone: var(--color-gelo-300);
       --frio-grafico: var(--color-gelo-400);
       --trilho: var(--color-carvao-800);
+      --veu: color-mix(in oklab, var(--color-black) 70%, transparent);
       --escala-termica: linear-gradient(
         90deg,
         var(--color-gelo-400),
