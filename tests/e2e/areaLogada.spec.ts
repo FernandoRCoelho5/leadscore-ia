@@ -86,7 +86,8 @@ test("detalhe: copiar a resposta avisa num toast, e o lead volta para Novo", asy
   await expect(page.getByText("Andamento atualizado.")).toBeVisible();
   await etapa.selectOption({ label: "Novo" });
   await page.getByRole("button", { name: "Salvar andamento" }).click();
-  await expect(page.getByText("Andamento atualizado.").first()).toBeVisible();
+  // O primeiro aviso ainda está na tela: espera o segundo, do novo salvamento.
+  await expect(page.getByText("Andamento atualizado.")).toHaveCount(2);
 
   const [lead] = await consultar<{ status: string }>("SELECT status FROM leads WHERE id = $1", [
     id,

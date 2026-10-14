@@ -118,6 +118,17 @@ const NIVEIS_DA_WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
  * passou.
  */
 export async function violacoesDoAxe(page: Page): Promise<string[]> {
+  // Mede a tela parada: no meio de uma entrada (opacidade subindo), o
+  // contraste ainda não é o final. As animações de ambiente (infinitas) não
+  // contam.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animacao) =>
+          animacao.playState !== "running" || animacao.effect?.getTiming().iterations === Infinity,
+      ),
+  );
   const { violations } = await new AxeBuilder({ page }).withTags(NIVEIS_DA_WCAG).analyze();
   return violations.map((violacao) => {
     const alvos = violacao.nodes

@@ -64,7 +64,10 @@ test("menu lateral, menu da conta e recolher o menu, só pelo teclado", async ({
   await expect(page.locator("#menu-da-conta")).toBeHidden();
   expect((await focoAtual(page)).nome).toMatch(/Abrir o menu da conta/);
 
-  // Recolher e expandir: o foco fica no botão, que diz o que vai fazer.
+  // Recolher e expandir: o foco fica no botão, que diz o que vai fazer. O
+  // botão fica no fim do menu lateral, que vem antes do cabeçalho na página:
+  // o percurso recomeça do topo.
+  await page.goto("/leads");
   await tabAte(page, /Recolher menu/);
   await page.keyboard.press("Enter");
   await expect(page.locator("aside[data-recolhido=true]")).toBeAttached();
@@ -87,13 +90,19 @@ test("detalhe do lead: copiar e o diálogo de exclusão, só pelo teclado", asyn
   await page.keyboard.press("Enter");
   await expect(page.getByText("Resposta copiada.", { exact: false })).toBeVisible();
 
-  // Diálogo: o foco entra, não escapa com Tab, e Esc fecha devolvendo o foco.
+  // Diálogo: o foco entra e não volta para a página por trás (que fica inerte).
+  // Depois do último botão, o navegador leva o foco à barra de endereço, e não
+  // à página: é o padrão do <dialog> modal, sem prender o teclado de vez.
   await tabAte(page, /^Excluir lead$/);
   await page.keyboard.press("Enter");
   const dialogo = page.getByRole("dialog", { name: "Excluir este lead?" });
   await expect(dialogo).toBeVisible();
   for (let vez = 0; vez < 4; vez += 1) {
-    expect((await focoAtual(page)).dentro).toBe("dialogo");
+    const foco = await focoAtual(page);
+    expect(
+      foco.dentro === "dialogo" || foco.nome === "",
+      `foco fora do diálogo: "${foco.nome}"`,
+    ).toBe(true);
     await page.keyboard.press("Tab");
   }
   await page.keyboard.press("Escape");
