@@ -1,8 +1,10 @@
 import { CircleAlert, CircleDashed, Flame, Snowflake, Thermometer } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { Classificacao, StatusLead } from "@/db/schema";
 import { ROTULO_DO_STATUS, STATUS_DO_LEAD } from "@/lib/rotulos";
+
+import { NumeroAnimado } from "../ui/NumeroAnimado";
 
 /**
  * Indicadores da visão geral, só com HTML e CSS (D-029, skill dataviz):
@@ -11,7 +13,14 @@ import { ROTULO_DO_STATUS, STATUS_DO_LEAD } from "@/lib/rotulos";
  *   percentual sempre escritos: a leitura nunca depende só da cor;
  * - as cores térmicas (`*-grafico`) marcam só a classificação; o andamento
  *   usa uma cor neutra única.
+ *
+ * Movimento (D-033, sutil na área logada): os blocos entram em sequência, os
+ * números contam até o valor e as barras enchem da esquerda, só com CSS. Com
+ * movimento reduzido, tudo já aparece no estado final.
  */
+
+/** Posição na entrada em sequência (`.escalonado`). */
+const posicao = (indice: number) => ({ "--i": indice }) as CSSProperties;
 
 const numero = (valor: number) => valor.toLocaleString("pt-BR");
 const percentual = (parte: number, total: number) =>
@@ -21,17 +30,26 @@ export function BlocoDeIndicador({
   rotulo,
   valor,
   detalhe,
+  ordem = 0,
   children,
 }: {
   rotulo: string;
+  /** Números inteiros contam ao aparecer; textos (ex.: "3 / 100") aparecem direto. */
   valor: ReactNode;
   detalhe?: ReactNode;
+  /** Posição do bloco na entrada em sequência. */
+  ordem?: number;
   children?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-borda bg-superficie p-5">
+    <div
+      style={posicao(ordem)}
+      className="escalonado flex animate-entrar flex-col gap-1 rounded-lg border border-borda bg-superficie p-5 shadow-sm"
+    >
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
-      <dd className="text-3xl leading-tight font-bold tabular-nums">{valor}</dd>
+      <dd className="text-3xl leading-tight font-bold tabular-nums">
+        {typeof valor === "number" ? <NumeroAnimado valor={valor} /> : valor}
+      </dd>
       {detalhe && <dd className="text-sm text-texto-suave">{detalhe}</dd>}
       {children}
     </div>
@@ -54,7 +72,7 @@ export function MedidorDeConsumo({ usadas, limite }: { usadas: number; limite: n
         className="h-2 overflow-hidden rounded-full bg-superficie-2"
       >
         <div
-          className={`h-full rounded-r ${esgotado ? "bg-erro" : "bg-texto-suave"}`}
+          className={`h-full origin-left animate-encher rounded-r ${esgotado ? "bg-erro" : "bg-texto-suave"}`}
           style={{ width: `${uso}%` }}
         />
       </div>
@@ -90,7 +108,7 @@ function Barras({
 }) {
   return (
     <ul aria-label={titulo} className="flex flex-col gap-3">
-      {linhas.map((linha) => {
+      {linhas.map((linha, indice) => {
         const parte = percentual(linha.valor, total);
         return (
           <li
@@ -104,8 +122,11 @@ function Barras({
             {/* A barra é decorativa: o valor e o percentual estão escritos ao lado. */}
             <span aria-hidden="true" className="h-3 overflow-hidden rounded-r bg-superficie-2">
               <span
-                className={`block h-full rounded-r ${linha.preenchimento}`}
-                style={{ width: `${linha.valor > 0 ? Math.max(2, parte) : 0}%` }}
+                className={`escalonado block h-full origin-left animate-encher rounded-r ${linha.preenchimento}`}
+                style={{
+                  width: `${linha.valor > 0 ? Math.max(2, parte) : 0}%`,
+                  ...posicao(indice),
+                }}
               />
             </span>
             <span className="w-20 text-right tabular-nums">
