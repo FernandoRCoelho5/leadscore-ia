@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { Pool } from "@neondatabase/serverless";
 import type { Browser, Page } from "@playwright/test";
 import { config } from "dotenv";
@@ -81,6 +82,64 @@ export async function clienteComEmpresa(
     throw new Error("empresa do cliente não encontrada");
   }
   return { empresaId: linha.id, nome, email };
+}
+
+/** Lead quente com uma análise concluída (para a resposta sugerida aparecer). */
+export async function leadQuenteAnalisado(empresaId: string, nome: string): Promise<string> {
+  const [lead] = await consultar<{ id: string }>(
+    `INSERT INTO leads (id, empresa_id, nome, email, empresa_nome, mensagem, consentimento_lgpd,
+                        consentimento_em, status_analise, score_atual, classificacao_atual)
+     VALUES (gen_random_uuid(), $1, $2, $3, 'Metalúrgica Teste', 'Queremos um site novo.', true,
+             now(), 'concluida', 88, 'quente')
+     RETURNING id`,
+    [empresaId, nome, emailUnico("lead")],
+  );
+  if (!lead) {
+    throw new Error("lead não criado");
+  }
+  await consultar(
+    `INSERT INTO analises (id, lead_id, empresa_id, score, classificacao, justificativa,
+                           resposta_sugerida, modelo, prompt_version, perfil_versao,
+                           tempo_resposta_ms, mock)
+     VALUES (gen_random_uuid(), $1, $2, 88, 'quente', 'Pediu orçamento com prazo.',
+             'Olá! Obrigado pelo contato.', 'mock', 'v1', 1, 1, true)`,
+    [lead.id, empresaId],
+  );
+  return lead.id;
+}
+
+/** Regras da WCAG 2.1 nos níveis A e AA (a meta do projeto). */
+const NIVEIS_DA_WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
+
+/**
+ * Auditoria do axe-core (D-039), que completa o verificador abaixo com o que
+ * ele não mede: contraste das cores e as regras de ARIA, nos níveis A e AA da
+ * WCAG 2.1. Devolve uma linha por problema, com onde ele aparece; vazia =
+ * passou.
+ */
+export async function violacoesDoAxe(page: Page): Promise<string[]> {
+  // Mede a tela parada: no meio de uma entrada (opacidade subindo), o
+  // contraste ainda não é o final. Não contam as animações de ambiente
+  // (infinitas) nem as ligadas à rolagem (a revelação da landing), que nunca
+  // "terminam".
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (animacao) =>
+          animacao.playState !== "running" ||
+          animacao.timeline !== document.timeline ||
+          animacao.effect?.getTiming().iterations === Infinity,
+      ),
+  );
+  const { violations } = await new AxeBuilder({ page }).withTags(NIVEIS_DA_WCAG).analyze();
+  return violations.map((violacao) => {
+    const alvos = violacao.nodes
+      .slice(0, 3)
+      .map((no) => no.target.join(" "))
+      .join(" | ");
+    return `${violacao.id} (${violacao.nodes.length}x): ${violacao.help} → ${alvos}`;
+  });
 }
 
 /**

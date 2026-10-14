@@ -10,7 +10,9 @@ import { BotaoCopiar } from "@/components/ui/BotaoCopiar";
 import { CampoTexto } from "@/components/ui/Campo";
 import { useFormulario } from "@/components/ui/useFormulario";
 import { formatarData } from "@/lib/datas";
-import { esquemaConvite } from "@/lib/validacao/membros";
+
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaConvite = () => import("@/lib/validacao/membros").then((m) => m.esquemaConvite);
 
 /**
  * Convite por link (D-030): gera o link, tenta enviar por e-mail e mostra o

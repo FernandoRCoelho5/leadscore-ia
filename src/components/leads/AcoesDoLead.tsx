@@ -58,12 +58,10 @@ export function FormularioDeStatus({
       <Selecao
         id="status"
         rotulo="Etapa atual"
-        opcoes={STATUS_DO_LEAD.filter((valor) => valor !== "novo").map((valor) => ({
-          valor,
-          rotulo: ROTULO_DO_STATUS[valor],
-        }))}
-        textoVazio={ROTULO_DO_STATUS.novo}
-        defaultValue={statusAtual === "novo" ? "" : statusAtual}
+        // "Novo" é uma opção como as outras: um lead movido por engano pode voltar
+        // (antes ela tinha valor vazio, e o servidor recusava).
+        opcoes={STATUS_DO_LEAD.map((valor) => ({ valor, rotulo: ROTULO_DO_STATUS[valor] }))}
+        defaultValue={statusAtual}
         name="status"
       />
       <Botao type="submit" variante="contorno" carregando={pendente}>

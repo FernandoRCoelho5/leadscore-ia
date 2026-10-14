@@ -1297,8 +1297,83 @@ vê-la. Conferir no `proxy`: exigiria ler a sessão e o banco ali, a cada
 requisição. Tirar os esqueletos: voltaria o problema do diagnóstico.
 
 **Consequências.** Substitui o item "Sem `loading.tsx` no painel" da D-030.
-Toda rota nova do painel com `notFound()` precisa da conferência no layout. O teste E2E de acessibilidade espera o esqueleto
-sair antes de conferir a tela.
+Toda rota nova do painel com `notFound()` precisa da conferência no layout.
+O teste E2E de acessibilidade espera o título da tela aparecer (o esqueleto
+não tem títulos) antes de conferir.
+
+---
+
+## D-039 · axe-core nos testes de acessibilidade
+
+**Contexto.** O verificador próprio dos E2E (`problemasDeAcessibilidade`)
+pega rótulos, nomes, títulos, ids repetidos e rolagem lateral, mas não mede o
+contraste das cores nem as regras mais finas de ARIA. O contraste era
+garantido só pelos pares de tokens do teste unitário, e não pela tela
+montada (texto sobre um cartão, botão dentro de um diálogo, tema escuro).
+
+**Decisão.** `@axe-core/playwright` 4.13.0, só como dependência de
+desenvolvimento (aprovada na Etapa 5), com as regras dos níveis A e AA da
+WCAG 2.1. Roda junto com o verificador próprio em todas as telas que o E2E já
+conferia, nos diálogos abertos e nas páginas públicas também no tema escuro e
+a 320 px (a menor largura da WCAG 1.4.10). Antes de medir, espera as
+animações de entrada terminarem; as de ambiente e as ligadas à rolagem não
+contam. Um teste prova que ele acusa uma página malfeita.
+
+**Alternativas.** Só o verificador próprio: não mede contraste. Pa11y ou
+Lighthouse no CI: mais lentos e menos integrados ao Playwright, que já roda
+as telas logadas com dados.
+
+**Consequências.** Licença MPL-2.0, nada vai para o navegador do usuário e
+alguns segundos a mais nos E2E. Na primeira varredura (110 combinações de
+tela, tema e largura e 16 estados abertos), nenhuma violação.
+
+## D-040 · Zod baixado sob demanda nos formulários
+
+**Contexto.** O Zod valida os formulários no navegador com os mesmos
+esquemas do servidor. Ele era o maior pacote das páginas com formulário
+(90 KB comprimidos, um terço do JavaScript do login e do formulário
+público), baixado antes de a página aparecer. Na Etapa 5, o diagnóstico do
+LCP mostrou que o servidor não era o gargalo: o primeiro byte chega em cerca
+de 0,45 s, e o resto vem do JavaScript que o navegador pede no início, que o
+Lighthouse soma ao LCP simulado. Além disso, ao criar um esquema, o Zod
+testava se podia usar `eval` para um "modo rápido", e a CSP do app (que
+proíbe `eval`) registrava esse teste como violação: era o 96 em boas
+práticas do login e do formulário desde a Etapa 0.
+
+**Decisão.** Os componentes do navegador importam os limites e listas de
+`src/lib/validacao/regras.ts`, que não usa Zod; os esquemas chegam por
+`import()` (`FonteDoEsquema` no `useFormulario`), baixados no primeiro foco,
+toque ou tecla na página e, no pior caso, no envio. As regras são as mesmas:
+`auth.ts`, `lead.ts` e `empresa.ts` usam os valores de `regras.ts`. Os
+esquemas que vão ao navegador importam o Zod de `src/lib/validacao/zod.ts`,
+com `jitless: true`, que desliga o teste de `eval`. Sem rede para baixar o
+esquema, o formulário diz para tentar de novo.
+
+**Alternativas.** Tirar a validação do navegador: erros só depois da ida ao
+servidor. Trocar por `zod/mini`: reescrever todos os esquemas, inclusive os
+do servidor. Pré-carregar quando o navegador fica ocioso: testado, mas na
+carga real a página fica ociosa em milissegundos e o Zod voltava a ser
+pedido antes do LCP.
+
+**Consequências.** O formulário público foi de 90 para 97 no Lighthouse do
+celular e o login, de 93 para 96; boas práticas, 100 em todas as páginas. O
+LCP real (observado) já era de 0,24 a 0,56 s; o simulado continua perto de
+2,7 s, um piso que vem do React e do Next (cerca de 108 KB que não dá para
+tirar).
+
+## D-041 · O andamento do lead pode voltar para "Novo"
+
+**Contexto.** A opção "Novo" aparecia no seletor de andamento, mas com valor
+vazio, e o servidor a recusava ("Andamento inválido"). Um lead movido por
+engano não voltava, e o destaque "quentes esperando resposta" (D-036), que
+conta os quentes em "Novo", ficava errado para sempre.
+
+**Decisão.** "Novo" passa a ser uma opção como as outras, com o valor
+`novo`, que o servidor já aceitava (decidido pelo usuário na Etapa 5). A
+mudança fica na auditoria como as demais (`de`, `para`). O `Selecao` passou
+a aceitar não ter a opção vazia.
+
+**Consequências.** Só a tela mudou; a regra no servidor é a mesma.
 
 ---
 

@@ -82,6 +82,7 @@ Mínimos WCAG 2.2 AA: **4,5:1** para texto comum; **3:1** para texto grande,
 | `erro-fundo` + `erro-alerta` | erro-50 + erro-700 | erro-950 + erro-200 | 6,60 / 11,27 | Caixa de alerta |
 | `destrutivo` + `texto-destrutivo` | erro-700 + branco | erro-700 + branco | 7,22 / 7,22 | Excluir, anonimizar |
 | `sucesso` + `sucesso-fundo` | sucesso-700 + sucesso-50 | sucesso-300 + sucesso-950 | 5,39 / alto | Confirmações |
+| `veu` | carvão-950 a 50% | preto a 70% | — | Véu atrás de modais e da gaveta do menu (`backdrop:bg-veu`); no escuro é mais forte, porque 50% de carvão quase não se nota sobre o fundo escuro |
 
 ### O laranja da marca
 
@@ -400,3 +401,18 @@ duração ou curva solta.
   tema escuro.
 - `tests/e2e/identidade.spec.ts` confere no navegador a fonte Sora e os temas.
 - A paleta padrão do Tailwind foi removida: só as cores da marca existem.
+- `tests/e2e/acessibilidade.spec.ts` roda, em todas as telas (públicas e
+  logadas, nos dois temas, de 320 a 1366 px) e nos diálogos abertos, o
+  verificador próprio (`problemasDeAcessibilidade`) e o **axe-core** nos
+  níveis A e AA da WCAG 2.1, que mede o contraste final e as regras de ARIA
+  (D-039). O axe espera as animações de entrada terminarem: no meio de uma
+  entrada, a opacidade ainda não é a final.
+- `tests/e2e/teclado.spec.ts` percorre a área logada só pelo teclado (menu,
+  menu da conta, recolher o menu, copiar, diálogo, gaveta e filtros do
+  celular) e reprova qualquer parada do Tab sem o anel de foco.
+- Movimento reduzido: com a preferência ligada, nenhuma animação continua
+  rodando e o canvas das faíscas não desenha nenhum quadro (conferido em
+  todas as telas na Etapa 5).
+- Janelas modais: uma moldura só (`classesDaJanela`, larguras `padrao` e
+  `estreita`), com o `<dialog>` nativo: o foco entra, a página por trás fica
+  inerte, Esc fecha e o foco volta para o botão que abriu.

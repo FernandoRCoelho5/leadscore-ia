@@ -120,8 +120,11 @@ type PropsDaSelecao = PropsComuns &
     /** Texto (valor = rótulo) ou par valor/rótulo (ex.: "em_contato" / "Em contato"). */
     /** Opções com `grupo` são reunidas em <optgroup>, na ordem em que aparecem. */
     opcoes: readonly (string | OpcaoDaSelecao)[];
-    /** Texto da primeira opção, que fica vazia (campo opcional ou "escolha"). */
-    textoVazio: string;
+    /**
+     * Texto da primeira opção, que fica vazia (campo opcional ou "escolha").
+     * Sem ele, não há opção vazia: uma das opções é sempre a escolhida.
+     */
+    textoVazio?: string;
   };
 
 export type OpcaoDaSelecao = { valor: string; rotulo: string; grupo?: string };
@@ -165,7 +168,7 @@ export function Selecao({
         className={`h-controle cursor-pointer ${ESTILO_CAMPO}`}
         {...resto}
       >
-        <option value="">{textoVazio}</option>
+        {textoVazio !== undefined && <option value="">{textoVazio}</option>}
         {agruparOpcoes(opcoes).map(({ grupo, itens }, indice) => {
           const elementos = itens.map(({ valor, rotulo }) => (
             <option key={valor} value={valor}>

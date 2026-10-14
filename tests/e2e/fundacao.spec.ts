@@ -59,6 +59,30 @@ test.describe("página inicial", () => {
   });
 });
 
+test("formulários: a validação baixada sob demanda não viola a CSP", async ({ page }) => {
+  // O evento do navegador pega também o que não vai para o console (como o
+  // teste de `eval` que o Zod fazia, bloqueado pela CSP, D-040).
+  await page.addInitScript(() => {
+    const registro: string[] = [];
+    Object.assign(window, { violacoesDaCsp: registro });
+    document.addEventListener("securitypolicyviolation", (evento) => {
+      registro.push(`${evento.violatedDirective} ${evento.blockedURI}`);
+    });
+  });
+
+  for (const caminho of ["/login", "/cadastro", "/esqueci-senha"]) {
+    await page.goto(caminho);
+    // O esquema do formulário é baixado quando o navegador fica ocioso; enviar
+    // vazio garante que ele foi baixado e usado.
+    await page.locator("form button[type=submit]").first().click();
+    await expect(page.locator("[aria-invalid=true]").first()).toBeVisible();
+    const violacoes = await page.evaluate(
+      () => (window as unknown as { violacoesDaCsp: string[] }).violacoesDaCsp,
+    );
+    expect(violacoes, `violações da CSP em ${caminho}`).toEqual([]);
+  }
+});
+
 test.describe("formulário público (/f/...)", () => {
   test("só ele pode ir em iframe, e só em sites HTTPS", async ({ request }) => {
     // Endereço inexistente: a regra vale para todo o /f/, sem precisar de banco.

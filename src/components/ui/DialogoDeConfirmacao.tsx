@@ -3,6 +3,7 @@
 import { useId, useRef, type ReactNode } from "react";
 
 import { Botao } from "./Botao";
+import { classesDaJanela } from "./Dialogo";
 
 /**
  * Confirmação de ação destrutiva com o <dialog> nativo em modo modal: prende o
@@ -53,11 +54,7 @@ export function DialogoDeConfirmacao({
       </button>
       {/* O <dialog> herda o CSS de onde está no HTML (ex.: a célula de uma
           tabela com nowrap), mesmo aparecendo por cima de tudo. */}
-      <dialog
-        ref={refDialogo}
-        aria-labelledby={idDoTitulo}
-        className="surgir m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg border border-borda bg-superficie p-0 text-left whitespace-normal text-texto shadow-lg backdrop:bg-carvao-950/50"
-      >
+      <dialog ref={refDialogo} aria-labelledby={idDoTitulo} className={classesDaJanela("estreita")}>
         <form
           onSubmit={async (evento) => {
             evento.preventDefault();

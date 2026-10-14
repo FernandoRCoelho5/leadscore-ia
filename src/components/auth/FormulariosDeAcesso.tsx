@@ -10,13 +10,13 @@ import { CampoSenha } from "@/components/ui/CampoSenha";
 import { useFormulario, type ResultadoDoEnvio } from "@/components/ui/useFormulario";
 import { authCliente } from "@/lib/auth/cliente";
 import { mensagemDoErroDeAutenticacao, type ErroDeAutenticacao } from "@/lib/auth/erros";
-import {
-  SENHA_MINIMO,
-  esquemaCadastro,
-  esquemaEsqueciSenha,
-  esquemaLogin,
-  esquemaNovaSenha,
-} from "@/lib/validacao/auth";
+import { SENHA_MINIMO } from "@/lib/validacao/regras";
+
+/** Esquemas baixados sob demanda: o Zod não pesa no primeiro carregamento (D-040). */
+const esquemaLogin = () => import("@/lib/validacao/auth").then((m) => m.esquemaLogin);
+const esquemaCadastro = () => import("@/lib/validacao/auth").then((m) => m.esquemaCadastro);
+const esquemaEsqueciSenha = () => import("@/lib/validacao/auth").then((m) => m.esquemaEsqueciSenha);
+const esquemaNovaSenha = () => import("@/lib/validacao/auth").then((m) => m.esquemaNovaSenha);
 
 /**
  * Formulários de acesso. Chamam as rotas /api/auth/* pelo cliente do Better

@@ -1,22 +1,12 @@
-import { z } from "zod";
+import { z } from "./zod";
+
+import { SLUG_MAXIMO, SLUG_MINIMO, gerarSlug } from "./regras";
 
 /** Validações da empresa e do perfil do negócio (contexto que a IA usa para pontuar). */
 
-export const SLUG_MINIMO = 3;
-export const SLUG_MAXIMO = 60;
-const FORMATO_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export { SLUG_MAXIMO, SLUG_MINIMO, gerarSlug };
 
-/** Gera o endereço do formulário a partir do nome: "Agência Pixel" -> "agencia-pixel". */
-export function gerarSlug(nome: string): string {
-  return nome
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, SLUG_MAXIMO)
-    .replace(/-+$/g, "");
-}
+const FORMATO_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const textoOpcional = (maximo: number) =>
   z
@@ -70,3 +60,9 @@ export const esquemaOnboarding = esquemaPerfilDoNegocio.extend({
 
 export type DadosDoPerfilDoNegocio = z.infer<typeof esquemaPerfilDoNegocio>;
 export type DadosDoOnboarding = z.infer<typeof esquemaOnboarding>;
+
+/** Só os campos do passo "Sua empresa" do onboarding, validados antes de seguir. */
+export const esquemaDaEmpresaNoOnboarding = esquemaOnboarding.pick({
+  nomeEmpresa: true,
+  slug: true,
+});

@@ -1,4 +1,4 @@
-import { SENHA_MAXIMO, SENHA_MINIMO } from "@/lib/validacao/auth";
+import { SENHA_MAXIMO, SENHA_MINIMO } from "@/lib/validacao/regras";
 
 /** Erro devolvido pelas rotas de autenticação (Better Auth). */
 export type ErroDeAutenticacao = { code?: string | undefined; status: number; message?: string };

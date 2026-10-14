@@ -16,6 +16,8 @@ export function FiltrosRecolhiveis({
   children: ReactNode;
 }) {
   const [aberto, setAberto] = useState(temFiltro);
+  // Só anima quando a pessoa abre (ao carregar já filtrado, aparece direto).
+  const [alternou, setAlternou] = useState(false);
   const id = useId();
 
   return (
@@ -24,7 +26,10 @@ export function FiltrosRecolhiveis({
         type="button"
         aria-expanded={aberto}
         aria-controls={id}
-        onClick={() => setAberto(!aberto)}
+        onClick={() => {
+          setAberto(!aberto);
+          setAlternou(true);
+        }}
         className="flex h-controle w-full cursor-pointer items-center gap-2 rounded-lg border border-borda bg-superficie px-4 text-sm font-semibold hover:bg-superficie-2 md:hidden"
       >
         <SlidersHorizontal aria-hidden="true" className="size-4 text-texto-suave" />
@@ -39,7 +44,16 @@ export function FiltrosRecolhiveis({
           className={`ml-auto size-4 text-texto-suave transition-transform ${aberto ? "rotate-180" : ""}`}
         />
       </button>
-      <div id={id} className={`${aberto ? "mt-2 animate-entrar" : "hidden"} md:mt-0 md:block`}>
+      <div
+        id={id}
+        className={[
+          aberto ? "mt-2" : "hidden",
+          aberto && alternou ? "animate-entrar" : "",
+          "md:mt-0 md:block md:animate-none",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         {children}
       </div>
     </div>

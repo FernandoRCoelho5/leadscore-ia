@@ -1,6 +1,15 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 import { esquemaEmail, esquemaNome } from "./auth";
+import {
+  CAMPO_ARMADILHA,
+  CAMPO_CARIMBO,
+  MENSAGEM_MAXIMO,
+  MENSAGEM_MINIMO,
+  SEGMENTOS,
+} from "./regras";
+
+export { CAMPO_ARMADILHA, CAMPO_CARIMBO, MENSAGEM_MAXIMO, MENSAGEM_MINIMO, SEGMENTOS };
 
 /**
  * Validação do formulário público de captação (D-028). As mesmas regras rodam
@@ -8,30 +17,8 @@ import { esquemaEmail, esquemaNome } from "./auth";
  * Os tamanhos máximos seguem as colunas da tabela `leads`.
  */
 
-/** Segmentos oferecidos no formulário: uma lista fixa deixa os relatórios comparáveis. */
-export const SEGMENTOS = [
-  "Indústria",
-  "Comércio",
-  "Serviços",
-  "Tecnologia",
-  "Saúde",
-  "Educação",
-  "Construção",
-  "Agronegócio",
-  "Setor público",
-  "Outro",
-] as const;
-
-export const MENSAGEM_MINIMO = 10;
-export const MENSAGEM_MAXIMO = 2000;
-
 /** Versão do texto de consentimento; muda quando o texto mudar (fica gravada em cada lead). */
 export const VERSAO_DO_CONSENTIMENTO = "v1";
-
-/** Campo invisível para pessoas: robôs que preenchem tudo o preenchem (anti-spam, D-028). */
-export const CAMPO_ARMADILHA = "website";
-/** Campo oculto com o carimbo assinado do horário em que a página foi aberta. */
-export const CAMPO_CARIMBO = "carimbo";
 
 /** Campo opcional: vazio ou ausente (quem chama a API pode omitir) vira null. */
 const vazioComoNulo = <Valor extends string>(valor: Valor | undefined): Valor | null =>
