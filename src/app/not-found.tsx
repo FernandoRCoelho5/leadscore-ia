@@ -12,13 +12,19 @@ export default function NaoEncontrada() {
   return (
     <main id="conteudo" className="flex flex-1 flex-col">
       <Moldura
+        comLogo
         icone={<SearchX aria-hidden="true" />}
         titulo="Página não encontrada"
         descricao="O endereço pode estar incompleto ou a página não existe mais."
       >
-        <Link href="/" className={classesDeBotao("contorno")}>
-          Voltar para o início
-        </Link>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Link href="/" className={classesDeBotao("primaria")}>
+            Voltar para o início
+          </Link>
+          <Link href="/login" className={classesDeBotao("contorno")}>
+            Entrar na Brasa
+          </Link>
+        </div>
       </Moldura>
     </main>
   );

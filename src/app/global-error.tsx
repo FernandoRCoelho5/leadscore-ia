@@ -19,7 +19,7 @@ export default function ErroGeral({
     <html lang="pt-BR" data-tema="claro">
       <body className="flex min-h-full flex-col">
         <main id="conteudo" className="flex flex-1 flex-col">
-          <TelaDeErro codigo={error.digest} aoTentarDeNovo={retry} />
+          <TelaDeErro codigo={error.digest} aoTentarDeNovo={retry} comLogo />
         </main>
       </body>
     </html>

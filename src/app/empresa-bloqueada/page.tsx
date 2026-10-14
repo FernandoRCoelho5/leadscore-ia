@@ -32,10 +32,10 @@ export default async function PaginaEmpresaBloqueada() {
         </form>
       </div>
       <section className="mt-8 w-full max-w-lg rounded-lg border border-borda bg-superficie p-6 shadow-sm sm:p-8">
-        <span className="flex size-12 items-center justify-center rounded-full bg-superficie-2 text-texto-suave">
+        <span className="flex size-14 animate-entrar items-center justify-center rounded-full bg-erro-fundo text-erro ring-8 ring-erro-fundo/50">
           <Lock aria-hidden="true" className="size-6" />
         </span>
-        <h1 className="mt-4 text-2xl font-bold">O acesso da sua empresa está suspenso</h1>
+        <h1 className="mt-6 text-2xl font-bold">O acesso da sua empresa está suspenso</h1>
         <div className="mt-3 flex flex-col gap-3 text-texto-suave">
           <p>
             A equipe Brasa bloqueou a conta da sua empresa. Enquanto o bloqueio durar, o painel fica
